@@ -1,0 +1,8 @@
+# TLS and reverse proxy for Billery SaaS (docker compose --profile proxy). The domain comes from
+# BILLERY_DOMAIN in .env. Caddy obtains and renews the certificate and sets X-Forwarded-Proto and
+# X-Forwarded-Host, which the backend relies on for its same-origin checks, and X-Forwarded-For:
+# it drops what a client sent (no trusted_proxies), so the limits per source IP see the real one.
+{$BILLERY_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy backend:8080
+}

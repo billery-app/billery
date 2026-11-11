@@ -1,0 +1,418 @@
+name: Release
+
+# A tag v<major>.<minor>.<patch> builds the release: the checks of the build job, the two container
+# images of backend/Dockerfile (self-host and SaaS, see below), a vulnerability scan of each image
+# that blocks the release, SBOMs (CycloneDX) of the images and of the source tree, a GitHub release
+# with the JARs, the SBOMs, the scan reports and checksums, and the images in the GitHub container
+# registry (ghcr.io/<owner>/billery and ghcr.io/<owner>/billery-saas). Two jobs:
+# `build` (read-only token) makes and checks everything, `publish` (write token) only publishes what
+# `build` made: the images that are pushed are the ones that were scanned, loaded from an artifact,
+# not built a second time.
+#
+# The two images are two builds of the same Dockerfile: `billery` is the self-host application,
+# `billery-saas` the multi-tenant one (Maven profile saas, Spring profile saas built in). The SaaS
+# JAR started without its profile would run without authentication, so each image is checked to be
+# the variant it claims to be (scripts/check-image-variant.sh).
+# Policy: docs/operations/supply-chain.md.
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: read
+
+# One release at a time: two tags pushed together must not push their aliases (1.2, latest) in a
+# random order. A running release is never cancelled.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  # Everything that runs third-party code (Maven plugins, Docker build, Trivy) has a read-only token.
+  build:
+    runs-on: ubuntu-latest
+    # Ends a hung job instead of letting it burn billed minutes.
+    timeout-minutes: 60
+    # Values that travel next to the artifact, not inside it: the publish job compares them with what
+    # it downloaded, so an artifact that was swapped on the way is noticed.
+    outputs:
+      sums: ${{ steps.collect.outputs.sums }}
+      image-id-selfhost: ${{ steps.save.outputs.image-id-selfhost }}
+      image-id-saas: ${{ steps.save.outputs.image-id-saas }}
+    env:
+      # Via env, never interpolated into a script (no shell injection through tag names).
+      TAG: ${{ github.ref_name }}
+
+    steps:
+      # The trigger pattern v*.*.* also matches v1.2.3.4 or v1.2.x; only v<major>.<minor>.<patch> with
+      # an optional pre-release part (v1.2.3-rc1) is a release, everything else stops here before
+      # anything is built or published.
+      - name: Check the tag
+        run: |
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z][0-9A-Za-z.-]*)?$ ]]; then
+            echo "::error::'$TAG' is not a release tag (v<major>.<minor>.<patch>[-<pre-release>])"
+            exit 1
+          fi
+
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+
+      - name: Check .trivyignore
+        run: scripts/check-trivyignore.sh .trivyignore
+
+      # What maven.yml checks on every change: tests (H2), JaCoCo, Spotless and PMD. The SaaS suite
+      # needs PostgreSQL and runs in the saas job of maven.yml on every change to main.
+      - name: Verify the backend
+        working-directory: backend
+        run: mvn -B verify
+
+      # The source label links the package in the registry to this repository, so it inherits the
+      # repository and the workflow's token may create it.
+      - name: Build the images
+        run: |
+          set -euo pipefail
+          labels=(
+            --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY"
+            --label "org.opencontainers.image.revision=$GITHUB_SHA"
+            --label "org.opencontainers.image.version=$TAG"
+          )
+          docker build -f backend/Dockerfile -t "billery:$TAG" "${labels[@]}" .
+          docker build -f backend/Dockerfile -t "billery-saas:$TAG" \
+            --build-arg MAVEN_PROFILES=saas --build-arg SPRING_PROFILE=saas "${labels[@]}" .
+
+      - name: Check the image variants
+        run: |
+          scripts/check-image-variant.sh "billery:$TAG" selfhost
+          scripts/check-image-variant.sh "billery-saas:$TAG" saas
+
+      # A HIGH or CRITICAL vulnerability with a fix stops the release before anything is published.
+      - name: Scan the self-host image (blocks the release)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: billery:${{ github.ref_name }}
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+          trivyignores: .trivyignore
+          format: table
+
+      - name: Scan the SaaS image (blocks the release)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: billery-saas:${{ github.ref_name }}
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+          trivyignores: .trivyignore
+          format: table
+
+      - name: Scan report of the self-host image (all severities)
+        if: always()
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: billery:${{ github.ref_name }}
+          scanners: vuln
+          severity: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
+          exit-code: '0'
+          trivyignores: .trivyignore
+          format: json
+          output: trivy-selfhost-report.json
+
+      - name: Scan report of the SaaS image (all severities)
+        if: always()
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: billery-saas:${{ github.ref_name }}
+          scanners: vuln
+          severity: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
+          exit-code: '0'
+          trivyignores: .trivyignore
+          format: json
+          output: trivy-saas-report.json
+
+      - name: SBOM of the self-host image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: billery:${{ github.ref_name }}
+          format: cyclonedx
+          output: sbom-selfhost-image.cdx.json
+
+      - name: SBOM of the SaaS image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: billery-saas:${{ github.ref_name }}
+          format: cyclonedx
+          output: sbom-saas-image.cdx.json
+
+      # The manifests and lockfiles of the source tree: backend (Maven), frontend and desktop shell
+      # (npm), desktop shell (Cargo).
+      - name: SBOM of the source tree
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          skip-dirs: XRechnung
+          format: cyclonedx
+          output: sbom-source.cdx.json
+
+      - name: Collect the release files
+        id: collect
+        run: |
+          set -euo pipefail
+          mkdir release
+          # The JARs that run in the images, not a second build of them.
+          for pair in "billery:billery-$TAG.jar" "billery-saas:billery-saas-$TAG.jar"; do
+            container=$(docker create "${pair%%:*}:$TAG")
+            docker cp "$container:/app/app.jar" "release/${pair#*:}"
+            docker rm "$container" > /dev/null
+          done
+          cp sbom-selfhost-image.cdx.json "release/billery-$TAG-image.cdx.json"
+          cp sbom-saas-image.cdx.json "release/billery-saas-$TAG-image.cdx.json"
+          cp sbom-source.cdx.json "release/billery-$TAG-source.cdx.json"
+          cp trivy-selfhost-report.json "release/billery-$TAG-image-scan.json"
+          cp trivy-saas-report.json "release/billery-saas-$TAG-image-scan.json"
+          (cd release && sha256sum -- * > SHA256SUMS)
+          echo "sums=$(sha256sum release/SHA256SUMS | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+          ls -l release
+
+      - name: Hand the files to the publish job
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-files
+          path: release/
+          if-no-files-found: error
+          retention-days: 7
+
+      # The scanned images themselves, so the publish job pushes exactly these layers.
+      - name: Save the scanned images
+        id: save
+        run: |
+          set -euo pipefail
+          docker save --output image.tar "billery:$TAG" "billery-saas:$TAG"
+          {
+            echo "image-id-selfhost=$(docker image inspect --format '{{.Id}}' "billery:$TAG")"
+            echo "image-id-saas=$(docker image inspect --format '{{.Id}}' "billery-saas:$TAG")"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Hand the images to the publish job
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-image
+          path: image.tar
+          if-no-files-found: error
+          retention-days: 1
+
+  # The only job with a write token: it runs no build, only publishes what the build job made.
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    # Ends a hung job instead of letting it burn billed minutes.
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      packages: write
+    env:
+      TAG: ${{ github.ref_name }}
+    steps:
+      # The trigger pattern v*.*.* also matches v1.2.3.4 or v1.2.x; only v<major>.<minor>.<patch> with
+      # an optional pre-release part (v1.2.3-rc1) is a release, everything else stops here before
+      # anything is built or published.
+      - name: Check the tag
+        run: |
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z][0-9A-Za-z.-]*)?$ ]]; then
+            echo "::error::'$TAG' is not a release tag (v<major>.<minor>.<patch>[-<pre-release>])"
+            exit 1
+          fi
+
+      # Pinned to a commit: this job has a write token.
+      - name: Download the release files
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-files
+          path: release
+
+      - name: Download the scanned images
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-image
+          path: image
+
+      # SHA256SUMS lists the files made by the build job; its own hash came as a job output.
+      - name: Verify the release files
+        env:
+          EXPECTED_SUMS: ${{ needs.build.outputs.sums }}
+        run: |
+          set -euo pipefail
+          cd release
+          test "$(sha256sum SHA256SUMS | cut -d' ' -f1)" = "$EXPECTED_SUMS"
+          sha256sum --check --strict SHA256SUMS
+
+      # 1.2.3 gets 1.2.3, and 1.2 and latest only when it is the highest stable release of its
+      # line (resp. of all): a hotfix for an older line never moves latest, and a pre-release
+      # (1.2.3-rc1) only gets its own tag. Both images get the same tags. The token is only given
+      # to the steps that need it.
+      - name: Push the images to the container registry
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_ID_SELFHOST: ${{ needs.build.outputs.image-id-selfhost }}
+          EXPECTED_ID_SAAS: ${{ needs.build.outputs.image-id-saas }}
+        run: |
+          set -euo pipefail
+          docker load --input image/image.tar
+          # The image id (a hash of its configuration) came as a job output of the build job, next
+          # to the artifact: a swapped image.tar is not the scanned image and is not pushed.
+          check_id() { # $1 image, $2 expected id
+            local loaded
+            loaded=$(docker image inspect --format '{{.Id}}' "$1")
+            if [[ "$loaded" != "$2" ]]; then
+              echo "::error::the downloaded $1 is $loaded, the scanned one was $2"
+              exit 1
+            fi
+          }
+          check_id "billery:$TAG" "$EXPECTED_ID_SELFHOST"
+          check_id "billery-saas:$TAG" "$EXPECTED_ID_SAAS"
+
+          version="${TAG#v}"
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          name="${GITHUB_REPOSITORY#*/}"
+          name="${name,,}"
+          selfhost_repository="ghcr.io/$owner/$name"
+          saas_repository="ghcr.io/$owner/$name-saas"
+          minor="${version%.*}"
+
+          # Stable releases that exist already, plus this one. sort -V orders 1.10.0 after 1.9.0.
+          # All pages: with a limit, a project with many releases could miss the highest one.
+          existing=$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
+            --jq '.[] | select((.prerelease | not) and (.draft | not)) | .tag_name')
+          highest() { printf '%s\n' "$existing" "$TAG" | grep -E "$1" | sort -V | tail -1; }
+
+          tags=("$version")
+          if [[ "$version" != *-* ]]; then
+            if [[ "$(highest '^v[0-9]+\.[0-9]+\.[0-9]+$')" == "$TAG" ]]; then
+              tags+=(latest)
+            fi
+            if [[ "$(highest "^v${minor//./\\.}\.[0-9]+\$")" == "$TAG" ]]; then
+              tags+=("$minor")
+            fi
+          fi
+          echo "pushing tags: ${tags[*]}"
+
+          echo "$GH_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+
+          # A version is published once. A re-run, or a tag that was deleted and pushed again, must
+          # not overwrite the image of a release that exists (its assets and digest would no longer
+          # match the image under that tag). To repeat a failed release: remove the half-published
+          # parts (the release, the package versions) on purpose, or cut the next patch version.
+          # Only a clear "not found" counts as free. Any other failure (network, authentication)
+          # stops the release: a check that fails open would allow the overwrite it exists to stop.
+          if answer=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" 2>&1); then
+            echo "::error::the release $TAG exists already; versions are immutable"
+            exit 1
+          elif ! grep -q 'HTTP 404' <<< "$answer"; then
+            echo "::error::cannot tell whether the release $TAG exists: $answer"
+            exit 1
+          fi
+          for repository in "$selfhost_repository" "$saas_repository"; do
+            if answer=$(docker manifest inspect "$repository:$version" 2>&1); then
+              echo "::error::$repository:$version exists already; versions are immutable"
+              exit 1
+            elif ! grep -qiE 'no such manifest|manifest unknown|name unknown|not found' <<< "$answer"; then
+              echo "::error::cannot tell whether $repository:$version exists: $answer"
+              exit 1
+            fi
+          done
+
+          push_image() { # $1 local image, $2 repository, $3 digest file; sets pushed_digest
+            local image="$1" repository="$2" file="$3" tag pushed
+            pushed_digest=""
+            for tag in "${tags[@]}"; do
+              docker tag "$image" "$repository:$tag"
+              # The digest comes from the push output ("digest: sha256:... size: ..."); the local
+              # RepoDigests list is not reliable for a loaded image. A failed push leaves it empty.
+              pushed=$(docker push "$repository:$tag" | tee /dev/stderr | grep -oE 'sha256:[0-9a-f]{64}' | tail -1 || true)
+              if [[ -z "$pushed" ]]; then
+                echo "::error::no digest in the push output of $repository:$tag"
+                exit 1
+              fi
+              # Every tag is the same image: the digest must not differ.
+              if [[ -n "$pushed_digest" && "$pushed" != "$pushed_digest" ]]; then
+                echo "::error::$repository:$tag has the digest $pushed, expected $pushed_digest"
+                exit 1
+              fi
+              pushed_digest="$pushed"
+            done
+            echo "$repository@$pushed_digest" > "$file"
+          }
+          push_image "billery:$TAG" "$selfhost_repository" "release/billery-$TAG-image-digest.txt"
+          selfhost_digest="$pushed_digest"
+          push_image "billery-saas:$TAG" "$saas_repository" "release/billery-saas-$TAG-image-digest.txt"
+          saas_digest="$pushed_digest"
+
+          # SHA256SUMS of the build job was verified above; now that the digest files exist, the
+          # published SHA256SUMS lists every file of the release, the digest files included.
+          (cd release && rm SHA256SUMS && sha256sum -- * > SHA256SUMS && sha256sum --check --strict SHA256SUMS)
+          {
+            echo "IMAGE_VERSION=$version"
+            echo "SELFHOST_REPOSITORY=$selfhost_repository"
+            echo "SELFHOST_DIGEST=$selfhost_repository@$selfhost_digest"
+            echo "SAAS_REPOSITORY=$saas_repository"
+            echo "SAAS_DIGEST=$saas_repository@$saas_digest"
+          } >> "$GITHUB_ENV"
+
+      # The token is only given to this step, not to the job.
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          flags=()
+          if [[ "$TAG" == *-* ]]; then
+            flags+=(--prerelease)
+          fi
+          gh release create "$TAG" release/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "$TAG" \
+            --generate-notes \
+            --verify-tag \
+            "${flags[@]}"
+          {
+            gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json body --jq .body
+            echo
+            echo "## Container images"
+            echo
+            echo "Self-host (one organisation, no login of its own):"
+            echo '```'
+            echo "docker pull $SELFHOST_REPOSITORY:$IMAGE_VERSION"
+            echo '```'
+            echo "Digest: \`$SELFHOST_DIGEST\`"
+            echo
+            echo "SaaS (multi-tenant, sign-in with an OpenID provider, the profile \`saas\` is built in):"
+            echo '```'
+            echo "docker pull $SAAS_REPOSITORY:$IMAGE_VERSION"
+            echo '```'
+            echo "Digest: \`$SAAS_DIGEST\`"
+            echo
+            echo "A private package needs a token with \`read:packages\` to pull (\`docker login ghcr.io\`)."
+            echo "These are the images that were scanned before they were"
+            echo "pushed; the SBOMs and the scan reports are attached to this release."
+          } > notes.md
+          gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --notes-file notes.md

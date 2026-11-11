@@ -1,0 +1,25 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: billery-dev-db
+    environment:
+      POSTGRES_DB: billery
+      POSTGRES_USER: billery
+      POSTGRES_PASSWORD: billery123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # The database starts empty: the backend creates the schema with Flyway on
+      # its first start. For the full 2023-2026 demo dataset put
+      # LOAD_DEMO_DATA=true into backend/.env (it is only loaded into a database
+      # without customers).
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U billery -d billery"]
+      start_period: 10s
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  postgres_data:

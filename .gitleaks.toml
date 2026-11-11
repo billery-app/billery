@@ -1,0 +1,17 @@
+title = "Billery gitleaks configuration"
+
+[extend]
+# Keep all default rules.
+useDefault = true
+
+[allowlist]
+description = "Test fixtures with throw-away values"
+# These files hold fixed values that only exist inside the test suite: the password of the
+# database login role the tests create in a throw-away PostgreSQL container, and the secret the
+# signed upload URLs of the test application are built with. A real secret does not belong in
+# these files either, so add a file here deliberately, not a whole directory.
+paths = [
+  '''backend/src/saas-test/java/de/billery/saas/SaasTestSupport\.java''',
+  '''backend/src/saas-test/java/de/billery/saas/SaasApiTestBase\.java''',
+  '''backend/src/saas-test/java/de/billery/saas/UploadStorageTest\.java''',
+]

@@ -1,0 +1,40 @@
+name: Weekly Dependency Check
+permissions:
+  contents: read
+
+on:
+  schedule:
+    - cron: '0 0 * * 0' # jeden Sonntag um Mitternacht
+  workflow_dispatch:
+
+jobs:
+  weekly-dep-check:
+    runs-on: ubuntu-latest
+    # Ends a hung job instead of letting it burn billed minutes.
+    timeout-minutes: 20
+    environment: nvd
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v6
+        with:
+          distribution: 'temurin'
+          java-version: '25'
+
+      - name: Install Maven
+        run: sudo apt update && sudo apt install -y maven
+      
+      # Newer versions that exist, for the weekly look. Vulnerabilities are not checked here: that is
+      # security.yml (Trivy, gate and weekly report) and Dependabot.
+      - name: Dependency updates
+        run: mvn -B versions:display-dependency-updates | tee updates.txt
+
+      - name: Upload Results as Artifact
+        uses: actions/upload-artifact@v7
+        with:
+            name: dependency-updates
+            path: backend/updates.txt

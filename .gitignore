@@ -1,0 +1,39 @@
+target/
+backend/src/main/resources/static/
+.idea/
+*.class
+*.jar
+*.war
+*.ear
+*.db
+*.log
+*.iml
+.env/
+.env
+
+# Testfiles
+/backend/testFiles
+
+# Snyk Security Extension - AI Rules (auto-generated)
+.github/instructions/
+
+# Snyk Security Extension - AI Rules (auto-generated)
+.windsurf/
+.vscode/
+
+# Generated documentation
+docs/api/
+
+# Coverage reports
+frontend/coverage/
+
+# Backups hold customer data
+backups/
+
+# IDE project files
+.project
+.classpath
+.settings/
+.idea/
+*.iml
+.vscode/

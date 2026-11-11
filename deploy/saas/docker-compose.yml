@@ -1,0 +1,193 @@
+# Billery SaaS: the multi-tenant application with sign-in through an OpenID Connect provider.
+# Runbook: docs/operations/saas-deployment.md. Configuration: .env (copy .env.example, or run
+# ./generate-secrets.sh). Start: docker compose up -d   (add --profile proxy for the Caddy below).
+#
+# What runs here: PostgreSQL and the application (the SaaS image, which also serves the SPA).
+# What does NOT run here: the identity provider. It is external and only configured through three
+# settings (BILLERY_SECURITY_ISSUERS, BILLERY_SECURITY_AUDIENCE, BILLERY_OIDC_CLIENT_ID), so any
+# OpenID Connect provider works and can be exchanged (docs/operations/saas-identity-provider.md).
+name: billery-saas
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  postgres:
+    image: postgres:17
+    container_name: billery-saas-db
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    # Only what PostgreSQL needs to initialise and run its data directory.
+    cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETGID, SETUID]
+    mem_limit: ${DB_MEMORY_LIMIT:-512m}
+    pids_limit: 200
+    environment:
+      POSTGRES_DB: billery
+      # The bootstrap superuser. Only the init script and the backup use it, never the application.
+      POSTGRES_USER: billery_admin
+      POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD:?Set POSTGRES_ADMIN_PASSWORD (./generate-secrets.sh does it)}
+      # Read by postgres/init/10-roles.sh on the very first start, to create the two other roles.
+      BILLERY_OWNER_PASSWORD: ${DB_MIGRATION_PASSWORD:?Set DB_MIGRATION_PASSWORD (./generate-secrets.sh does it)}
+      BILLERY_LOGIN_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD (./generate-secrets.sh does it)}
+    # No published port: only the backend talks to the database.
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+      - type: tmpfs
+        target: /tmp
+      - type: tmpfs
+        target: /run/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U billery_admin -d billery"]
+      start_period: 15s
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging: *logging
+    networks:
+      - billery-network
+
+  backend:
+    # The SaaS image: the Spring profile "saas" is built in and the application refuses to start
+    # without it. Pin a version (or the digest from the GitHub release); if the package is private:
+    # `docker login ghcr.io` with a token that has read:packages.
+    image: ghcr.io/billery-app/billery-saas:${BILLERY_VERSION:?Set BILLERY_VERSION to a release, for example 0.1.1}
+    container_name: billery-saas-backend
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    # Writable are only the volumes (uploads, logs) and /tmp.
+    read_only: true
+    cap_drop: [ALL]
+    mem_limit: ${BACKEND_MEMORY_LIMIT:-1g}
+    cpus: ${BACKEND_CPUS:-2}
+    pids_limit: 300
+    tmpfs:
+      - /tmp:size=256m
+    environment:
+      # The application connects as billery_login (a member of billery_app: no superuser, no
+      # BYPASSRLS), so the row-level security of the tenants cannot be skipped. Flyway runs as
+      # billery_owner, the owner of the tables. Do not point DB_USER at billery_owner or at
+      # billery_admin: PostgreSQL does not apply the policies to them.
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: billery
+      DB_USER: billery_login
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD (./generate-secrets.sh does it)}
+      DB_MIGRATION_USER: billery_owner
+      DB_MIGRATION_PASSWORD: ${DB_MIGRATION_PASSWORD:?Set DB_MIGRATION_PASSWORD (./generate-secrets.sh does it)}
+      # The identity provider. Only these three are required; they are all the application knows.
+      BILLERY_SECURITY_ISSUERS: ${BILLERY_SECURITY_ISSUERS:?Set BILLERY_SECURITY_ISSUERS to the issuer URL of your provider}
+      BILLERY_SECURITY_AUDIENCE: ${BILLERY_SECURITY_AUDIENCE:?Set BILLERY_SECURITY_AUDIENCE (the aud claim of the access tokens)}
+      BILLERY_OIDC_CLIENT_ID: ${BILLERY_OIDC_CLIENT_ID:?Set BILLERY_OIDC_CLIENT_ID (the public client of the app at the provider)}
+      BILLERY_OIDC_ISSUER: ${BILLERY_OIDC_ISSUER:-}
+      BILLERY_OIDC_SCOPE: ${BILLERY_OIDC_SCOPE:-openid profile email offline_access}
+      # Signs the URLs of uploaded files. At least 32 characters; rotating it invalidates the
+      # URLs stored in templates.
+      BILLERY_FILES_SECRET: ${BILLERY_FILES_SECRET:?Set BILLERY_FILES_SECRET (./generate-secrets.sh does it)}
+      BILLERY_FILES_DIR: /app/uploads
+      # Where uploads are kept: local (the uploads volume, default) or s3 (a bucket of any
+      # S3-compatible store, for several instances without a shared disk). backup.sh follows it.
+      BILLERY_FILES_STORE: ${BILLERY_FILES_STORE:-local}
+      BILLERY_FILES_S3_ENDPOINT: ${BILLERY_FILES_S3_ENDPOINT:-}
+      BILLERY_FILES_S3_REGION: ${BILLERY_FILES_S3_REGION:-}
+      BILLERY_FILES_S3_BUCKET: ${BILLERY_FILES_S3_BUCKET:-}
+      BILLERY_FILES_S3_ACCESS_KEY: ${BILLERY_FILES_S3_ACCESS_KEY:-}
+      BILLERY_FILES_S3_SECRET_KEY: ${BILLERY_FILES_S3_SECRET_KEY:-}
+      BILLERY_FILES_S3_PATH_STYLE: ${BILLERY_FILES_S3_PATH_STYLE:-true}
+      # Same origin: the SPA and the API are served by this one service. Empty = no CORS.
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
+      # Outgoing mail (invitations). Optional: without MAIL_HOST and MAIL_FROM nothing is sent and
+      # the app says so when someone is invited. MAIL_SECURITY: starttls (port 587, default),
+      # ssl (465) or none.
+      BILLERY_PUBLIC_URL: ${BILLERY_PUBLIC_URL:-}
+      # Prometheus metrics on this port inside the network only (never published); -1 = off.
+      BILLERY_METRICS_PORT: ${BILLERY_METRICS_PORT:--1}
+      # Per-tenant request limits (429 above them), see docs/reference/env-vars.md.
+      BILLERY_LIMITS_REQUESTS_PER_SECOND: ${BILLERY_LIMITS_REQUESTS_PER_SECOND:-20}
+      BILLERY_LIMITS_BURST: ${BILLERY_LIMITS_BURST:-200}
+      BILLERY_LIMITS_HEAVY_PER_TENANT: ${BILLERY_LIMITS_HEAVY_PER_TENANT:-2}
+      BILLERY_INVITATION_MAILS_PER_DAY: ${BILLERY_INVITATION_MAILS_PER_DAY:-1000}
+      BILLERY_INVITATION_MAILS_PER_IP: ${BILLERY_INVITATION_MAILS_PER_IP:-100}
+      # Sign-up limits; the source IP comes from X-Forwarded-For, which Caddy overwrites.
+      BILLERY_MAX_COMPANIES_PER_USER: ${BILLERY_MAX_COMPANIES_PER_USER:-5}
+      BILLERY_SIGNUPS_PER_USER_PER_DAY: ${BILLERY_SIGNUPS_PER_USER_PER_DAY:-3}
+      BILLERY_SIGNUPS_PER_IP: ${BILLERY_SIGNUPS_PER_IP:-10}
+      BILLERY_SIGNUPS_PER_DAY: ${BILLERY_SIGNUPS_PER_DAY:-100}
+      MAIL_HOST: ${MAIL_HOST:-}
+      MAIL_PORT: ${MAIL_PORT:-}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-}
+      MAIL_SECURITY: ${MAIL_SECURITY:-starttls}
+      # SPRING_PROFILES_ACTIVE is not set on purpose: the image has "saas" built in.
+    ports:
+      # Loopback by default: reach it through a reverse proxy that terminates TLS, either the Caddy
+      # of this file (--profile proxy) or one you already run (proxy to 127.0.0.1:APP_PORT).
+      - "${BIND_ADDRESS:-127.0.0.1}:${APP_PORT:-8080}:8080"
+    volumes:
+      - uploads:/app/uploads
+      - logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      # Ready, not only alive: the database answers too. Docker does not restart an unhealthy
+      # container, so a database outage shows here without a restart loop.
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/api/health/ready"]
+      start_period: 60s
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    logging: *logging
+    networks:
+      - billery-network
+
+  # Optional TLS and reverse proxy: docker compose --profile proxy up -d. Skip it if a proxy on this
+  # host (or in front of it) already terminates TLS; it then needs to forward everything to
+  # 127.0.0.1:APP_PORT and send X-Forwarded-Proto and X-Forwarded-Host (Caddy and Traefik do).
+  # DNS for BILLERY_DOMAIN must point to this host and ports 80 and 443 must be reachable for the
+  # certificate.
+  caddy:
+    profiles: ["proxy"]
+    image: caddy:2
+    container_name: billery-saas-caddy
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      # Not marked as required here: Compose evaluates ${VAR:?...} for every service, also those of a
+      # profile that is not enabled, so a deployment without the proxy (your own one in front)
+      # would fail on it. Without a domain Caddy itself stops with "no site address".
+      BILLERY_DOMAIN: ${BILLERY_DOMAIN:-}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      backend:
+        condition: service_healthy
+    logging: *logging
+    networks:
+      - billery-network
+
+volumes:
+  postgres_data:
+  uploads:
+  logs:
+  caddy_data:
+  caddy_config:
+
+networks:
+  billery-network:
+    driver: bridge

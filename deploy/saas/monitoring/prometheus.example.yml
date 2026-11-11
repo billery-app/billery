@@ -1,0 +1,13 @@
+# Example for a Prometheus that runs on the same Docker network as the stack (for example as an extra
+# service in your own compose file, attached to the network "billery-saas_billery-network"). The
+# metrics port is never published on the host: only containers on that network reach it.
+global:
+  scrape_interval: 30s
+rule_files:
+  - alerts.yml
+scrape_configs:
+  - job_name: billery
+    metrics_path: /prometheus
+    static_configs:
+      # BILLERY_METRICS_PORT of the backend; billery-backend:<port> for the self-host compose.
+      - targets: ["billery-saas-backend:9464"]

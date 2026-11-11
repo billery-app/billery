@@ -1,0 +1,123 @@
+name: billery
+
+x-logging: &logging
+  # Docker keeps at most 5 x 10 MB of each container's output; without it the log grows forever.
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  postgres:
+    image: postgres:17
+    container_name: billery-db
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    # Only what PostgreSQL needs to initialise and run its data directory.
+    cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETGID, SETUID]
+    mem_limit: ${DB_MEMORY_LIMIT:-512m}
+    pids_limit: 200
+    logging: *logging
+    environment:
+      POSTGRES_DB: billery
+      POSTGRES_USER: billery
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD to a non-default secret before starting}
+    # No published port: only the backend talks to the database. For direct
+    # access during debugging, use `docker compose exec postgres psql -U billery billery`.
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - type: tmpfs
+        target: /tmp
+      - type: tmpfs
+        target: /run/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U billery -d billery"]
+      start_period: 10s
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - billery-network
+
+  # The backend image contains the SPA as well (backend/Dockerfile builds both), so this one
+  # service is the whole application on ONE origin: put your reverse proxy in front of it and
+  # forward everything (/, /api, /uploads) to billery-backend:8080. See docs/operations/deployment.md.
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: billery-backend
+    security_opt:
+      - no-new-privileges:true
+    # Writable are only the volumes (uploads, logs) and /tmp.
+    read_only: true
+    cap_drop: [ALL]
+    mem_limit: ${BACKEND_MEMORY_LIMIT:-1g}
+    cpus: ${BACKEND_CPUS:-2}
+    pids_limit: 300
+    tmpfs:
+      - /tmp:size=256m
+    logging: *logging
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: billery
+      DB_USER: billery
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD to a non-default secret before starting}
+      # Only for a frontend on ANOTHER origin; empty = same origin (the default and what a
+      # reverse proxy setup needs).
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
+      # Prometheus metrics on this port inside the network only (never published); -1 = off.
+      BILLERY_METRICS_PORT: ${BILLERY_METRICS_PORT:--1}
+    ports:
+      # Loopback by default: the app has no login of its own, so it must only be reachable
+      # through your proxy. A proxy on the same host connects to 127.0.0.1:APP_PORT; a proxy
+      # container on this compose network connects to billery-backend:8080 (remove this
+      # mapping or leave it, it is not needed then); BIND_ADDRESS=0.0.0.0 publishes it on all
+      # interfaces (LAN demo without proxy).
+      - "${BIND_ADDRESS:-127.0.0.1}:${APP_PORT:-8080}:8080"
+    volumes:
+      - uploads:/app/uploads
+      - logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      # Ready, not only alive: the database answers too. Docker does not restart an unhealthy
+      # container, so a database outage shows here without a restart loop.
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/api/health/ready"]
+      start_period: 30s
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    networks:
+      - billery-network
+
+  # Optional: the SPA as its own container (`docker compose --profile split up`). The browser then
+  # loads it from FRONTEND_PORT and the API calls go to the same host (/api/...), so a proxy has
+  # to route /api and /uploads to the backend. Normally NOT needed: the backend serves the SPA.
+  frontend:
+    profiles: ["split"]
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-}
+    container_name: billery-frontend
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${FRONTEND_PORT:-5173}:5173"
+    depends_on:
+      - backend
+    networks:
+      - billery-network
+
+volumes:
+  postgres_data:
+  uploads:
+  logs:
+
+networks:
+  billery-network:
+    driver: bridge

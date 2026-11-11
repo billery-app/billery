@@ -1,0 +1,43 @@
+<?xml version="1.0"?>
+<ruleset name="Billery Custom Ruleset"
+    xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
+
+    <description>
+        Custom PMD ruleset for Billery.
+        Excludes noisy ceremony rules, tunes name length thresholds.
+    </description>
+
+    <rule ref="category/java/bestpractices.xml">
+        <!-- Forces `if (LOGGER.isLoggable(...))` around every log call; the cost
+             of building a log string is irrelevant here and the guards hurt
+             readability. Prefer Supplier-based logging for expensive messages. -->
+        <exclude name="GuardLogStatement"/>
+    </rule>
+
+    <rule ref="category/java/codestyle.xml">
+        <exclude name="MethodArgumentCouldBeFinal"/>
+        <exclude name="LocalVariableCouldBeFinal"/>
+        <exclude name="OnlyOneReturn"/>
+        <exclude name="AtLeastOneConstructor"/>
+        <exclude name="FieldNamingConventions"/>
+        <exclude name="CommentDefaultAccessModifier"/>
+        <!-- `e` for exceptions and `id` are idiomatic. -->
+        <exclude name="ShortVariable"/>
+        <!-- Redundant parentheses in ternaries aid readability. -->
+        <exclude name="UselessParentheses"/>
+    </rule>
+
+    <rule ref="category/java/codestyle.xml/LongVariable">
+        <properties>
+            <property name="minimum" value="25"/>
+        </properties>
+    </rule>
+
+    <rule ref="category/java/errorprone.xml">
+        <!-- SQL column names and status ids repeat by nature in JDBC code. -->
+        <exclude name="AvoidDuplicateLiterals"/>
+        <exclude name="AvoidLiteralsInIfCondition"/>
+    </rule>
+</ruleset>

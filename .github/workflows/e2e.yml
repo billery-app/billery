@@ -1,0 +1,136 @@
+name: E2E smoke
+permissions:
+  contents: read
+
+# Builds the product the way backend/Dockerfile does (SPA inside the backend JAR, one origin) and
+# uses it in a real browser (frontend/e2e). Catches what unit tests cannot see: response headers
+# (CSP), filters, routing of the built SPA, console errors (threat model G11).
+on:
+  # Pull requests only: main gets its code through them, a second run after the merge found nothing
+  # new (Actions minutes). No branch or path filter, like maven.yml / frontend.yml: meant to be a required status check.
+  pull_request:
+
+# A newer push to the same pull request cancels the run of the older one (Actions minutes).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  e2e:
+    # Explicit name so the check is recognisable in the list of required checks.
+    name: e2e-smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          # The job runs pull request code (npm, Maven, Playwright); no git operation follows,
+          # so the token is not left in .git/config for that code to read.
+          persist-credentials: false
+
+      # A pull request that changes nothing the product is built from (backend or frontend code,
+      # not tests or documentation) skips the remaining steps; the job still reports success, as a
+      # required check must. One job instead of a separate change check saves a billed minute.
+      - name: Did anything relevant change?
+        id: diff
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          relevant=true
+          if [ "$EVENT" = "pull_request" ]; then
+            base="origin/$BASE_REF"
+            git rev-parse --verify --quiet "$base" > /dev/null || base="origin/main"
+            # Run everything when the comparison itself fails.
+            if files=$(git diff --name-only "$base...HEAD"); then
+              # Tests, specs and documentation do not change the product the smoke suite uses.
+              files=$(grep -vE '^backend/src/(test|saas-test)/|^frontend/src/.*\.spec\.js$|\.md$' <<< "$files" || true)
+              grep -qE '^(frontend/|backend/|\.github/workflows/e2e\.yml)' <<< "$files" || relevant=false
+            fi
+          fi
+          echo "relevant=$relevant" >> "$GITHUB_OUTPUT"
+          [ "$relevant" = true ] || echo "Nothing relevant changed: the remaining steps are skipped."
+
+      - name: Set up JDK 25
+        if: steps.diff.outputs.relevant == 'true'
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+
+      - name: Set up Node.js
+        if: steps.diff.outputs.relevant == 'true'
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build the SPA
+        if: steps.diff.outputs.relevant == 'true'
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Package the backend with the SPA (desktop profile for H2)
+        if: steps.diff.outputs.relevant == 'true'
+        run: |
+          mkdir -p backend/src/main/resources/static
+          cp -R frontend/dist/. backend/src/main/resources/static/
+          cd backend
+          mvn -B -Pdesktop -DskipTests package
+
+      - name: Start the app (empty in-memory H2)
+        if: steps.diff.outputs.relevant == 'true'
+        env:
+          SPRING_PROFILES_ACTIVE: desktop
+          DB_URL: 'jdbc:h2:mem:e2e;MODE=MariaDB;DB_CLOSE_DELAY=-1'
+          SERVER_PORT: '8080'
+          FILES_PATH: ${{ runner.temp }}/uploads
+        run: |
+          nohup java -jar backend/target/backend-1.0-SNAPSHOT.jar > "$RUNNER_TEMP/backend.log" 2>&1 &
+          for i in $(seq 1 90); do
+            if curl -fsS http://127.0.0.1:8080/api/health > /dev/null; then
+              echo "backend up after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "backend did not start within 90 s"
+          cat "$RUNNER_TEMP/backend.log"
+          exit 1
+
+      # --with-deps also installs system packages through apt. The runner image already has the
+      # libraries Chromium needs (apt only adds optional fonts), so when the Ubuntu mirrors cannot
+      # be reached (2026-11-11: their names did not resolve from the runners) the browser alone is
+      # installed. A library that is really missing still fails the smoke suite when Chromium starts.
+      - name: Install Chromium
+        if: steps.diff.outputs.relevant == 'true'
+        working-directory: frontend
+        run: |
+          if ! npm run test:e2e:install; then
+            echo "::warning::System packages could not be installed; installing the browser only"
+            npx playwright install chromium
+          fi
+
+      - name: Run the smoke suite
+        if: steps.diff.outputs.relevant == 'true'
+        working-directory: frontend
+        env:
+          E2E_BASE_URL: http://127.0.0.1:8080
+        run: npm run test:e2e
+
+      - name: Upload traces and backend log
+        if: failure() && steps.diff.outputs.relevant == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-results
+          path: |
+            frontend/test-results/
+            ${{ runner.temp }}/backend.log
+          retention-days: 7

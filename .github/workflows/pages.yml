@@ -1,0 +1,173 @@
+# Deploys Doxygen, JaCoCo, Vitest coverage, the OpenAPI spec
+# (rendered as a static Swagger UI), and coverage badges to GitHub Pages.
+name: Deploy docs to Pages
+
+on:
+  # Weekly instead of on every merge: the generated reference may lag by up to a week (Actions
+  # minutes). Run it by hand ("Run workflow") when a fresh one is needed.
+  schedule:
+    - cron: '23 5 * * 1'
+  workflow_dispatch:
+
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow only one concurrent deployment; do not cancel in-progress runs.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    # Ends a hung job instead of letting it burn billed minutes.
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+
+      - name: Run tests, generate JaCoCo report, and OpenAPI spec
+        working-directory: backend
+        # -Pdesktop puts H2 on the runtime classpath; -Popenapi starts the
+        # app on an in-memory H2 database (port 18080), fetches
+        # /v3/api-docs into target/openapi.json and stops the app again.
+        run: mvn -B -Pdesktop,openapi verify
+
+      - name: Install Doxygen
+        run: sudo apt-get update && sudo apt-get install -y doxygen
+
+      - name: Generate Doxygen HTML
+        run: doxygen Doxyfile
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Generate frontend coverage report
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run test:coverage
+
+      - name: Install Swagger UI bundle
+        run: |
+          mkdir -p tmp/swagger site/swagger
+          cd tmp/swagger
+          npm init -y >/dev/null
+          npm install swagger-ui-dist@^5
+          cp -r node_modules/swagger-ui-dist/. ../../site/swagger/
+          cd ../..
+          rm -rf tmp
+
+      - name: Assemble site
+        run: |
+          mkdir -p site/jacoco site/doxygen site/coverage site/swagger site/badges
+          cp -r backend/target/site/jacoco/. site/jacoco/
+          cp -r docs/api/html/. site/doxygen/
+          cp -r frontend/coverage/. site/coverage/
+          cp backend/target/openapi.json site/swagger/openapi.json
+          # Point the bundled Swagger UI at the local spec.
+          sed -i 's|url: "https://petstore.swagger.io/v2/swagger.json"|url: "openapi.json"|' site/swagger/swagger-initializer.js
+          # Ship the static docs badge and generate the coverage badges
+          # from the freshly produced JaCoCo / Vitest outputs.
+          cp docs/badges/docs.svg site/badges/docs.svg
+          python3 <<'PY'
+          import csv, os, re
+
+          # Backend line coverage from JaCoCo CSV
+          csv_path = 'backend/target/site/jacoco/jacoco.csv'
+          backend_pct = 0.0
+          if os.path.exists(csv_path):
+              with open(csv_path) as f:
+                  rows = list(csv.DictReader(f))
+              lm = sum(int(r['LINE_MISSED']) for r in rows)
+              lc = sum(int(r['LINE_COVERED']) for r in rows)
+              backend_pct = round(lc / (lm + lc) * 100, 1) if (lm + lc) else 0.0
+
+          # Frontend statement coverage from the Vitest HTML index
+          html_path = 'frontend/coverage/index.html'
+          frontend_pct = 0.0
+          if os.path.exists(html_path):
+              with open(html_path) as f:
+                  html = f.read()
+              m = re.search(r'<span class="strong">\s*([\d.]+)\s*%\s*</span>', html)
+              frontend_pct = float(m.group(1)) if m else 0.0
+
+          def color(v):
+              if v >= 75: return '4c1'
+              if v >= 50: return 'dfb317'
+              return 'e05d44'
+
+          def svg(label, value, c):
+              return (
+                  '<svg xmlns="http://www.w3.org/2000/svg" width="140" height="20">\n'
+                  '  <linearGradient id="s" x2="0" y2="100%">\n'
+                  '    <stop offset="0" stop-opacity=".1"/>\n'
+                  '    <stop offset="100%" stop-opacity=".1"/>\n'
+                  '  </linearGradient>\n'
+                  '  <clipPath id="r">\n'
+                  '    <rect width="140" height="20" rx="3" fill="#fff"/>\n'
+                  '  </clipPath>\n'
+                  '  <g clip-path="url(#r)">\n'
+                  '    <rect width="70" height="20" fill="#555"/>\n'
+                  f'    <rect x="70" width="70" height="20" fill="#{c}"/>\n'
+                  '    <rect width="140" height="20" fill="url(#s)"/>\n'
+                  '  </g>\n'
+                  '  <g fill="#fff" text-anchor="middle" '
+                  'font-family="DejaVu Sans,Verdana,Geneva,sans-serif" font-size="11">\n'
+                  f'    <text x="35" y="15" fill="#010101" fill-opacity=".3">{label}</text>\n'
+                  f'    <text x="35" y="14">{label}</text>\n'
+                  f'    <text x="105" y="15" fill="#010101" fill-opacity=".3">{value}</text>\n'
+                  f'    <text x="105" y="14">{value}</text>\n'
+                  '  </g>\n'
+                  '</svg>\n'
+              )
+
+          with open('site/badges/backend-coverage.svg', 'w') as f:
+              f.write(svg('backend', f'{backend_pct}%', color(backend_pct)))
+          with open('site/badges/frontend-coverage.svg', 'w') as f:
+              f.write(svg('frontend', f'{frontend_pct}%', color(frontend_pct)))
+          print(f'Backend: {backend_pct}%, Frontend: {frontend_pct}%')
+          PY
+          cat > site/index.html <<'EOF'
+          <!doctype html>
+          <html lang="en">
+          <head><meta charset="utf-8"><title>Billery docs</title></head>
+          <body>
+            <h1>Billery documentation</h1>
+            <ul>
+              <li><a href="doxygen/">Doxygen (Java API)</a></li>
+              <li><a href="swagger/">Swagger UI (REST API)</a></li>
+              <li><a href="jacoco/">JaCoCo test coverage (backend)</a></li>
+              <li><a href="coverage/">Vitest coverage (frontend)</a></li>
+              <li><a href="badges/">Coverage badges</a></li>
+            </ul>
+          </body>
+          </html>
+          EOF
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v6
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+          name: billery-docs
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
+        with:
+          artifact_name: billery-docs

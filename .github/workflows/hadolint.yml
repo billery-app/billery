@@ -1,0 +1,49 @@
+name: Lint Dockerfile
+
+on:
+  push:
+    paths:
+      - '**/Dockerfile*'
+      - '**/docker-compose*.yml'
+      - '**/docker-compose*.yaml'
+  pull_request:
+    paths:
+      - '**/Dockerfile*'
+      - '**/docker-compose*.yml'
+      - '**/docker-compose*.yaml'
+
+# A newer push to the same pull request cancels the run of the older one (Actions minutes).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  hadolint:
+    runs-on: ubuntu-latest
+    # Ends a hung job instead of letting it burn billed minutes.
+    timeout-minutes: 10
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v7
+
+      - name: Install Hadolint Binary
+        run: |
+          # Download the latest Linux x86_64 binary
+          curl -sSL https://github.com/hadolint/hadolint/releases/latest/download/hadolint-Linux-x86_64 -o hadolint
+          chmod +x hadolint
+          sudo mv hadolint /usr/local/bin/hadolint
+
+      - name: Lint All Dockerfiles
+        # This finds all Dockerfiles and passes them to hadolint
+        # The -print0 and xargs -0 handle spaces in filenames safely
+        run: |
+          find . -name "Dockerfile" -type f -print0 | xargs -0 hadolint
+
+      - name: Validate Docker Compose
+        # Since you have a compose file on top, let's make sure it's valid too.
+        # DB_PASSWORD is only required so compose can resolve its mandatory interpolation
+        # (`${DB_PASSWORD:?...}`); this step only checks syntax/structure, it never starts
+        # the stack.
+        run: docker compose config -q
+        env:
+          DB_PASSWORD: ci-validation-placeholder

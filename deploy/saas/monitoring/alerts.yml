@@ -1,0 +1,80 @@
+# Alert rules for Prometheus. Scrape the backend at <backend>:BILLERY_METRICS_PORT/prometheus,
+# see prometheus.example.yml and docs/operations/ops-gotchas.md. The thresholds are a start: adjust
+# them to your traffic. Tested by alerts.test.yml (promtool test rules).
+groups:
+  - name: billery
+    rules:
+      - alert: BilleryMetricsMissing
+        expr: up{job="billery"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Billery does not answer the metrics scrape"
+          description: "The backend is down or the metrics port is not reachable. Check docker ps and the logs."
+
+      - alert: BilleryServerErrors
+        # Share of requests answered with 5xx; only when there is traffic to speak of.
+        expr: |
+          sum(rate(http_server_requests_seconds_count{application="billery", status=~"5.."}[5m]))
+            / sum(rate(http_server_requests_seconds_count{application="billery"}[5m])) > 0.05
+          and sum(rate(http_server_requests_seconds_count{application="billery"}[5m])) > 0.05
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "More than 5 % of the requests fail with a server error"
+          description: "See the backend log for the stack traces; http_server_requests_seconds_count names the URI."
+
+      - alert: BillerySlowRequests
+        # The 95th percentile of the API, without the GoBD export and the PDF downloads (slow by design).
+        expr: |
+          histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{application="billery", uri=~"/api/.*", uri!~"/api/export/.*|/api/invoices/\\{id\\}/pdf"}[5m]))) > 2
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "95 % of the API requests take longer than 2 s"
+          description: "Check CPU (process_cpu_usage), the database pool and the database itself."
+
+      - alert: BilleryDatabasePoolExhausted
+        expr: max(hikaricp_connections_pending{application="billery"}) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Requests wait for a database connection"
+          description: "All connections of the pool are in use for 5 minutes: a slow database or long-running requests."
+
+      - alert: BilleryAbuseLimitReached
+        # A system-wide 24-hour limit refused a request: nobody can sign up, or no invitation
+        # mail goes out, until the window passes. Either abuse or the limit is too low.
+        expr: |
+          sum by (quota) (increase(billery_quota_refused_total{application="billery", scope="system"}[15m])) > 0
+        labels:
+          severity: critical
+        annotations:
+          summary: "A system-wide limit of {{ $labels.quota }} is reached"
+          description: "Nobody can sign up (signup) or receive an invitation mail (invitation_mail) for up to 24 hours. Look for abuse in the log; if it is real growth, raise BILLERY_SIGNUPS_PER_DAY or BILLERY_INVITATION_MAILS_PER_DAY."
+
+      - alert: BilleryAbuseSuspected
+        # Many refusals by the limits per user, source IP or recipient within an hour: someone is
+        # trying more than the limits allow. The limits hold; this is for a look at the source.
+        expr: |
+          sum by (quota, scope) (increase(billery_quota_refused_total{application="billery", scope=~"user|ip|recipient"}[1h])) > 10
+        labels:
+          severity: warning
+        annotations:
+          summary: "Many requests hit the {{ $labels.quota }} limit per {{ $labels.scope }}"
+          description: "More than 10 refusals in an hour. The limits hold; check the proxy log for the source and block it there if it goes on."
+
+      - alert: BilleryHeapNearlyFull
+        expr: |
+          sum(jvm_memory_used_bytes{application="billery", area="heap"})
+            / sum(jvm_memory_max_bytes{application="billery", area="heap"}) > 0.9
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "The Java heap is more than 90 % full"
+          description: "Raise BACKEND_MEMORY_LIMIT, or look for a request that holds much memory."

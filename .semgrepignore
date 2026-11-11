@@ -1,0 +1,6 @@
+# Semgrep ignores (pr-sast.yml runs `semgrep --config auto`)
+
+# Third-party reference material and generated/bundled artifacts
+XRechnung/
+app-desktop/resources/
+app-desktop/gen/

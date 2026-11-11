@@ -1,0 +1,89 @@
+# Version updates (security updates for the same ecosystems are switched on in the repository
+# settings and ignore this file). Monthly and grouped, so a month of patch releases is one pull
+# request: every pull request runs the whole CI (Actions minutes). The vulnerability gate is .github/workflows/security.yml.
+version: 2
+updates:
+  - package-ecosystem: maven
+    directory: /backend
+    schedule:
+      interval: monthly
+    groups:
+      # The three docx4j artifacts must have the same version: one pull request for all of them,
+      # whatever the kind of update (a single one broke the DOCX export).
+      docx4j:
+        patterns:
+          - "org.docx4j:*"
+      maven-minor-and-patch:
+        update-types: [minor, patch]
+        exclude-patterns:
+          - "org.docx4j:*"
+    ignore:
+      # The mail provider is not wired into the application yet; version 9 has another builder API.
+      # Raise it deliberately when the mail feature is built.
+      - dependency-name: "org.simplejavamail:simple-java-mail"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: monthly
+    groups:
+      npm-minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /app-desktop
+    schedule:
+      interval: monthly
+    groups:
+      desktop-npm-minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: cargo
+    directory: /app-desktop
+    schedule:
+      interval: monthly
+    groups:
+      cargo-minor-and-patch:
+        update-types: [minor, patch]
+
+  # The Docker base images stay on the versions CI runs on: Java 25 (LTS) and Node 24 (LTS), see
+  # docs/operations/supply-chain.md. Patch and minor updates of these lines (a new JRE build, a
+  # new Alpine) still come; the next Java or Node line is a deliberate change of CI, pom, Dockerfiles
+  # and desktop runtime together, not a pull request for one Dockerfile.
+  - package-ecosystem: docker
+    directory: /backend
+    schedule:
+      interval: monthly
+    ignore:
+      - dependency-name: "eclipse-temurin"
+        update-types: ["version-update:semver-major"]
+      # The build stage only (not shipped). The tag names the Java line (3.9-eclipse-temurin-25-alpine),
+      # which has to match the pom, so it is raised by hand together with the pom; the tag itself is
+      # rebuilt upstream, a new build picks up patch releases without a pull request.
+      - dependency-name: "maven"
+      - dependency-name: "node"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: docker
+    directory: /frontend
+    schedule:
+      interval: monthly
+    ignore:
+      - dependency-name: "node"
+        update-types: ["version-update:semver-major"]
+
+  # The images named in the SaaS deployment kit (PostgreSQL, Caddy).
+  - package-ecosystem: docker-compose
+    directory: /deploy/saas
+    schedule:
+      interval: monthly
+    ignore:
+      # PostgreSQL major versions are a data migration, not a version bump.
+      - dependency-name: "postgres"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

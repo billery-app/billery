@@ -1,0 +1,9 @@
+# Accepted vulnerabilities for the dependency and image scans (docs/operations/supply-chain.md).
+#
+# A finding is only listed here when it cannot be fixed or does not apply, and every entry needs
+# the advisory id, a reason and an expiry date, so it comes back for review:
+#
+#   CVE-2026-12345 exp:2026-12-31
+#   # reason: the vulnerable class is not reachable (we only use X); fix expected in Y; owner: ...
+#
+# Nothing is accepted at the moment.

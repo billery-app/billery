@@ -1,0 +1,170 @@
+name: SaaS stack
+permissions:
+  contents: read
+
+# Verifies the SaaS deployment kit (deploy/saas) for real, because that cannot be done by reading it:
+# the scripts are linted and the compose files validated, and then the stack is started the way an
+# operator starts it (the kit's compose file, the image built in the job, a mock OpenID provider in
+# place of a real one) and used: the checks of check.sh, two users in two companies who must not see
+# each other's data, a restart of the application, and a backup that is restored into a scratch
+# database. Runbook: docs/operations/saas-deployment.md.
+
+on:
+  # Only what can change how the kit or the SaaS image starts and runs (Actions minutes):
+  # the kit, the Dockerfile and the build, the SaaS code and both migration sets, the
+  # monitoring rules. Ordinary backend and frontend changes are covered by the saas and e2e jobs;
+  # the weekly run starts the stack with everything else. No run on main after the merge: the
+  # pull request ran it on the same code.
+  pull_request:
+    paths:
+      - 'deploy/saas/**'
+      - 'backend/Dockerfile'
+      - 'backend/pom.xml'
+      - 'backend/src/saas/**'
+      - 'backend/src/main/resources/db/**'
+      - 'backend/src/main/resources/application*.properties'
+      - 'scripts/check-image-variant.sh'
+      - 'scripts/check-trivyignore.sh'
+      - '.github/workflows/saas-stack.yml'
+  schedule:
+    # A new base image or a new Alpine package can break a start without any change here.
+    - cron: '41 4 * * 1'
+  workflow_dispatch:
+
+# A newer push to the same pull request cancels the run of the older one (Actions minutes).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  kit:
+    name: saas-kit
+    runs-on: ubuntu-latest
+    # Ends a hung job instead of letting it burn billed minutes.
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Lint the scripts
+        run: |
+          shellcheck -S warning \
+            deploy/saas/*.sh deploy/saas/postgres/init/*.sh deploy/saas/ci/*.sh \
+            scripts/check-image-variant.sh scripts/check-trivyignore.sh
+
+      - name: Alert rules fire on bad values and stay quiet on good ones
+        run: |
+          docker run --rm -v "$PWD/deploy/saas/monitoring:/m:ro" -w /m --entrypoint promtool \
+            prom/prometheus:v3.16.0 test rules alerts.test.yml
+
+      # Syntax and interpolation of the compose files, with placeholder values (nothing is started).
+      # First WITHOUT BILLERY_DOMAIN and without the proxy profile: a deployment with its own proxy
+      # must not need a setting that only the optional Caddy uses (Compose evaluates ${VAR:?...} of
+      # every service, also of a profile that is not enabled).
+      - name: Validate the compose files without the proxy
+        env:
+          BILLERY_VERSION: '0.0.0'
+          BILLERY_SECURITY_ISSUERS: https://idp.example.com/
+          BILLERY_SECURITY_AUDIENCE: billery
+          BILLERY_OIDC_CLIENT_ID: billery
+          POSTGRES_ADMIN_PASSWORD: placeholder
+          DB_MIGRATION_PASSWORD: placeholder
+          DB_PASSWORD: placeholder
+          BILLERY_FILES_SECRET: placeholderplaceholderplaceholderplaceholder
+        run: docker compose -f deploy/saas/docker-compose.yml config -q
+
+      - name: Validate the compose files with the proxy and the CI override
+        env:
+          BILLERY_VERSION: '0.0.0'
+          BILLERY_DOMAIN: app.example.com
+          BILLERY_SECURITY_ISSUERS: https://idp.example.com/
+          BILLERY_SECURITY_AUDIENCE: billery
+          BILLERY_OIDC_CLIENT_ID: billery
+          POSTGRES_ADMIN_PASSWORD: placeholder
+          DB_MIGRATION_PASSWORD: placeholder
+          DB_PASSWORD: placeholder
+          BILLERY_FILES_SECRET: placeholderplaceholderplaceholderplaceholder
+        run: |
+          docker compose -f deploy/saas/docker-compose.yml --profile proxy config -q
+          docker compose -f deploy/saas/docker-compose.yml -f deploy/saas/ci/docker-compose.ci.yml config -q
+
+      - name: The secret generator fills every secret and protects the file
+        run: |
+          dir=$(mktemp -d)
+          cp deploy/saas/.env.example deploy/saas/generate-secrets.sh "$dir"/
+          (cd "$dir" && ./generate-secrets.sh > /dev/null)
+          test "$(stat -c %a "$dir/.env")" = 600
+          for key in POSTGRES_ADMIN_PASSWORD DB_MIGRATION_PASSWORD DB_PASSWORD BILLERY_FILES_SECRET; do
+            grep -Eq "^$key=.{32,}$" "$dir/.env" || { echo "$key is empty or short"; exit 1; }
+          done
+          if (cd "$dir" && ./generate-secrets.sh 2> /dev/null); then echo "it overwrote an existing .env"; exit 1; fi
+
+  stack:
+    name: saas-stack
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Build the SaaS image
+        run: |
+          docker build -f backend/Dockerfile -t billery-saas:ci \
+            --build-arg MAVEN_PROFILES=saas --build-arg SPRING_PROFILE=saas .
+          scripts/check-image-variant.sh billery-saas:ci saas
+
+      - name: Configure the kit like an operator (generated secrets, a provider)
+        working-directory: deploy/saas
+        run: |
+          ./generate-secrets.sh
+          sed -i \
+            -e 's|^BILLERY_VERSION=.*|BILLERY_VERSION=ci|' \
+            -e 's|^BILLERY_SECURITY_ISSUERS=.*|BILLERY_SECURITY_ISSUERS=http://mock-idp:8080/default|' \
+            -e 's|^BILLERY_SECURITY_AUDIENCE=.*|BILLERY_SECURITY_AUDIENCE=billery-ci|' \
+            -e 's|^BILLERY_OIDC_CLIENT_ID=.*|BILLERY_OIDC_CLIENT_ID=billery-ci|' \
+            -e 's|^BILLERY_PUBLIC_URL=.*|BILLERY_PUBLIC_URL=https://billery-ci.example|' \
+            -e 's|^MAIL_HOST=.*|MAIL_HOST=mailpit|' \
+            -e 's|^MAIL_PORT=.*|MAIL_PORT=1025|' \
+            -e 's|^MAIL_FROM=.*|MAIL_FROM=billery@ci.example.com|' \
+            -e 's|^MAIL_SECURITY=.*|MAIL_SECURITY=none|' \
+            .env
+          grep -E '^(BILLERY_VERSION|BILLERY_SECURITY_|BILLERY_OIDC_CLIENT_ID|BILLERY_PUBLIC_URL|MAIL_HOST|MAIL_PORT|MAIL_FROM|MAIL_SECURITY)=' .env
+
+      - name: Start the stack
+        working-directory: deploy/saas
+        run: docker compose -f docker-compose.yml -f ci/docker-compose.ci.yml up -d --wait --wait-timeout 300
+
+      - name: check.sh (containers, database roles, provider, public URL)
+        working-directory: deploy/saas
+        run: |
+          set -o pipefail
+          ./check.sh | tee "$RUNNER_TEMP/check.out"
+          # A database query that fails inside check.sh only gives a warning; the success line of the
+          # tenant-table check has to be there, so the query is proven to work on the real schema.
+          grep -q '^ok    all [0-9]* tables with a tenant_id have row-level security enabled and forced' "$RUNNER_TEMP/check.out"
+
+      - name: check.sh with an access token
+        working-directory: deploy/saas
+        run: BILLERY_TOKEN="$(ci/token.sh ci-alice)" ./check.sh
+
+      - name: Two users, two companies, no overlap, a restart
+        working-directory: deploy/saas
+        run: ci/journey.sh
+
+      - name: A backup that is restored
+        working-directory: deploy/saas
+        run: ci/restore-test.sh
+
+      - name: Logs of the stack
+        if: failure()
+        working-directory: deploy/saas
+        run: docker compose -f docker-compose.yml -f ci/docker-compose.ci.yml logs --no-color --tail 300
+
+      - name: Take the stack down
+        if: always()
+        working-directory: deploy/saas
+        run: docker compose -f docker-compose.yml -f ci/docker-compose.ci.yml down -v

@@ -1,0 +1,39 @@
+name: Gitleaks Scan
+# Scans every change, docs included: notes and pasted logs are where secrets leak.
+on:
+  push:
+    # Not main: its commits were scanned in their pull request (Actions minutes).
+    branches: ['**/feature/**', '**/bug/**', '**/refactor/**']
+  # No branch filter: pull requests stacked on another branch are scanned as well.
+  pull_request:
+  # The whole history of main once a week: catches a direct push that had no pull request.
+  schedule:
+    - cron: '37 4 * * 1'
+
+# A newer push to the same pull request cancels the run of the older one (Actions minutes).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  scan:
+    name: gitleaks
+    runs-on: ubuntu-latest
+    # Ends a hung job instead of letting it burn billed minutes.
+    timeout-minutes: 10
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0  # Crucial: Gitleaks needs the full history to find old secrets
+      - name: Install Gitleaks
+        run: |
+          VERSION="8.18.2"
+          curl -sSL https://github.com/gitleaks/gitleaks/releases/download/v${VERSION}/gitleaks_${VERSION}_linux_x64.tar.gz | tar -xz
+          sudo mv gitleaks /usr/local/bin/
+
+      - name: Run Gitleaks
+        run: gitleaks detect --verbose --redact
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITLEAKS_CI }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}

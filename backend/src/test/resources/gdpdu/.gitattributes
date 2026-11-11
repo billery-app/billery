@@ -1,0 +1,2 @@
+# Keep the official DTD byte-for-byte (CRLF line endings); README.md lists its SHA-256.
+*.dtd -text

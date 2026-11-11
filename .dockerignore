@@ -1,0 +1,24 @@
+# Build context of backend/Dockerfile is the repo root (it builds the SPA and the JAR).
+# Keep everything that is not needed for those two builds out of the context.
+.git
+.github
+.idea
+.vscode
+docs
+XRechnung
+app-desktop
+scripts
+**/node_modules
+**/dist
+**/coverage
+**/.vite
+**/target
+**/logs
+**/*.log
+**/.env
+**/.env.*
+!**/.env.example
+backend/uploads
+backend/testFiles
+frontend/e2e
+frontend/playwright-report

@@ -1,0 +1,262 @@
+name: Java CI with Maven
+permissions:
+  contents: read
+
+on:
+  push:
+    branches:
+      - main
+      - '**/feature/**'
+    paths:
+      - 'backend/**'
+      - 'XRechnung/**'
+      - 'scripts/fetch-kosit-validator.sh'
+      - '.github/workflows/maven.yml'
+  # No branch filter: pull requests stacked on another branch (sub-issue branches) get the
+  # same checks as pull requests against main. No path filter on purpose: these jobs are required
+  # status checks, and a required check that never starts leaves the pull request waiting forever.
+  pull_request:
+
+# A newer push to the same pull request cancels the run of the older one (Actions minutes).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  changes:
+    # Skips the jobs below when a pull request touches nothing in the backend. A job skipped by its
+    # condition counts as passed for a required status check, so the pull request is not held up;
+    # the workflow itself still starts on every pull request. Pushes always run everything.
+    name: backend-changes
+    runs-on: ubuntu-latest
+    # Ends a hung job instead of letting it burn billed minutes.
+    timeout-minutes: 5
+    outputs:
+      relevant: ${{ steps.diff.outputs.relevant }}
+      postgres: ${{ steps.diff.outputs.postgres }}
+      xrechnung: ${{ steps.diff.outputs.xrechnung }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Did anything relevant change?
+        id: diff
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+        # Three answers (Actions minutes):
+        #  relevant  - anything in the backend: build and the saas job (the whole suite on
+        #              PostgreSQL with the SaaS profile).
+        #  postgres  - the self-host schema, its migrations, demo data or the database bootstrap:
+        #              the tests the saas job skips. Everything else on PostgreSQL the saas job covers.
+        #  xrechnung - e-invoice, PDF or VAT code, the KoSIT validator or its tests.
+        # A push (main after a merge) runs only build: the pull request ran the rest on the same code.
+        run: |
+          relevant=true; postgres=true; xrechnung=true
+          if [ "$EVENT" = "pull_request" ]; then
+            base="origin/$BASE_REF"
+            git rev-parse --verify --quiet "$base" > /dev/null || base="origin/main"
+            # Run everything when the comparison itself fails.
+            if files=$(git diff --name-only "$base...HEAD"); then
+              src='backend/src/main/java/de/billery'
+              grep -qE '^(backend/|XRechnung/|scripts/fetch-kosit-validator\.sh|\.github/workflows/maven\.yml)' <<< "$files" || relevant=false
+              grep -qE "^(backend/src/main/resources/(db/|dummies\.sql|scheme)|backend/src/test/resources/[^/]*\.sql|$src/data/(Database|DatabaseInitializer|DatabaseMigration|SchemaMigrator)\.java|$src/config/DbConfig\.java|backend/pom\.xml|\.github/workflows/maven\.yml)" <<< "$files" || postgres=false
+              grep -qE "^(XRechnung/|scripts/fetch-kosit-validator\.sh|$src/(xmlgenerator|pdf|tax)/|$src/service/(EInvoiceService|DocumentPdfService)\.java|$src/data/(Invoice|InvoiceItem|PartySnapshot|Owner|Customer)\.java|backend/src/main/resources/fonts/|backend/src/test/java/de/billery/api/controller/(VatAndEInvoiceTest|ZugferdTest)\.java|backend/pom\.xml|\.github/workflows/maven\.yml)" <<< "$files" || xrechnung=false
+            fi
+          else
+            postgres=false; xrechnung=false
+          fi
+          {
+            echo "relevant=$relevant"
+            echo "postgres=$postgres"
+            echo "xrechnung=$xrechnung"
+          } >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: changes
+    if: needs.changes.outputs.relevant == 'true'
+    runs-on: ubuntu-latest
+    # Ends a hung job instead of letting it burn billed minutes.
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v7
+
+    - name: Set up JDK 25
+      uses: actions/setup-java@v6
+      with:
+        distribution: 'temurin'
+        java-version: '25'
+        cache: maven
+
+    # verify = tests (H2) + JaCoCo + Spotless check + PMD check
+    - name: Build and verify
+      run: mvn -B verify
+
+    # The self-host build must not carry any SaaS code or the security libraries (profile saas).
+    - name: Self-host JAR contains no SaaS code
+      run: |
+        jar=$(ls target/backend-*.jar | grep -v '\.original$' | head -1)
+        echo "checking $jar"
+        if unzip -l "$jar" | grep -E 'de/billery/saas|db/migration-saas|spring-security'; then
+          echo "SaaS code or Spring Security found in the default build" >&2
+          exit 1
+        fi
+
+    - name: Upload JaCoCo coverage report
+      if: always()
+      uses: actions/upload-artifact@v7
+      with:
+        name: coverage-backend
+        path: backend/target/site/jacoco
+
+  postgres:
+    needs: changes
+    if: needs.changes.outputs.postgres == 'true'
+    # The whole backend suite against a real PostgreSQL (the other job runs it on H2);
+    # H2 differs exactly where the server schema and the repositories' SQL tend to break.
+    runs-on: ubuntu-latest
+    # Ends a hung job instead of letting it burn billed minutes.
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: rp
+          POSTGRES_USER: rp
+          POSTGRES_PASSWORD: rp
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U rp -d rp"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v7
+
+    - name: Set up JDK 25
+      uses: actions/setup-java@v6
+      with:
+        distribution: 'temurin'
+        java-version: '25'
+        cache: maven
+
+    - name: Backend tests on PostgreSQL
+      env:
+        POSTGRES_TEST_URL: jdbc:postgresql://127.0.0.1:5432/rp?user=rp&password=rp
+      run: mvn -B test -Djacoco.skip=true
+
+  saas:
+    needs: changes
+    if: github.event_name == 'pull_request' && needs.changes.outputs.relevant == 'true'
+    # The SaaS build (mvn -Psaas): the whole suite on PostgreSQL with the Spring profile "saas"
+    # active (SaaS migrations, SaaS tests, architecture rules against the SaaS package).
+    runs-on: ubuntu-latest
+    # Ends a hung job instead of letting it burn billed minutes.
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: rp
+          POSTGRES_USER: rp
+          POSTGRES_PASSWORD: rp
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U rp -d rp"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v7
+
+    - name: Set up JDK 25
+      uses: actions/setup-java@v6
+      with:
+        distribution: 'temurin'
+        java-version: '25'
+        cache: maven
+
+    # An S3-compatible store for the uploads: with S3_TEST_URL the SaaS suite keeps its
+    # uploads in a bucket, and UploadStorageTest runs its tenant cases and the two-instance case
+    # against it. SeaweedFS needs arguments, which a service container cannot pass. The key is
+    # random per run.
+    - name: Start an S3-compatible store
+      run: |
+        key="$(openssl rand -hex 12)"
+        secret="$(openssl rand -hex 24)"
+        echo "::add-mask::$secret"
+        printf '{"identities":[{"name":"ci","credentials":[{"accessKey":"%s","secretKey":"%s"}],"actions":["Admin","Read","Write","List"]}]}' \
+          "$key" "$secret" > "$RUNNER_TEMP/s3.json"
+        docker run -d --name s3 -p 127.0.0.1:8333:8333 -v "$RUNNER_TEMP/s3.json:/etc/s3.json:ro" \
+          chrislusf/seaweedfs:4.53 server -s3 -s3.config=/etc/s3.json -dir=/data
+        for _ in $(seq 1 60); do
+          curl -s -o /dev/null http://127.0.0.1:8333/ && break
+          sleep 1
+        done
+        echo "S3_TEST_URL=http://$key:$secret@127.0.0.1:8333/billery-test" >> "$GITHUB_ENV"
+
+    # verify = tests + Spotless check + PMD check, over the SaaS folders as well
+    - name: Backend tests and checks with the SaaS profile on PostgreSQL
+      env:
+        POSTGRES_TEST_URL: jdbc:postgresql://127.0.0.1:5432/rp?user=rp&password=rp
+      run: mvn -B -Psaas verify -Djacoco.skip=true
+
+  xrechnung:
+    needs: changes
+    if: needs.changes.outputs.xrechnung == 'true'
+    # Generated XRechnungs (invoice, credit note, reverse charge, tax-exempt,
+    # Kleinunternehmer) against the official KoSIT validator (scripts/fetch-kosit-validator.sh).
+    runs-on: ubuntu-latest
+    # Ends a hung job instead of letting it burn billed minutes.
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v7
+
+    - name: Set up JDK 25
+      uses: actions/setup-java@v6
+      with:
+        distribution: 'temurin'
+        java-version: '25'
+        cache: maven
+
+    - name: Fetch KoSIT validator and XRechnung configuration
+      run: |
+        ../scripts/fetch-kosit-validator.sh "$RUNNER_TEMP/kosit"
+
+    # The XRechnung (UBL) and the XML attached to the ZUGFeRD PDF (CII) go through the KoSIT
+    # validator; ZugferdTest also writes the PDFs of every tax case for veraPDF.
+    - name: XRechnung and ZUGFeRD validation tests
+      run: |
+        XRECHNUNG_VALIDATOR_DIR="$RUNNER_TEMP/kosit" PDFA_SAMPLES_DIR="$RUNNER_TEMP/pdfa" \
+          mvn -B test -Dtest='VatAndEInvoiceTest#generatedXRechnungsPassTheKositValidator,ZugferdTest' -Djacoco.skip=true
+
+    # Every PDF is PDF/A-3b: veraPDF, the reference validator of the PDF Association.
+    - name: PDF/A-3b validation (veraPDF)
+      run: |
+        ls "$RUNNER_TEMP/pdfa"/*.pdf
+        report="$(docker run --rm -v "$RUNNER_TEMP/pdfa:/data:ro" verapdf/cli:v1.30.3 --flavour 3b --format text /data)"
+        echo "$report"
+        if echo "$report" | grep -qv '^PASS '; then
+          echo "::error::A PDF is not valid PDF/A-3b"
+          exit 1
+        fi

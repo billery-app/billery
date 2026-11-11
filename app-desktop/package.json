@@ -1,0 +1,15 @@
+{
+  "name": "app-desktop",
+  "version": "1.0.0",
+  "private": true,
+  "license": "APGL-3.0-or-later",
+  "description": "Tauri 2 desktop shell for billery. Wraps the Spring Boot backend in a native window.",
+  "scripts": {
+    "build": "cd ../frontend && npm install --legacy-peer-deps && npm run build",
+    "dev": "cd ../frontend && npm run dev",
+    "tauri": "tauri"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2"
+  }
+}

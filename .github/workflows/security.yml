@@ -1,0 +1,220 @@
+name: Security scan
+permissions:
+  contents: read
+
+# Dependency and container-image vulnerability scanning with Trivy. Policy and remediation
+# workflow: docs/operations/supply-chain.md. In short: a HIGH or CRITICAL finding with a fix
+# available fails the job; everything else is listed in the weekly report. SAST (pr-sast.yml) and
+# secret scanning (gitleaks.yml) are separate.
+#
+# The third-party action is pinned to a commit (aquasecurity/trivy-action v0.36.0), not a tag: it
+# runs with the repository checked out. Update it deliberately, Dependabot (github-actions) proposes the new pin.
+
+on:
+  # No path filter: this is meant to be a required status check (a required check that never
+  # starts leaves the pull request waiting forever). The image scan decides for itself below.
+  pull_request:
+  # No push to main: its changes were scanned in their pull request, and the weekly run and the
+  # release scan cover new advisories and base images (Actions minutes).
+  schedule:
+    # New advisories appear without any change in the repository.
+    - cron: '17 3 * * 1'
+  workflow_dispatch:
+
+# A newer push to the same pull request cancels the run of the older one (Actions minutes).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  dependencies:
+    # Explicit name: the bare job id is unrecognisable in the list of required checks.
+    name: dependency-scan
+    runs-on: ubuntu-latest
+    # Ends a hung job instead of letting it burn billed minutes.
+    timeout-minutes: 15
+    outputs:
+      images: ${{ steps.diff.outputs.images }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      # The scans use the .trivyignore of the pull request, so the file is checked, not trusted:
+      # every entry needs a reason and an expiry date within 90 days, and a change to it is shown
+      # in the checks of the pull request, where the reviewer sees it.
+      # What a pull request changed decides what is scanned (Actions minutes):
+      #  deps   - a manifest or lockfile: the dependency scan. Code changes bring no new
+      #           dependency; the weekly run catches new advisories for the existing ones.
+      #  images - a Dockerfile or the dependencies that go into an image: the image scans.
+      # The weekly and manual runs scan everything.
+      - name: What changed?
+        id: diff
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          deps=true; images=true
+          if [ "$EVENT" = "pull_request" ]; then
+            base="origin/$BASE_REF"
+            git rev-parse --verify --quiet "$base" > /dev/null || base="origin/main"
+            # Scan everything when the comparison itself fails.
+            if files=$(git diff --name-only "$base...HEAD"); then
+              grep -qE '^(backend/pom\.xml|frontend/package(-lock)?\.json|app-desktop/(Cargo\.(toml|lock)|package(-lock)?\.json)|\.trivyignore|scripts/check-trivyignore\.sh|\.github/workflows/security\.yml)' <<< "$files" || deps=false
+              grep -qE '^(backend/Dockerfile|frontend/Dockerfile|backend/pom\.xml|frontend/package(-lock)?\.json|scripts/check-image-variant\.sh|\.trivyignore|\.github/workflows/security\.yml)' <<< "$files" || images=false
+            fi
+          fi
+          echo "deps=$deps" >> "$GITHUB_OUTPUT"
+          echo "images=$images" >> "$GITHUB_OUTPUT"
+
+      - name: Check .trivyignore
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          scripts/check-trivyignore.sh .trivyignore
+          if [ "$EVENT" != "pull_request" ]; then
+            exit 0
+          fi
+          # The base branch of a stacked pull request can be gone by the time this runs (merged and
+          # deleted); then compare with main. Never fail here because of the comparison itself.
+          base="origin/$BASE_REF"
+          if ! git rev-parse --verify --quiet "$base" > /dev/null; then
+            base="origin/main"
+          fi
+          if ! git diff --quiet "$base...HEAD" -- .trivyignore; then
+            echo "::warning file=.trivyignore::This pull request changes the accepted vulnerabilities (.trivyignore): review every entry and its reason."
+            {
+              echo '## .trivyignore changed in this pull request'
+              echo
+              echo 'The vulnerability scans below ran with the changed list. Review the entries and their reasons:'
+              echo '```diff'
+              git diff "$base...HEAD" -- .trivyignore
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      # The manifests and lockfiles: backend/pom.xml, frontend/package-lock.json,
+      # app-desktop/package-lock.json and app-desktop/Cargo.lock.
+      - name: Scan dependencies (fails on HIGH / CRITICAL with a fix)
+        if: steps.diff.outputs.deps == 'true'
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+          trivyignores: .trivyignore
+          skip-dirs: XRechnung
+          format: table
+
+      # Not a gate: everything below HIGH and the findings without a fix, for the weekly review.
+        env:
+          # Only the findings, not one row per scanned package file.
+          TRIVY_TABLE_MODE: detailed
+
+      - name: Full report (all severities, informational)
+        if: always() && steps.diff.outputs.deps == 'true'
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln
+          severity: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
+          exit-code: '0'
+          trivyignores: .trivyignore
+          skip-dirs: XRechnung
+          format: table
+          output: trivy-dependencies.txt
+        env:
+          # Only the findings, not one row per scanned package file.
+          TRIVY_TABLE_MODE: detailed
+
+      - name: Add the full report to the job summary
+        if: always() && steps.diff.outputs.deps == 'true'
+        run: |
+          {
+            echo '## Dependency report (all severities, informational)'
+            echo '```'
+            cat trivy-dependencies.txt 2>/dev/null || echo 'no report'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  images:
+    name: image-scan (${{ matrix.image }})
+    # The dependency job also decides whether the images need a scan (one job less per run).
+    # always(): a finding in the dependency scan must not hide the image scan.
+    needs: dependencies
+    if: always() && needs.dependencies.outputs.images == 'true'
+    runs-on: ubuntu-latest
+    # Ends a hung job instead of letting it burn billed minutes.
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: backend
+            dockerfile: backend/Dockerfile
+            context: .
+            variant: selfhost
+          # The multi-tenant build of the same Dockerfile (docs/architecture/multi-tenancy.md).
+          - image: backend-saas
+            dockerfile: backend/Dockerfile
+            context: .
+            args: --build-arg MAVEN_PROFILES=saas --build-arg SPRING_PROFILE=saas
+            variant: saas
+          - image: frontend
+            dockerfile: frontend/Dockerfile
+            context: frontend
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Build the ${{ matrix.image }} image
+        run: docker build -f "${{ matrix.dockerfile }}" -t "billery-${{ matrix.image }}:scan" ${{ matrix.args }} "${{ matrix.context }}"
+
+      # The two backend variants must be what they claim to be: the SaaS JAR without its profile
+      # would run without authentication, the self-host image must not carry SaaS code.
+      - name: Check the image variant
+        if: matrix.variant != ''
+        run: scripts/check-image-variant.sh "billery-${{ matrix.image }}:scan" "${{ matrix.variant }}"
+
+      # The libraries that really ship are in the image (the JAR's dependencies, the SPA's node
+      # modules, the OS packages), not only the ones named in a manifest.
+      - name: Scan the image (fails on HIGH / CRITICAL with a fix)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: billery-${{ matrix.image }}:scan
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+          trivyignores: .trivyignore
+          format: table
+        env:
+          # Only the findings, not one row per scanned package file.
+          TRIVY_TABLE_MODE: detailed
+
+      - name: SBOM of the image (CycloneDX)
+        if: always()
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: billery-${{ matrix.image }}:scan
+          format: cyclonedx
+          output: sbom-${{ matrix.image }}-image.cdx.json
+
+      - name: Keep the SBOM
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: sbom-${{ matrix.image }}
+          path: sbom-${{ matrix.image }}-image.cdx.json
+          retention-days: 30

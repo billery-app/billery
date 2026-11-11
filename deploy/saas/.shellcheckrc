@@ -1,0 +1,3 @@
+# The scripts source backup-lib.sh from their own directory: follow it, wherever shellcheck runs.
+external-sources=true
+source-path=SCRIPTDIR

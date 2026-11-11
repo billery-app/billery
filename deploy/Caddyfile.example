@@ -1,0 +1,23 @@
+# Caddy in front of the Billery backend (SPA + API on one origin: no CORS needed).
+# Replace the domain; Caddy obtains/renews the TLS certificate and sets
+# X-Forwarded-Proto/-Host itself. The backend uses those trusted forwarded
+# headers for same-origin write checks and emits HSTS only for HTTPS requests.
+# Its CSP, nosniff, and frame-protection headers apply to the SPA and API.
+#
+# Self-host mode has no app login: protect a public instance here or with SSO/VPN.
+# Browser writes additionally require a same-origin Origin or Referer; any
+# cookie/session SSO integration must also provide and validate a CSRF token.
+# Generate the Basic Auth hash with `caddy hash-password`; never commit credentials.
+
+demo.example.com {
+	encode zstd gzip
+
+	# basic_auth {
+	# 	demo <bcrypt-hash>
+	# }
+
+	# Caddy on the same host:
+	reverse_proxy 127.0.0.1:8080
+	# Caddy as a container on the compose network (docker compose -p ... network):
+	# reverse_proxy billery-backend:8080
+}

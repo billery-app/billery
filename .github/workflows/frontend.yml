@@ -1,0 +1,82 @@
+name: Frontend CI
+permissions:
+  contents: read
+
+on:
+  push:
+    branches:
+      - main
+      - '**/feature/**'
+    paths:
+      - 'frontend/**'
+      # renderer parity cases shared with the backend (templateParity.spec.js)
+      - 'backend/src/test/resources/template-parity/**'
+      - '.github/workflows/frontend.yml'
+  # No branch filter: pull requests stacked on another branch get the same checks as pull
+  # requests against main. No path filter on purpose: this job is a required status check, and a
+  # required check that never starts leaves the pull request waiting forever.
+  pull_request:
+
+# A newer push to the same pull request cancels the run of the older one (Actions minutes).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  test:
+    # Explicit name: the bare job id "test" is unrecognisable in the list of required checks.
+    name: frontend-test
+    runs-on: ubuntu-latest
+    # Ends a hung job instead of letting it burn billed minutes.
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      # A pull request that touches nothing of the frontend (nor the parity cases it shares with
+      # the backend) skips the remaining steps; the job still reports success, as a required check
+      # must. One job instead of a separate change check saves a billed minute per run.
+      - name: Did anything relevant change?
+        id: diff
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          relevant=true
+          if [ "$EVENT" = "pull_request" ]; then
+            base="origin/$BASE_REF"
+            git rev-parse --verify --quiet "$base" > /dev/null || base="origin/main"
+            # Run everything when the comparison itself fails.
+            if files=$(git diff --name-only "$base...HEAD"); then
+              grep -qE '^(frontend/|backend/src/test/resources/(template-parity|status-parity)/|\.github/workflows/frontend\.yml)' <<< "$files" || relevant=false
+            fi
+          fi
+          echo "relevant=$relevant" >> "$GITHUB_OUTPUT"
+          [ "$relevant" = true ] || echo "Nothing relevant changed: the remaining steps are skipped."
+
+      - name: Set up Node.js
+        if: steps.diff.outputs.relevant == 'true'
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        if: steps.diff.outputs.relevant == 'true'
+        run: npm ci
+
+      - name: Unit tests
+        if: steps.diff.outputs.relevant == 'true'
+        run: npm run test:run
+
+      - name: Production build
+        if: steps.diff.outputs.relevant == 'true'
+        run: npm run build

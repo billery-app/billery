@@ -1,0 +1,18 @@
+[package]
+name = "billery"
+version = "1.0.0"
+description = "Professional Invoice Management System"
+authors = ["Billery"]
+license = "APGL-3.0-or-later"
+edition = "2021"
+
+[lib]
+name = "billery_lib"
+crate-type = ["lib", "cdylib", "staticlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+reqwest = { version = "0.13", features = ["blocking"] }

@@ -1,0 +1,41 @@
+name: PR SAST Scan
+
+on:
+  # Pull requests, plus a weekly run on main for anything that reached it without one (a direct
+  # push); not after every merge (Actions minutes).
+  pull_request:
+    branches:
+      - '**'
+  schedule:
+    - cron: '29 4 * * 1'
+
+permissions:
+  contents: read
+
+# A newer push to the same pull request cancels the run of the older one (Actions minutes).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  security:
+    name: SAST Security Checks
+    runs-on: ubuntu-latest
+    # Ends a hung job instead of letting it burn billed minutes.
+    timeout-minutes: 15
+    container:
+      image: semgrep/semgrep
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      # Exclusions live in .semgrepignore; --error fails the job on findings.
+      - name: Run Semgrep
+        # `--config auto` fetches the registry rules and requires metrics to be on.
+        # Excluded by decision: actions are referenced by version tag (kept current
+        # by Dependabot) rather than pinned to commit SHAs; revisit when hardening.
+        run: >-
+          semgrep scan --config auto --error
+          --exclude-rule yaml.github-actions.security.github-actions-mutable-action-tag.github-actions-mutable-action-tag
+          --exclude-rule package_managers.dependabot.dependabot-missing-cooldown.dependabot-missing-cooldown

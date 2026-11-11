@@ -1,0 +1,116 @@
+# promtool test rules alerts.test.yml : each alert fires on a bad series and stays quiet on a good one.
+rule_files:
+  - alerts.yml
+evaluation_interval: 1m
+tests:
+  - interval: 1m
+    input_series:
+      - series: 'up{job="billery"}'
+        values: '1 1 0 0 0 0 0'
+      # 10 % server errors at 1 request per second
+      - series: 'http_server_requests_seconds_count{application="billery", status="500", uri="/api/x"}'
+        values: '0+6x30'
+      - series: 'http_server_requests_seconds_count{application="billery", status="200", uri="/api/x"}'
+        values: '0+54x30'
+      - series: 'hikaricp_connections_pending{application="billery"}'
+        values: '0 0 2 2 2 2 2 2 2 2'
+      - series: 'jvm_memory_used_bytes{application="billery", area="heap", id="G1 Old Gen"}'
+        values: '95x30'
+      - series: 'jvm_memory_max_bytes{application="billery", area="heap", id="G1 Old Gen"}'
+        values: '100x30'
+      # every API request takes between 2.5 and 5 s
+      - series: 'http_server_requests_seconds_bucket{application="billery", uri="/api/customers/page", le="2.5"}'
+        values: '0x30'
+      - series: 'http_server_requests_seconds_bucket{application="billery", uri="/api/customers/page", le="5.0"}'
+        values: '0+60x30'
+      - series: 'http_server_requests_seconds_bucket{application="billery", uri="/api/customers/page", le="+Inf"}'
+        values: '0+60x30'
+      # the sign-up system limit refuses 2 requests at minute 3; 30 refusals per source over 30 min
+      - series: 'billery_quota_refused_total{application="billery", quota="signup", scope="system"}'
+        values: '0 0 0 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2'
+      - series: 'billery_quota_refused_total{application="billery", quota="invitation_mail", scope="ip"}'
+        values: '0+1x30'
+      # the GoBD export is slow by design and must not count
+      - series: 'http_server_requests_seconds_bucket{application="billery", uri="/api/export/gobd", le="+Inf"}'
+        values: '0+600x30'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: BilleryMetricsMissing
+        exp_alerts:
+          - exp_labels: {severity: critical, job: billery}
+            exp_annotations:
+              summary: "Billery does not answer the metrics scrape"
+              description: "The backend is down or the metrics port is not reachable. Check docker ps and the logs."
+      - eval_time: 20m
+        alertname: BilleryServerErrors
+        exp_alerts:
+          - exp_labels: {severity: warning}
+            exp_annotations:
+              summary: "More than 5 % of the requests fail with a server error"
+              description: "See the backend log for the stack traces; http_server_requests_seconds_count names the URI."
+      - eval_time: 25m
+        alertname: BilleryHeapNearlyFull
+        exp_alerts:
+          - exp_labels: {severity: warning}
+            exp_annotations:
+              summary: "The Java heap is more than 90 % full"
+              description: "Raise BACKEND_MEMORY_LIMIT, or look for a request that holds much memory."
+      - eval_time: 8m
+        alertname: BilleryDatabasePoolExhausted
+        exp_alerts:
+          - exp_labels: {severity: warning}
+            exp_annotations:
+              summary: "Requests wait for a database connection"
+              description: "All connections of the pool are in use for 5 minutes: a slow database or long-running requests."
+      - eval_time: 25m
+        alertname: BillerySlowRequests
+        exp_alerts:
+          - exp_labels: {severity: warning}
+            exp_annotations:
+              summary: "95 % of the API requests take longer than 2 s"
+              description: "Check CPU (process_cpu_usage), the database pool and the database itself."
+      - eval_time: 5m
+        alertname: BilleryAbuseLimitReached
+        exp_alerts:
+          - exp_labels: {severity: critical, quota: signup}
+            exp_annotations:
+              summary: "A system-wide limit of signup is reached"
+              description: "Nobody can sign up (signup) or receive an invitation mail (invitation_mail) for up to 24 hours. Look for abuse in the log; if it is real growth, raise BILLERY_SIGNUPS_PER_DAY or BILLERY_INVITATION_MAILS_PER_DAY."
+      - eval_time: 25m
+        alertname: BilleryAbuseLimitReached
+        exp_alerts: []
+      - eval_time: 25m
+        alertname: BilleryAbuseSuspected
+        exp_alerts:
+          - exp_labels: {severity: warning, quota: invitation_mail, scope: ip}
+            exp_annotations:
+              summary: "Many requests hit the invitation_mail limit per ip"
+              description: "More than 10 refusals in an hour. The limits hold; check the proxy log for the source and block it there if it goes on."
+  - interval: 1m
+    input_series:
+      - series: 'up{job="billery"}'
+        values: '1x20'
+      - series: 'http_server_requests_seconds_count{application="billery", status="200", uri="/api/x"}'
+        values: '0+60x30'
+      - series: 'hikaricp_connections_pending{application="billery"}'
+        values: '0x20'
+      - series: 'jvm_memory_used_bytes{application="billery", area="heap", id="G1 Old Gen"}'
+        values: '50x30'
+      - series: 'jvm_memory_max_bytes{application="billery", area="heap", id="G1 Old Gen"}'
+        values: '100x30'
+      - series: 'billery_quota_refused_total{application="billery", quota="signup", scope="system"}'
+        values: '0x30'
+      - series: 'billery_quota_refused_total{application="billery", quota="signup", scope="ip"}'
+        values: '0 0 0 1 1 1 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2'
+      - series: 'http_server_requests_seconds_bucket{application="billery", uri="/api/customers/page", le="0.1"}'
+        values: '0+60x30'
+      - series: 'http_server_requests_seconds_bucket{application="billery", uri="/api/customers/page", le="+Inf"}'
+        values: '0+60x30'
+    alert_rule_test:
+      - {eval_time: 20m, alertname: BilleryMetricsMissing, exp_alerts: []}
+      - {eval_time: 20m, alertname: BilleryServerErrors, exp_alerts: []}
+      - {eval_time: 20m, alertname: BilleryDatabasePoolExhausted, exp_alerts: []}
+      - {eval_time: 20m, alertname: BilleryHeapNearlyFull, exp_alerts: []}
+      - {eval_time: 20m, alertname: BillerySlowRequests, exp_alerts: []}
+      - {eval_time: 20m, alertname: BilleryAbuseLimitReached, exp_alerts: []}
+      - {eval_time: 20m, alertname: BilleryAbuseSuspected, exp_alerts: []}

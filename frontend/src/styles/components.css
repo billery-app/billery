@@ -1,0 +1,353 @@
+/*
+ * Shared component classes (#110). A view uses these instead of defining its own copy; it adds
+ * only what is specific to it (layout, one-off spacing).
+ *
+ *   .btn + .btn-primary | .btn-secondary | .btn-outline | .btn-danger | .btn-success | .btn-archive
+ *   .btn-small            smaller padding, combine with a variant
+ *   .form-control         text input, select, textarea
+ *   .data-table           table of records (inside .table-scroll)
+ *   .badge + .badge-success | .badge-warning | .badge-danger | .badge-neutral
+ *   .card                 bordered surface
+ *   .settings-section > .section-title   a titled section of the settings page
+ *   .status + .paid | .sent | …   document status pill
+ *   .modal-backdrop > .modal-panel (+ -sm / -lg)   modal shell with .form-group / .form-actions
+ */
+
+/* ---- buttons --------------------------------------------------------------------------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: 10px var(--space-5);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  font-family: inherit;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.2;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn-small {
+  padding: 5px 10px;
+  font-size: var(--font-size-sm);
+  border-radius: var(--radius-sm);
+}
+
+.btn-primary,
+.btn-danger,
+.btn-success,
+.btn-archive {
+  color: var(--color-on-primary);
+}
+
+.btn-primary {
+  background: var(--color-primary);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+}
+
+.btn-primary:active:not(:disabled) {
+  background: var(--color-primary-active);
+}
+
+.btn-secondary {
+  background: var(--color-surface);
+  border-color: var(--color-border-strong);
+  color: var(--color-text-strong);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--color-surface-muted);
+}
+
+.btn-outline {
+  background: var(--color-surface);
+  border-color: var(--color-primary-border);
+  color: var(--color-primary-hover);
+  text-decoration: none;
+}
+
+.btn-outline:hover:not(:disabled) {
+  background: var(--color-primary-soft);
+}
+
+.btn-danger {
+  background: var(--color-danger);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: var(--color-danger-hover);
+}
+
+.btn-success {
+  background: var(--color-success);
+}
+
+.btn-success:hover:not(:disabled) {
+  background: var(--color-success-hover);
+}
+
+.btn-archive {
+  background: var(--color-archive);
+}
+
+/* ---- form controls --------------------------------------------------------------------- */
+.form-control {
+  width: 100%;
+  padding: 8px var(--space-3);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-focus);
+}
+
+.form-control:disabled {
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
+}
+
+/* ---- data table ------------------------------------------------------------------------ */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.data-table th,
+.data-table td {
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  text-align: left;
+}
+
+.data-table th {
+  background: var(--color-surface-subtle);
+}
+
+/* ---- badges (document and payment status) ---------------------------------------------- */
+.badge {
+  display: inline-block;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+}
+
+.badge-success {
+  background: var(--color-success-soft);
+  color: var(--color-success-hover);
+}
+
+.badge-warning {
+  background: var(--color-warning-soft);
+  color: var(--color-warning-text);
+}
+
+.badge-danger {
+  background: var(--color-danger-soft);
+  color: var(--color-danger-hover);
+}
+
+.badge-neutral {
+  background: var(--color-surface-muted);
+  color: var(--color-text-strong);
+}
+
+/* ---- status pills of documents (class from useDocumentType.statusClass) ----------------- */
+/* Inline on purpose: an inline-block pill would make every table row taller. */
+.status {
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: 0.9em;
+  font-weight: var(--font-weight-medium);
+  background: var(--color-surface-muted);
+  color: var(--color-text-strong);
+}
+
+.status.paid,
+.status.accepted,
+.status.converted {
+  background: var(--color-success-soft);
+  color: var(--color-success-hover);
+}
+
+.status.unpaid {
+  background: var(--color-warning-soft);
+  color: var(--color-warning-text);
+}
+
+.status.partially-paid {
+  background: var(--color-partial-soft);
+  color: var(--color-partial-text);
+}
+
+.status.overdue,
+.status.rejected {
+  background: var(--color-danger-soft);
+  color: var(--color-danger-hover);
+}
+
+.status.sent {
+  background: var(--color-primary-soft);
+  color: var(--color-primary-active);
+}
+
+.status.cancelled {
+  background: var(--color-border);
+  color: var(--color-text-muted);
+}
+
+/* ---- settings sections (SettingsView and the sections it embeds, e.g. TeamSettings) ------ */
+.settings-section {
+  margin-bottom: 32px;
+}
+
+.section-title {
+  margin: 0 0 12px;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+
+/* ---- card ------------------------------------------------------------------------------ */
+.card {
+  padding: var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+}
+
+/* The page main.js shows when the app cannot start (sign-in failed). */
+.start-error {
+  max-width: 32em;
+  margin: 10vh auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+
+.start-error h1 {
+  margin: 0;
+  font-size: var(--font-size-xl);
+  color: var(--color-text);
+}
+
+.start-error p {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+/* ---- modal shell (width: .modal-panel-sm 400px, default 500px, .modal-panel-lg 600px) ------- */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-backdrop);
+}
+
+.modal-panel {
+  width: 90%;
+  max-width: var(--modal-max-width, 500px);
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: var(--space-8);
+  border-radius: var(--radius-xl);
+  background: var(--color-surface);
+}
+
+.modal-panel-sm {
+  --modal-max-width: 400px;
+}
+
+.modal-panel-lg {
+  --modal-max-width: 600px;
+}
+
+.modal-panel h2 {
+  margin-top: 0;
+  color: var(--color-text-strong);
+}
+
+/* ---- forms inside a modal panel -------------------------------------------------------- */
+.modal-panel .form-group {
+  margin-bottom: var(--space-4);
+}
+
+.modal-panel .form-group label {
+  display: block;
+  margin-bottom: var(--space-1);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-strong);
+}
+
+.modal-panel .form-group input,
+.modal-panel .form-group select,
+.modal-panel .form-group textarea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-md);
+  box-sizing: border-box;
+}
+
+.modal-panel .form-group textarea {
+  min-height: 60px;
+  resize: vertical;
+}
+
+.modal-panel .form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  min-width: 0;
+  margin-top: var(--space-5);
+}
+
+.modal-panel .form-actions button {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 600px) {
+  .modal-backdrop {
+    padding: var(--space-2);
+  }
+
+  .modal-panel {
+    width: 100%;
+    max-width: none;
+    max-height: calc(100dvh - 16px);
+    padding: var(--space-5);
+  }
+
+  .modal-panel .form-actions button {
+    min-height: 42px;
+  }
+}

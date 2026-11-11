@@ -1,0 +1,33 @@
+{
+  "interactiveLogin": false,
+  "tokenCallbacks": [
+    {
+      "issuerId": "default",
+      "tokenExpiry": 3600,
+      "requestMappings": [
+        {
+          "requestParam": "client_id",
+          "match": "ci-alice",
+          "claims": {
+            "sub": "ci-alice",
+            "aud": ["billery-ci"],
+            "email": "alice@example.com",
+            "email_verified": true,
+            "name": "Alice"
+          }
+        },
+        {
+          "requestParam": "client_id",
+          "match": "ci-bob",
+          "claims": {
+            "sub": "ci-bob",
+            "aud": ["billery-ci"],
+            "email": "bob@example.com",
+            "email_verified": true,
+            "name": "Bob"
+          }
+        }
+      ]
+    }
+  ]
+}

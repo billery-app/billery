@@ -1,0 +1,21 @@
+/* Global base styles (#110): reset, page font and colour, headings, links, focus ring. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-family);
+}
+
+/* One visible focus indicator for keyboard users, for every interactive element. */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}

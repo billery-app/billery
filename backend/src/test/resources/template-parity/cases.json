@@ -1,0 +1,130 @@
+{
+  "_comment": "Shared by TemplateParityTest (Java PDF renderer) and templateParity.spec.js (editor preview). Both render every case with the same document data and must show every expected text and style declaration. Keep both renderers in sync when a case fails on one side only.",
+  "context": {
+    "owner": {
+      "companyName": "Muster Handwerk GmbH",
+      "street": "Hauptstraße",
+      "houseNumber": 12,
+      "postalCode": "80331",
+      "city": "München",
+      "phone": "089 123456",
+      "email": "info@muster-handwerk.de",
+      "url": "www.muster-handwerk.de",
+      "taxId": "DE123456789",
+      "iban": "DE02 1203 0000 0000 2020 51"
+    },
+    "customer": {
+      "firstName": "Bob",
+      "lastName": "Baumeister",
+      "street": "Bauweg",
+      "houseNumber": 3,
+      "postalCode": "10115",
+      "city": "Berlin",
+      "email": "bob@example.de",
+      "phone": "030 9876"
+    },
+    "invoice": {
+      "documentTypeId": 1,
+      "invoiceNumber": "RE-2026-0042",
+      "invoiceDate": "2026-10-18",
+      "dueDate": "2026-11-01",
+      "workStartDate": "2026-10-10",
+      "workEndDate": "2026-10-12",
+      "notes": "Bitte innerhalb von 14 Tagen zahlen.",
+      "taxTreatment": "STANDARD",
+      "netAmount": 560,
+      "grossAmount": 647.2,
+      "vatGroups": [
+        { "ratePercent": 19, "net": 400, "tax": 76 },
+        { "ratePercent": 7, "net": 160, "tax": 11.2 }
+      ]
+    },
+    "items": [
+      { "itemType": "service", "itemName": "Dachreparatur", "quantity": 5, "unit": "Std.", "unitPrice": 80, "taxRate": 19,
+        "children": [ { "itemType": "CUSTOM", "itemName": "Hinweis", "itemDescription": "inkl. Anfahrt" } ] },
+      { "itemType": "article", "itemName": "Fachbuch", "quantity": 2, "unit": "Stk.", "unitPrice": 80, "taxRate": 7 }
+    ]
+  },
+  "cases": [
+    {
+      "name": "header with company variable and format",
+      "block": { "type": "header", "data": { "companyName": "{{firma}}", "companySlogan": "Seit 1990", "logoUrl": "" },
+                 "config": { "showSlogan": true, "logoAlignment": "left", "format": { "fontSize": 20, "fontColor": "#0f766e", "fontFamily": "Georgia" } } },
+      "expectText": ["Muster Handwerk GmbH", "Seit 1990"],
+      "expectStyle": ["font-size: 20pt", "color: #0f766e", "font-family: Georgia, serif"]
+    },
+    {
+      "name": "receiver address",
+      "block": { "type": "address", "data": { "role": "receiver", "name": "{{kunde}}", "address": "{{kunde_strasse}}\n{{kunde_plz_ort}}", "email": "{{kunde_email}}", "phone": "", "vatId": "" },
+                 "config": { "showLabels": true, "label": "Rechnung an" } },
+      "expectText": ["Rechnung an", "Bob Baumeister", "Bauweg 3", "10115 Berlin", "bob@example.de"],
+      "expectAbsent": ["UST-ID"]
+    },
+    {
+      "name": "sender address with bold format",
+      "block": { "type": "address", "data": { "role": "sender", "name": "{{firma}}", "address": "{{adresse}}", "email": "{{email}}", "phone": "{{telefon}}", "vatId": "{{ust_id}}" },
+                 "config": { "showLabels": false, "format": { "fontWeight": "bold", "fontSize": 9 } } },
+      "expectText": ["Muster Handwerk GmbH", "Hauptstraße 12, 80331 München", "089 123456", "UST-ID: DE123456789"],
+      "expectAbsent": ["Absender"],
+      "expectStyle": ["font-weight: bold", "font-size: 9pt"]
+    },
+    {
+      "name": "invoice meta with fallbacks from the document",
+      "block": { "type": "invoice-meta", "data": { "invoiceTitle": "Rechnung", "invoiceId": "", "invoiceDate": "{{rechnungsdatum}}", "dueDate": "", "orderNumber": "B-77", "leistungsdatum": "", "leistungszeitraum": "" },
+                 "config": { "showOrderNumber": true, "alignment": "left" } },
+      "expectText": ["Rechnung", "Rechnungsnummer: RE-2026-0042", "Datum: 18.10.2026", "Fällig am: 01.11.2026", "Bestellnummer: B-77", "Leistungszeitraum: 10.10.2026 – 12.10.2026"],
+      "expectStyle": ["text-align: left", "font-size: 18pt", "font-size: 10.5pt"]
+    },
+    {
+      "name": "invoice meta legacy title size",
+      "block": { "type": "invoice-meta", "data": { "invoiceTitle": "Rechnung" }, "config": { "format": { "fontSize": 18 } } },
+      "expectStyle": ["font-size: 18pt", "font-size: 10.5pt"]
+    },
+    {
+      "name": "line items with mixed VAT rates and a note row",
+      "block": { "type": "line-items", "data": { "columns": [
+                   { "key": "description", "label": "Leistung", "show": true },
+                   { "key": "quantity", "label": "Menge", "show": true },
+                   { "key": "unit", "label": "Einheit", "show": false },
+                   { "key": "rate", "label": "Preis", "show": true },
+                   { "key": "amount", "label": "Gesamt", "show": true } ] },
+                 "config": { "format": { "fontSize": 11, "fontColor": "#111827" } } },
+      "expectText": ["Leistung", "USt.", "Dachreparatur", "80,00 €", "400,00 €", "19 %", "7 %", "Fachbuch", "160,00 €", "Hinweis", "inkl. Anfahrt"],
+      "expectAbsent": ["Einheit", "Std."],
+      "expectStyle": ["font-size: 11pt", "color: #111827", "colspan="]
+    },
+    {
+      "name": "totals per VAT group",
+      "block": { "type": "totals", "data": {}, "config": { "showTax": true, "labelSubtotal": "Netto", "labelTax": "USt.", "labelTotal": "Summe & Brutto", "alignment": "right" } },
+      "expectText": ["Netto", "560,00 €", "USt. 19 % auf 400,00 €", "76,00 €", "USt. 7 % auf 160,00 €", "11,20 €", "Summe & Brutto", "647,20 €"]
+    },
+    {
+      "name": "totals for a small business",
+      "invoice": { "taxTreatment": "SMALL_BUSINESS", "grossAmount": 560, "vatGroups": [ { "ratePercent": 0, "net": 560, "tax": 0 } ] },
+      "block": { "type": "totals", "data": {}, "config": { "showTax": true } },
+      "expectText": ["Zwischensumme", "560,00 €", "Gesamtbetrag", "Gemäß § 19 UStG wird keine Umsatzsteuer berechnet (Kleinunternehmer)."],
+      "expectAbsent": ["MwSt."]
+    },
+    {
+      "name": "payment with variables",
+      "block": { "type": "payment", "data": { "paymentMethod": "Überweisung", "bankName": "", "iban": "{{iban}}", "bic": "XYZ", "reference": "{{verwendungszweck}}" },
+                 "config": { "showBic": false } },
+      "expectText": ["Zahlungsinformationen", "Zahlungsart: Überweisung", "IBAN: DE02 1203 0000 0000 2020 51", "Verwendungszweck: RE-2026-0042"],
+      "expectAbsent": ["BIC", "Bank:"]
+    },
+    {
+      "name": "footer can use customer data",
+      "block": { "type": "footer", "data": { "text": "Danke, {{kunde}}!", "website": "{{website}}", "registrationNumber": "HRB 1", "taxNumber": "" },
+                 "config": { "layout": "left" } },
+      "expectText": ["Danke, Bob Baumeister!", "www.muster-handwerk.de", "Registernummer: HRB 1"],
+      "expectAbsent": ["Steuernummer"],
+      "expectStyle": ["text-align: left", "font-size: 9pt", "color: #9ca3af"]
+    },
+    {
+      "name": "notes with the document notes and escaped title",
+      "block": { "type": "notes", "data": { "content": "{{notizen}}" }, "config": { "showTitle": true, "title": "Hinweise <wichtig>", "showBox": true, "backgroundColor": "#eeeeee", "borderColor": "red;x" } },
+      "expectText": ["Hinweise <wichtig>", "Bitte innerhalb von 14 Tagen zahlen."],
+      "expectStyle": ["background-color: #eeeeee", "border-left: 4px solid #f59e0b"]
+    }
+  ]
+}
