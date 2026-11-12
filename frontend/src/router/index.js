@@ -18,12 +18,23 @@ const routes = [
   { path: '/owners', component: OwnersView },
   { path: '/templates', component: TemplatesView },
   { path: '/search', component: SearchView },
-  { path: '/settings', component: SettingsView }
+  { path: '/settings', component: SettingsView },
+  // An unknown address (an old bookmark, a stale sign-in callback) shows the dashboard, not an
+  // empty page.
+  { path: '/:pathMatch(.*)*', redirect: '/' }
 ]
 
-const router = createRouter({
-  history: createWebHistory(),
-  routes
-})
-
-export default router
+/**
+ * Creates the router. The browser history reads the current address when it is created, so this
+ * is called only after {@code initAuth} has finished: the sign-in callback replaces
+ * {@code /auth/callback?code=…} with the address the user came from, and a router created before
+ * that (at import time) navigated back to the callback URL, which has no route — an empty page
+ * after every sign-in.
+ * @returns {import('vue-router').Router}
+ */
+export function createAppRouter() {
+  return createRouter({
+    history: createWebHistory(),
+    routes
+  })
+}

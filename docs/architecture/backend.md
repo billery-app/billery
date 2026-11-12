@@ -364,10 +364,14 @@ are read by `Database` directly from the process environment.
   request", and `FileUploadController` returns `http://` logo URLs. Only
   safe when the backend is reachable through the proxy alone.
 - `config/WebConfig.java` serves `/uploads/**` from `FILES_PATH`.
-- `config/SpaWebConfig.java:15` makes the Spring app also serve the built
+- `config/SpaWebConfig.java` makes the Spring app also serve the built
   frontend from `classpath:/static/`, with a `PathResourceResolver` that
-  falls back to `index.html` for any non-`/api` path that doesn't match a
-  static file. This is what lets the backend host the SPA when the
+  falls back to `index.html` for any path that is neither under `/api` nor
+  under `/assets` and doesn't match a static file. `index.html` (and `/`,
+  forwarded to it) is sent with `Cache-Control: no-cache`; the content-hashed
+  files under `/assets` are cacheable for a year, and a missing one answers
+  404 instead of HTML, so a browser holding an old start page after a
+  deployment cannot run HTML as JavaScript (a white page). This is what lets the backend host the SPA when the
   frontend is built into `backend/src/main/resources/static/`.
 
 This is the reason the project ships without a separate static host: the

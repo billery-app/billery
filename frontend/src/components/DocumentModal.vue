@@ -511,7 +511,7 @@ const customizeHint = computed(() =>
 async function loadOwnerSettings() {
   try {
     const response = await ownerAPI.getPrimaryOwner()
-    isKleinunternehmer.value = response.data?.isSmallBusiness || false
+    isKleinunternehmer.value = response.data?.smallBusiness === true
   } catch (e) {
     isKleinunternehmer.value = false
   }

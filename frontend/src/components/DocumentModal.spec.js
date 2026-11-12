@@ -700,7 +700,7 @@ describe('DocumentModal — VAT per line and tax treatment', () => {
   it('locks a Kleinunternehmer to § 19 UStG without rate selection', async () => {
     const { default: ownerAPI } = await import('../services/ownerService.js')
     const { default: invoiceAPI } = await import('../services/invoiceService.js')
-    ownerAPI.getPrimaryOwner.mockResolvedValueOnce({ data: { isSmallBusiness: true } })
+    ownerAPI.getPrimaryOwner.mockResolvedValueOnce({ data: { smallBusiness: true } })
     const wrapper = mountModal({ invoice: draftWithTwoRates })
     await wrapper.setProps({ visible: true })
     await flushPromises()
