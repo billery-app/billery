@@ -1,4 +1,4 @@
--- Who did what in the administration of a tenant: invitations, members, roles, sign-up,
+-- Who did what in the administration of a tenant (#49): invitations, members, roles, sign-up,
 -- closing. Written by saas.provisioning.TenantAuditLog in the same transaction as the change; read by the
 -- tenant's owners and administrators (GET /api/tenant/audit).
 --
