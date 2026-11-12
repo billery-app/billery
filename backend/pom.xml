@@ -37,7 +37,7 @@
         <dependency>
             <groupId>org.docx4j</groupId>
             <artifactId>docx4j-JAXB-ReferenceImpl</artifactId>
-            <version>17.3.5</version> <!-- the three docx4j artifacts must have the same version -->
+            <version>17.3.6</version> <!-- the three docx4j artifacts must have the same version -->
         </dependency>
 
         <!-- Flyway: schema migrations for PostgreSQL (versions managed by the Spring Boot BOM) -->
@@ -158,14 +158,14 @@
         <dependency>
             <groupId>org.docx4j</groupId>
             <artifactId>docx4j-core</artifactId>
-            <version>17.3.5</version>
+            <version>17.3.6</version>
         </dependency>
 
         <!-- docx4j export for FO (Formatting Objects) -->
         <dependency>
             <groupId>org.docx4j</groupId>
             <artifactId>docx4j-export-fo</artifactId>
-            <version>17.3.5</version>
+            <version>17.3.6</version>
         </dependency>
 
         <!-- ODF Toolkit for ODT support -->
