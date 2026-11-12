@@ -57,6 +57,18 @@ public class ApiExceptionHandler {
   }
 
   /**
+   * A second owner was to be created; there is one per company. The message is meant for the user.
+   *
+   * @param e the refusal
+   * @return HTTP 409 with the exception message
+   */
+  @ExceptionHandler(OwnerAlreadyExistsException.class)
+  public ResponseEntity<Map<String, String>> handleOwnerAlreadyExists(
+      OwnerAlreadyExistsException e) {
+    return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("message", e.getMessage()));
+  }
+
+  /**
    * A document cannot be rendered until the user configures something (company data, template). The
    * message is meant for the user.
    *

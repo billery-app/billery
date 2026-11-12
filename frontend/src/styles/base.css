@@ -19,3 +19,17 @@ body {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
+
+/*
+ * iOS Safari zooms into a form field whose text is smaller than 16px when it gets the focus, and
+ * the page stays zoomed after the keyboard closes: a dialog can then no longer be scrolled until
+ * the phone is turned. Every text field gets 16px on a phone. !important because the field styles
+ * of the components (scoped, 13–14px) are more specific than any rule here.
+ */
+@media (max-width: 600px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}

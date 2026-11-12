@@ -3,7 +3,7 @@ import './styles/tokens.css'
 import './styles/base.css'
 import './styles/components.css'
 import App from './App.vue'
-import router from './router'
+import { createAppRouter } from './router'
 import { initAuth } from './services/authService.js'
 
 // Self-hosted installs mount at once. In SaaS mode the app first completes or starts the sign-in
@@ -17,7 +17,8 @@ async function start() {
     return
   }
   const app = createApp(App)
-  app.use(router)
+  // Created after initAuth: see createAppRouter.
+  app.use(createAppRouter())
   app.mount('#app')
 }
 

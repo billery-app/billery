@@ -38,7 +38,11 @@ There is no TypeScript. The `@` import alias maps to `./src` (see
 ## Application bootstrap
 
 `main.js` first calls `initAuth()` (see "Sign-in (SaaS mode)" below), then creates the
-app, installs the router and mounts. No global component registration, no Pinia /
+app, creates the router (`createAppRouter()`) and mounts. The router must be created after
+`initAuth`: the browser history reads the address when it is created, and `initAuth` replaces
+the sign-in callback URL (`/auth/callback?code=…`) with the address the user came from. A router
+created at import time navigated back to the callback URL, which has no route (an empty page
+after every sign-in). Unknown paths redirect to the dashboard. No global component registration, no Pinia /
 Vuex — state is local to views and modals, and shared state is held by the parent
 view that's open; the only global state is `services/session.js`.
 

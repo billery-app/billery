@@ -141,7 +141,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   white-space: nowrap;
   border: 0;
 }
-.table-scroll { width: 100%; max-width: 100%; overflow-x: auto; overscroll-behavior-inline: contain; -webkit-overflow-scrolling: touch; }
+/* position: relative keeps absolutely positioned content (a .visually-hidden column label) inside the
+   scroll box; without it such an element sat at the table's far edge and widened the whole page. */
+.table-scroll { position: relative; width: 100%; max-width: 100%; overflow-x: auto; overscroll-behavior-inline: contain; -webkit-overflow-scrolling: touch; }
 .table-scroll:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
 .data-table tbody tr.clickable-row { cursor: pointer; }
 .data-table tbody tr.clickable-row:hover { background-color: var(--color-primary-soft); }

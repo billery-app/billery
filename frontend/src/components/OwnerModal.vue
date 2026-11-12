@@ -121,7 +121,9 @@ const form = ref({
 watch(() => props.visible, (newVal) => {
   if (newVal) {
     if (props.owner) {
-      form.value = { ...props.owner }
+      // The API names the flag smallBusiness; the form (and the request) use isSmallBusiness.
+      const { smallBusiness, ...owner } = props.owner
+      form.value = { ...owner, isSmallBusiness: Boolean(smallBusiness ?? owner.isSmallBusiness) }
     } else {
       form.value = {
         firstName: '',
@@ -159,7 +161,8 @@ async function submit() {
     cancel()
   } catch (error) {
     console.error('Failed to save owner:', error)
-    alert('Fehler beim Speichern des Inhabers')
+    const reason = error.response?.data?.message
+    alert(reason ? `Fehler beim Speichern des Inhabers: ${reason}` : 'Fehler beim Speichern des Inhabers')
   }
 }
 </script>

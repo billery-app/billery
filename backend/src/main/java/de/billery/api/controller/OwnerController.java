@@ -1,5 +1,6 @@
 package de.billery.api.controller;
 
+import de.billery.api.OwnerAlreadyExistsException;
 import de.billery.api.dto.OwnerDto;
 import de.billery.data.Owner;
 import de.billery.repository.OwnerRepository;
@@ -28,8 +29,18 @@ public class OwnerController {
     return owner != null ? ResponseEntity.ok(owner) : ResponseEntity.notFound().build();
   }
 
+  /**
+   * Creates the owner. There is one owner per company; a second one answers 409 with a message
+   * instead of the database's unique-constraint error (500).
+   *
+   * @param ownerDto the company master data
+   * @return the created owner with its id
+   */
   @PostMapping
   public Owner createOwner(@RequestBody OwnerDto ownerDto) {
+    if (ownerRepository.findOwner() != null) {
+      throw new OwnerAlreadyExistsException();
+    }
     Owner owner =
         new Owner(
             0,
@@ -46,7 +57,7 @@ public class OwnerController {
             ownerDto.url(),
             ownerDto.taxId(),
             ownerDto.iban(),
-            ownerDto.isSmallBusiness());
+            ownerDto.smallBusiness());
     return ownerRepository.save(owner);
   }
 
@@ -73,7 +84,7 @@ public class OwnerController {
             ownerDto.url(),
             ownerDto.taxId(),
             ownerDto.iban(),
-            ownerDto.isSmallBusiness());
+            ownerDto.smallBusiness());
     ownerRepository.update(updated);
     return ResponseEntity.ok(updated);
   }

@@ -164,8 +164,8 @@
       @delete="deleteCatalogItem"
     />
 
-    <div v-if="showEquipmentModal" class="modal" @click.self="resetEquipmentForm">
-      <div class="modal-content">
+    <div v-if="showEquipmentModal" class="modal-backdrop" @click.self="resetEquipmentForm">
+      <div class="modal-panel modal-panel-lg">
         <h2>{{ equipmentForm.id ? 'Ausstattung bearbeiten' : 'Neue Ausstattung' }}</h2>
         <form @submit.prevent="saveEquipment">
           <div class="form-group">
@@ -213,8 +213,8 @@
       </div>
     </div>
 
-    <div v-if="showUsageModal" class="modal" @click.self="closeUsage" @keydown.esc="closeUsage">
-      <div ref="usageDialog" class="modal-content usage-modal" role="dialog" aria-modal="true" aria-labelledby="usage-title" tabindex="-1">
+    <div v-if="showUsageModal" class="modal-backdrop" @click.self="closeUsage" @keydown.esc="closeUsage">
+      <div ref="usageDialog" class="modal-panel usage-modal" role="dialog" aria-modal="true" aria-labelledby="usage-title" tabindex="-1">
         <h2 id="usage-title">Einsätze: {{ usageEquipment?.name }}</h2>
         <div v-if="usageLoading" class="loading">Lade...</div>
         <div v-else-if="usageError" class="error" role="alert">{{ usageError }}</div>
@@ -613,9 +613,6 @@ export default {
 .loading, .error { padding: 20px; text-align: center; }
 .error { color: var(--color-danger); }
 .empty-state { padding: 20px; text-align: center; color: var(--color-text-muted); }
-.modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--color-backdrop); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-.modal-content { background: var(--color-surface); padding: 30px; border-radius: 8px; min-width: 400px; max-width: 600px; }
-.modal-content h2 { margin: 0 0 20px 0; font-size: 20px; color: var(--color-text-strong); }
 .form-group { margin-bottom: 15px; }
 .form-group label { display: block; margin-bottom: 4px; font-size: 13px; color: var(--color-text-muted); }
 .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 8px; border: 1px solid var(--color-border-strong); border-radius: 4px; font-size: 14px; }
@@ -633,7 +630,7 @@ export default {
 .amort-sub { font-size: 11px; color: var(--color-text-muted); margin-top: 2px; }
 .amort-hint { max-width: 80ch; margin: 0 0 var(--space-3); color: var(--color-text-muted); font-size: var(--font-size-sm); line-height: 1.5; }
 /* The usage dialog is a table of six columns: wide on a desktop, the table scrolls inside it. */
-.modal-content.usage-modal { display: flex; flex-direction: column; box-sizing: border-box; width: min(1000px, 95vw); min-width: 0; max-width: min(1000px, 95vw); max-height: 90dvh; }
+.modal-panel.usage-modal { display: flex; flex-direction: column; box-sizing: border-box; width: min(1000px, 95vw); min-width: 0; max-width: min(1000px, 95vw); max-height: 90dvh; overflow: hidden; }
 .usage-modal:focus { outline: none; }
 .usage-modal .table-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; }
 /* Numbers, dates and amounts stay on one line; only the service name (third column) wraps. */
@@ -653,9 +650,7 @@ export default {
   .filters { flex-wrap: wrap; gap: 10px; }
   .search-input { flex: 1 1 100%; max-width: none; }
   .filters .btn-primary { flex: 1 1 100%; min-height: 42px; }
-  .modal { padding: 12px; align-items: flex-end; }
-  .modal-content { width: 100%; min-width: 0; max-height: 90dvh; padding: 20px; border-radius: 12px 12px 0 0; }
-  .modal-content.usage-modal { width: 100%; max-width: none; }
+  .modal-panel.usage-modal { width: 100%; max-width: none; }
   .usage-modal .form-actions button { flex: 1 1 auto; }
   .form-actions button { min-height: 42px; }
 }

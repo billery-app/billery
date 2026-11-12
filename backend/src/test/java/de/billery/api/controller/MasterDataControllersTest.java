@@ -3,6 +3,7 @@ package de.billery.api.controller;
 import static org.junit.jupiter.api.Assertions.*;
 
 import de.billery.TestWiring;
+import de.billery.api.OwnerAlreadyExistsException;
 import de.billery.api.dto.ArticleDto;
 import de.billery.api.dto.CustomerDto;
 import de.billery.api.dto.EquipmentDto;
@@ -183,6 +184,15 @@ class MasterDataControllersTest {
     // The POST answer carries the generated id (it was 0 before, found by the e2e smoke test).
     assertTrue(created.getId() > 0, "created owner has no id");
     assertEquals(primary.getId(), created.getId());
+
+    // There is one owner per company: a second one is refused with a message, not a database error.
+    OwnerDto second =
+        new OwnerDto(null, "Max", "Zwei", "", "", "1", "O", "W", 1, "", "", "", "", "", null);
+    OwnerAlreadyExistsException refused =
+        assertThrows(OwnerAlreadyExistsException.class, () -> controller.createOwner(second));
+    assertTrue(refused.getMessage().contains("bereits einen Inhaber"));
+    assertEquals(1, controller.getAllOwners().size());
+
     controller.deleteOwner(created.getId());
     assertEquals(0, controller.getAllOwners().size());
   }

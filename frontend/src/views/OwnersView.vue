@@ -3,7 +3,8 @@
     <h1>Inhaber-Verwaltung</h1>
     <div class="filters">
       <input v-model="searchQuery" type="text" placeholder="Suchen..." class="search-input" />
-      <button @click="openCreateModal" class="btn btn-primary">Neuer Inhaber</button>
+      <!-- One owner per company (the database refuses a second): offered only while there is none. -->
+      <button v-if="!loading && !owners.length" @click="openCreateModal" class="btn btn-primary">Neuer Inhaber</button>
     </div>
     <div v-if="loading" class="loading">Lade Inhaber...</div>
     <div v-if="error" class="error">{{ error }}</div>
