@@ -1,0 +1,12 @@
+# SHA-256 of every Flyway migration that has been applied to a database. Flyway refuses to start
+# when an applied migration changes (comments included), so these files are immutable;
+# AppliedMigrationsTest compares them. Add a line when a new migration is released.
+0737bfe50e2b457acc1a7b18653fb252ebabeb38c220303c9c4307651f38fa3c  src/main/resources/db/migration/V1__baseline.sql
+e5aaa5ab6d50886572f2970a079a97e1d8135f2abb0bfbc80c1750de7e7c5818  src/main/resources/db/migration/V2__tenant_id.sql
+d080563ceb31cf312097dc380ccb2c51e6e20c7728c1c1608ffe25382ac0a8a5  src/saas/resources/db/migration-saas/V1__tenant.sql
+2189bd1c919f35a3c47a5943c061c22109550bb93bd4731eea6fc1fd9b396052  src/saas/resources/db/migration-saas/V2__tenant_isolation.sql
+0ad87e510aee4065e36db10b247b598ff95f014bd426be97b4e2bd7f7896603c  src/saas/resources/db/migration-saas/V3__users_and_membership.sql
+28289001bbca2627c112b60030203419011e1a6b87362682544e51a5b8e28312  src/saas/resources/db/migration-saas/V4__provisioning.sql
+0d88984de68b30345cc085c2a6862b2479fc1e50ef23eccbd8cff9943f9d741b  src/saas/resources/db/migration-saas/V5__invitation_mail_quota.sql
+453e10586abb0aabefe9e1f2136c7b29775e8e50bc3abc80b61e121e1d1f2767  src/saas/resources/db/migration-saas/V6__tenant_audit.sql
+ba95a74743cb283774f855edd6ecee3402e2de60743a6aa9d5c10e233f77068c  src/saas/resources/db/migration-saas/V7__daily_quota.sql
