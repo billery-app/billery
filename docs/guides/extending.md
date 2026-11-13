@@ -63,7 +63,9 @@ and a parity test keeps both in step.
    `createDefaultBlocks` (`utils/blockModel.js`) and/or the presets in
    `utils/templatePresets.js`; the SQL seeds (`V1__baseline.sql`, both
    `scheme-h2.sql`) and `TemplateBlocksBackfill.getDefaultBlocksJson`
-   (the layout an imported DOCX/ODT template gets) hold their own copy.
+   (the layout a template stored without blocks gets) hold their own copy.
+   A new text field is carried by the DOCX/ODT exchange automatically
+   (`utils/documentExchange.js` reads the `fields` of the registry).
 
 ### Tests to add
 
@@ -101,12 +103,6 @@ Adding a variable is much cheaper than adding a block.
    in the block for its data source. Without it the PDF **removes**
    the placeholder.
 3. Optionally add a parity case that uses the variable.
-4. (Optional) If the variable has a server-side equivalent in the
-   legacy path, also add it to:
-   - `frontend/src/utils/templateVariables.js`
-     (`VARIABLE_CATEGORIES`).
-   - `backend/src/main/java/de/billery/api/controller/DocumentController.java`'s
-     `getAvailableVariables()` handler (the hard-coded list).
 
 ### Invariants
 

@@ -1,5 +1,10 @@
-import { describe, it, expect } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { mount, flushPromises } from '@vue/test-utils'
+
+vi.mock('../../services/documentService.js', () => ({
+  default: { importDocument: vi.fn() }
+}))
+import documentAPI from '../../services/documentService.js'
 import TemplateStartModal from './TemplateStartModal.vue'
 import TemplateThumbnail from './TemplateThumbnail.vue'
 import { validateBlocks } from '../../utils/blockValidation.js'
@@ -31,6 +36,49 @@ describe('TemplateStartModal', () => {
     await wrapper.find('.btn-secondary').trigger('click')
     await wrapper.find('.start-modal').trigger('keydown', { key: 'Escape' })
     expect(wrapper.emitted('cancel')).toHaveLength(2)
+  })
+})
+
+describe('TemplateStartModal import', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  const choose = async (wrapper, file) => {
+    const input = wrapper.find('[data-testid="template-import-file"]')
+    Object.defineProperty(input.element, 'files', { value: [file], configurable: true })
+    await input.trigger('change')
+    await flushPromises()
+  }
+
+  it('applies the sections of a file to the chosen style and opens it like a style', async () => {
+    documentAPI.importDocument.mockResolvedValue({
+      data: {
+        name: 'Meine Vorlage',
+        sections: [
+          { heading: 'Fußzeile', paragraphs: ['Text: Danke aus Word'] },
+          { heading: null, paragraphs: ['Freier Text'] }
+        ]
+      }
+    })
+    const wrapper = mount(TemplateStartModal)
+    await choose(wrapper, new File(['x'], 'Meine Vorlage.docx'))
+
+    const template = wrapper.emitted('choose')[0][0]
+    expect(template.name).toBe('Meine Vorlage')
+    expect(template.blocks.find(b => b.type === 'footer').data.text).toBe('Danke aus Word')
+    expect(template.blocks.find(b => b.type === 'notes').data.content).toContain('Freier Text')
+    expect(validateBlocks(template.blocks).errors).toEqual([])
+  })
+
+  it('shows the reason instead of opening the editor when the file is refused', async () => {
+    const wrapper = mount(TemplateStartModal)
+    await choose(wrapper, new File(['x'], 'rechnung.pdf'))
+    expect(documentAPI.importDocument).not.toHaveBeenCalled()
+    expect(wrapper.find('[role="alert"]').text()).toContain('DOCX')
+
+    documentAPI.importDocument.mockRejectedValue({ response: { data: { message: 'Das Dokument enthält keinen Text.' } } })
+    await choose(wrapper, new File(['x'], 'leer.odt'))
+    expect(wrapper.find('[role="alert"]').text()).toBe('Das Dokument enthält keinen Text.')
+    expect(wrapper.emitted('choose')).toBeUndefined()
   })
 })
 

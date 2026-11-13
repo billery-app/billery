@@ -226,8 +226,8 @@ recognizable in the template list and the preset gallery on narrow screens.
 
 - **Save** — emits `save` with the `InvoiceTemplateDto`: metadata,
   margins, `cssContent`, `blocks` (JSON string, `order` = position) and
-  `htmlContent` (blocks rendered with placeholders kept, for the
-  DOCX/ODT round trip; the PDF renderer does not read it). The parent
+  `htmlContent` (blocks rendered with placeholders kept; a legacy column
+  nothing reads, neither the PDF nor the DOCX/ODT exchange). The parent
   posts it (`TemplatesView.handleSave` / `DocumentModal.onCustomTemplateSaved`).
 - **Cancel** — emits `cancel` to the parent view; no network call.
 

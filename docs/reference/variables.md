@@ -2,9 +2,8 @@
 
 > **Audience:** template authors and contributors.
 > **Scope:** the `{{variable}}` registry used by the block-based
-> editor, the per-block data fields the user can bind variables into,
-> and the parallel uppercase-naming convention used by the legacy
-> DOCX/ODT import path. For the block data fields themselves see
+> editor and the per-block data fields the user can bind variables into.
+> For the block data fields themselves see
 > [`block-types.md`](./block-types.md). For the render pipeline see
 > [`../architecture/template-system.md`](../architecture/template-system.md).
 
@@ -14,17 +13,13 @@ Source of truth for the block path:
 `getPickerGroups`, `isKnownVariable`) and, for what the PDF prints,
 `TemplateBasedPdfGenerator.replaceVariables`.
 
-Source of truth for the legacy import path:
-`backend/src/main/java/de/billery/api/controller/DocumentController.java:174-205`
-(the hard-coded `getAvailableVariables` list).
-
-> **Two registries, not one.** The block-based editor and the
-> legacy DOCX/ODT import path use **different** variable naming
-> conventions and are not bridged at runtime. The block path uses
-> lowercase German names (`{{firma}}`); the import path's hard-coded
-> alias list returns English/uppercase names (`OWNER_COMPANY`). The
-> seed block JSON (`V1__baseline.sql`, `scheme-h2.sql`) uses the
-> lowercase set.
+> **One registry.** The editor, the PDF, the seed block JSON
+> (`V1__baseline.sql`, `scheme-h2.sql`) and the DOCX/ODT exchange all use
+> these lowercase German names. The former uppercase aliases
+> (`OWNER_COMPANY`, …, `templateVariables.js` and
+> `/api/documents/variables/*`) were removed; an imported file keeps its
+> `{{variables}}` as written, and unknown ones show up in the editor's
+> validation.
 
 ---
 
@@ -109,58 +104,6 @@ overridden by the company data when it is configured (empty company
 fields stay empty, like in the PDF), overridden by the real document in
 the per-document editor. Values are formatted like the PDF (German
 dates, `1.234,56 €`). The picker shows each variable's preview value.
-
----
-
-## Legacy uppercase aliases (`DocumentController.getAvailableVariables`)
-
-The DOCX/ODT import flow exposes a **different** set of variable
-names — uppercase, English, and `OWNER_*` / `CUSTOMER_*` /
-`INVOICE_*` / `NET_AMOUNT` prefixed. The list is hard-coded in
-`DocumentController.java:174-205`:
-
-| Alias (uppercase) | Label | Description |
-|-------------------|-------|-------------|
-| `OWNER_COMPANY` | Firma | Ihr Firmenname |
-| `OWNER_FIRST_NAME OWNER_LAST_NAME` | Name | Ihr vollständiger Name |
-| `OWNER_ADDRESS` | Adresse | Ihre Straßenadresse |
-| `OWNER_POSTAL_CODE OWNER_CITY` | PLZ/Ort | Ihre Postleitzahl und Stadt |
-| `OWNER_PHONE` | Telefon | Ihre Telefonnummer |
-| `OWNER_EMAIL` | Email | Ihre Email-Adresse |
-| `OWNER_IBAN` | IBAN | Ihre IBAN |
-| `OWNER_BIC` | BIC | Ihre BIC/SWIFT |
-| `OWNER_BANK_NAME` | Bank | Ihr Kreditinstitut |
-| `CUSTOMER_FIRST_NAME CUSTOMER_LAST_NAME` | Name | Kundenname |
-| `CUSTOMER_ADDRESS CUSTOMER_HOUSE_NUMBER` | Adresse | Kundenadresse |
-| `CUSTOMER_POSTAL_CODE CUSTOMER_CITY` | PLZ/Ort | Kunden PLZ/Ort |
-| `INVOICE_NUMBER` | Rechnungsnr. | Eindeutige Rechnungsnummer |
-| `INVOICE_DATE` | Datum | Rechnungsdatum |
-| `DUE_DATE` | Fällig | Fälligkeitsdatum |
-| `NET_AMOUNT` | Netto | Nettobetrag |
-| `TAX_RATE` | MwSt% | Steuersatz |
-| `TAX_AMOUNT` | MwSt | Steuerbetrag |
-| `GROSS_AMOUNT` | Brutto | Gesamtbetrag |
-| `NOTES` | Notizen | Zusätzliche Hinweise |
-| `INVOICE_ITEMS` | Positionen | Rechnungspositionen |
-
-This list is **only** used for the DOCX/ODT import picker. It is
-not connected to the block renderer's substitution map.
-
----
-
-## Special layout variables (`templateVariables.js`)
-
-The legacy `templateVariables.js` exports a `SPECIAL_VARIABLES` set
-for page-level layout. These are not currently used by the
-block-based editor but are exposed in the registry:
-
-| Variable | Label | Description |
-|----------|-------|-------------|
-| `{{PAGE_BREAK}}` | Seitenwechsel | Start new page |
-| `{{HEADER}}` | Kopfzeile | Header on every page |
-| `{{FOOTER}}` | Fußzeile | Footer on every page |
-| `{{PAGE_NUMBER}}` | Seitenzahl | Current page number |
-| `{{TOTAL_PAGES}}` | Gesamte Seiten | Total pages |
 
 ---
 

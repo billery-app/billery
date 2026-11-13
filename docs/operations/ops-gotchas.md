@@ -96,7 +96,7 @@ credentials, so `CorsConfig` does not send `Allow-Credentials`.
 ## File uploads
 
 `spring.servlet.multipart.max-file-size` is 2 MB. The frontend
-`fileValidation.js` enforces a client-side limit too. If users
+`fileValidation.js` checks the same 2 MB before a template import. If users
 report upload failures, check both the backend log and the
 reverse-proxy limit (`client_max_body_size` for nginx, `request_body`
 for Caddy).

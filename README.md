@@ -37,7 +37,7 @@ Self-hosted invoicing application for German freelancers and small businesses. M
 - ZUGFeRD / Factur-X: the PDF of an issued invoice or Stornorechnung carries the XRechnung (CII syntax) as embedded `xrechnung.xml`; a test compares the XML with the page and with the UBL XRechnung
 - XRechnung 3.0 e-invoice (UBL) for issued invoices and Stornorechnungen, built from the data frozen at issue and checked in CI against the official KoSIT validator
 - GoBD data export (§ 147 Abs. 6 AO): ZIP with CSV tables, GDPdU `index.xml`, PDFs and XRechnungs; process documentation in `docs/operations/verfahrensdokumentation.md`
-- DOCX and ODT import/export (round-trip via the document conversion service)
+- Templates as DOCX or ODT: export a template to edit its texts in Word or LibreOffice, and start a new template from such a file (or from an ordinary letter, whose text lands in the notes)
 - File upload endpoint for logos and attachments
 
 **Search and reporting**

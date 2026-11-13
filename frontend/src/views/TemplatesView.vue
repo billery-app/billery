@@ -57,6 +57,24 @@
             Als Standard
           </button>
           <button
+            type="button"
+            class="btn btn-small btn-secondary"
+            :disabled="exporting === template.id"
+            :aria-label="`Vorlage ${template.name} als Word-Datei (DOCX) exportieren`"
+            @click="exportTemplate(template, 'docx')"
+          >
+            DOCX
+          </button>
+          <button
+            type="button"
+            class="btn btn-small btn-secondary"
+            :disabled="exporting === template.id"
+            :aria-label="`Vorlage ${template.name} als ODT exportieren`"
+            @click="exportTemplate(template, 'odt')"
+          >
+            ODT
+          </button>
+          <button
             v-if="!template.isDefault"
             @click="deleteTemplate(template.id)"
             class="btn btn-small btn-danger"
@@ -105,6 +123,10 @@ import TemplateStartModal from '../components/template/TemplateStartModal.vue'
 import TemplateThumbnail from '../components/template/TemplateThumbnail.vue'
 import { sanitizeHtml } from '../utils/sanitize.js'
 import templateAPI from '../services/templateService.js'
+import documentAPI from '../services/documentService.js'
+import { normalizeBlocks } from '../utils/blockModel.js'
+import { templateToSections } from '../utils/documentExchange.js'
+import { downloadBlob } from '../utils/fileValidation.js'
 
 export default {
   name: 'TemplatesView',
@@ -244,6 +266,32 @@ export default {
       }
     }
 
+    // Id of the template whose export is running (its buttons are disabled meanwhile).
+    const exporting = ref(null)
+
+    /**
+     * Downloads a template as DOCX or ODT: one section per block with its texts
+     * (utils/documentExchange.js), which the start dialog can read back.
+     */
+    const exportTemplate = async (template, format) => {
+      const sections = templateToSections(normalizeBlocks(template.blocks))
+      if (!sections.length) {
+        alert('Diese Vorlage enthält keine Texte zum Exportieren.')
+        return
+      }
+      exporting.value = template.id
+      try {
+        const response = await documentAPI.exportDocument({ name: template.name, format, sections })
+        const fileName = String(template.name || 'Vorlage').replace(/[\\/:*?"<>|]+/g, ' ').trim() || 'Vorlage'
+        downloadBlob(response.data, `${fileName}.${format}`)
+      } catch (error) {
+        console.error('Failed to export template:', error)
+        alert('Die Vorlage konnte nicht exportiert werden.')
+      } finally {
+        exporting.value = null
+      }
+    }
+
     onMounted(loadTemplates)
 
     return {
@@ -267,7 +315,9 @@ export default {
       getDocumentTypeName,
       formatDate,
       setAsDefault,
-      deleteTemplate
+      deleteTemplate,
+      exporting,
+      exportTemplate
     }
   }
 }

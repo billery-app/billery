@@ -568,10 +568,6 @@ class SaasIsolationTest extends SaasApiTestBase {
     a.put(
         "POST /api/templates/from-document/{documentId}",
         Attack.send("POST", f -> "/api/templates/from-document/" + f.draft(), f -> "{}"));
-    a.put(
-        "POST /api/documents/export/{templateId}",
-        Attack.send(
-            "POST", f -> "/api/documents/export/" + f.spareTemplate() + "?format=docx", f -> null));
     // search and export
     a.put("GET /api/search", Attack.get(Kind.LIST, f -> "/api/search?q=T"));
     a.put(
@@ -606,7 +602,7 @@ class SaasIsolationTest extends SaasApiTestBase {
           "POST /api/templates",
           "POST /api/templates/preview",
           "POST /api/documents/import",
-          "POST /api/documents/export/new",
+          "POST /api/documents/export",
           "POST /api/upload",
           "POST /api/tenant/invitations",
           "POST /api/tenant/close");
@@ -619,9 +615,7 @@ class SaasIsolationTest extends SaasApiTestBase {
           "GET /api/config",
           "GET /api/me",
           "POST /api/tenants",
-          "POST /api/invitations/{id}/accept",
-          "GET /api/documents/variables/list",
-          "POST /api/documents/variables/validate");
+          "POST /api/invitations/{id}/accept");
 
   // ---- the guard -------------------------------------------------------------------------------
 
@@ -888,7 +882,7 @@ class SaasIsolationTest extends SaasApiTestBase {
       {"POST", "/api/invoices", "{}"},
       {"POST", "/api/templates", "{}"},
       {"POST", "/api/templates/preview", "{}"},
-      {"POST", "/api/documents/export/new", "{}"},
+      {"POST", "/api/documents/export", "{}"},
       {"POST", "/api/tenant/invitations", "{}"},
       {"POST", "/api/tenant/close", null},
       {"POST", "/api/upload", null}

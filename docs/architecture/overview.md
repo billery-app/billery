@@ -50,7 +50,7 @@ Three core user flows cover almost all day-to-day work:
 | Configuration | `java-dotenv` | Loads `.env` from the JVM working directory at startup (`backend/.env` when running from that directory; `AppConfig.java:13`). Docker uses env vars directly. |
 | PDF rendering | Flying Saucer (`xhtmlrenderer`) | HTML templates → PDF. |
 | PDF alternative | OpenPDF | Available alongside Flying Saucer. |
-| Document import/export | Apache POI 5.5.1, docx4j 11.5.14, ODF Toolkit 0.13.0 | DOCX/ODT round-trip via `DocumentConversionService` and `DocumentController`. |
+| Document import/export | Apache POI 5.5.1, docx4j 11.5.14, ODF Toolkit 0.13.0 | Template exchange (DOCX/ODT ⇄ sections) via `DocumentConversionService` and `DocumentController`; the mapping to blocks is in the SPA (`utils/documentExchange.js`). |
 | XRechnung | Custom generator in `xmlgenerator/` | German e-invoice format (XRechnung 3.0, UBL), `GET /api/invoices/{id}/xrechnung`. |
 | XRechnung validator | KoSIT validationtool 1.5.0 (`scripts/fetch-kosit-validator.sh`) | Not part of the build; the `xrechnung` CI job validates generated invoices with it. |
 | Mail | Simple Java Mail | `SmtpMailProvider` sends the SaaS invitation mails. Invoices cannot be sent by mail yet. |
@@ -191,7 +191,7 @@ same underlying data.
 
 | Package | Responsibility |
 |---------|----------------|
-| `api/controller` | REST endpoints. 10 controllers: `ArticleController`, `CustomerController`, `DocumentController` (DOCX/ODT import + variable list/validation), `FileUploadController` (`/api/upload`), `HealthController`, `InvoiceController` (CRUD + PDF + number series), `InvoiceTemplateController`, `OwnerController`, `SearchController`, `ServiceController`. |
+| `api/controller` | REST endpoints. 10 controllers: `ArticleController`, `CustomerController`, `DocumentController` (template exchange as DOCX/ODT), `FileUploadController` (`/api/upload`), `HealthController`, `InvoiceController` (CRUD + PDF + number series), `InvoiceTemplateController`, `OwnerController`, `SearchController`, `ServiceController`. |
 | `api/dto` | Wire-format objects. No entity leakage. |
 | `service` | Cross-cutting business logic: `DocumentConversionService` (DOCX/ODT), `DocumentNumberService`, `DocumentService`, `FileSecurityService`, `TemplateBlocksBackfill` (default blocks for templates without any, on `@PostConstruct`). |
 | `repository` | JDBC on Spring's `JdbcClient`. `BaseRepository` holds error translation (`run`, `databaseError`) and row helpers (`generatedId`, `decimalOrZero`), no generic CRUD; each of the 11 repositories (`Article`, `Customer`, `DocumentHistory`, `DocumentNumberSeries`, `Equipment`, `Invoice`, `InvoiceTemplate`, `Owner`, `Payment`, `Service`, `UserSettings`) writes its own SQL. They are `@Repository` beans injected by constructor. |

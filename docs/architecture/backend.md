@@ -105,7 +105,7 @@ are turned into JSON errors by `api/ApiExceptionHandler`.
 |------------|------|----------------|
 | `ArticleController` | `/api/articles` | Article (product) catalog. |
 | `CustomerController` | `/api/customers` | Customer CRUD; `/page?page&size&q&sort` (`CustomerPageDto`) pages and searches in SQL (first/last name, "first last", street, city, postal code, phone, e-mail; `sort=id` for the list, `name` for the picker; size 1–200, page 0–10 000, else 400). The unpaged `GET` stays for API compatibility; the SPA does not use it. |
-| `DocumentController` | `/api/documents` | Template import/export (DOCX/ODT), variable list and validation. |
+| `DocumentController` | `/api/documents` | Template exchange with word processors: `POST /import` (DOCX/ODT → sections, nothing stored), `POST /export` (sections → DOCX/ODT). |
 | `FileUploadController` | `/api/upload` | Generic file upload (multipart, 2 MB cap). |
 | `HealthController` | `/api/health` | Liveness probe. |
 | `ExportController` | `/api/export` | `GET /gobd?from&to&documents` — GoBD data export as ZIP. |
@@ -244,7 +244,7 @@ controller or a repository:
 
 | Service | Job |
 |---------|-----|
-| `DocumentConversionService` | DOCX/ODT ⇄ HTML conversion (used by `DocumentController`). |
+| `DocumentConversionService` | DOCX/ODT ⇄ sections (heading + paragraphs), used by `DocumentController`. |
 | `DocumentNumberService` | Allocates the next document number for a given type/year via `DocumentNumberSeriesRepository`. |
 | `DocumentService` | Create / update / clone. Invoice types only as drafts without number; issued invoices and credit notes throw `DocumentStateException` (409). |
 | `InvoiceLifecycleService` | Issue (incl. tax-treatment checks and freezing `party_snapshot`), record / reverse payments, cancel via credit note, delete drafts — see [data-model.md > Invoice lifecycle](./data-model.md#invoice-lifecycle-gobd). |
@@ -259,9 +259,8 @@ controller or a repository:
 SaaS profile). Templates themselves come only from the SQL seeds (`V1__baseline.sql`,
 `scheme-h2.sql`, both with block JSON) and from the editor. The service writes the default
 layout (`getDefaultBlocksJson(documentTypeId)`) into every template whose `blocks` value is
-`null`, empty, `[]` or `"null"`: that is what the DOCX/ODT import stores, and the PDF path
-refuses a template without blocks. The `html_content` and `css_content` columns are kept for
-the import / export path.
+`null`, empty, `[]` or `"null"` (rows stored by the former DOCX/ODT import, which stores
+nothing today), because the PDF path refuses a template without blocks.
 
 ## Document strategy dispatch
 

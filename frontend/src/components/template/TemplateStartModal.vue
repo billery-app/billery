@@ -42,6 +42,27 @@
         </button>
       </div>
 
+      <div class="import-row">
+        <p class="import-hint">
+          Oder die Texte einer Word- oder ODT-Datei in den gewählten Stil übernehmen. Abschnitte
+          wie „Kopfzeile“ oder „Fußzeile“ mit Zeilen wie „Text: …“ (so sieht ein Export aus) landen
+          in ihren Blöcken, übriger Text unter „Hinweise“.
+        </p>
+        <input
+          ref="file"
+          type="file"
+          class="file-input"
+          accept=".docx,.odt,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.oasis.opendocument.text"
+          aria-label="Word- oder ODT-Datei für die Vorlage"
+          data-testid="template-import-file"
+          @change="onFile"
+        />
+        <button type="button" class="btn btn-outline" :disabled="importing" @click="$refs.file.click()">
+          {{ importing ? 'Datei wird gelesen …' : 'Aus Datei übernehmen …' }}
+        </button>
+        <p v-if="importError" class="import-error" role="alert">{{ importError }}</p>
+      </div>
+
       <div class="start-actions">
         <button type="button" class="btn btn-secondary" @click="$emit('cancel')">Abbrechen</button>
         <button ref="confirm" type="button" class="btn btn-primary" @click="choose(presetKey)">Weiter</button>
@@ -55,6 +76,9 @@ import TemplateThumbnail from './TemplateThumbnail.vue'
 import { TEMPLATE_PRESETS, getPreset } from '../../utils/templatePresets.js'
 import { DOCUMENT_TYPES, CREDIT_NOTE, INVOICE } from '../../data/documentTypes.js'
 import { documentTitle } from '../../utils/blockRegistry.js'
+import { applySections } from '../../utils/documentExchange.js'
+import { validateImportFile } from '../../utils/fileValidation.js'
+import documentAPI from '../../services/documentService.js'
 
 /**
  * First step of "Neue Vorlage": pick the document type and a style preset
@@ -69,7 +93,9 @@ export default {
     return {
       documentTypeId: INVOICE,
       presetKey: TEMPLATE_PRESETS[0].key,
-      presets: TEMPLATE_PRESETS
+      presets: TEMPLATE_PRESETS,
+      importing: false,
+      importError: ''
     }
   },
   computed: {
@@ -84,14 +110,42 @@ export default {
     this.$nextTick(() => this.$refs.confirm && this.$refs.confirm.focus())
   },
   methods: {
+    /**
+     * Reads the chosen DOCX / ODT (nothing is stored), applies its sections to the blocks of the
+     * selected style and opens the editor with the result, like a style without file.
+     */
+    async onFile(event) {
+      const input = event.target
+      const file = input.files && input.files[0]
+      input.value = ''
+      if (!file) return
+      const check = validateImportFile(file)
+      if (!check.isValid) {
+        this.importError = check.errors.join(' ')
+        return
+      }
+      this.importError = ''
+      this.importing = true
+      try {
+        const { data } = await documentAPI.importDocument(file)
+        const { blocks } = applySections(getPreset(this.presetKey).build(this.documentTypeId).blocks, data.sections)
+        this.choose(this.presetKey, { name: data.name || file.name, blocks })
+      } catch (error) {
+        this.importError = error.response?.data?.message || 'Die Datei konnte nicht übernommen werden.'
+      } finally {
+        this.importing = false
+      }
+    },
     marginsOf(value) {
       return { marginTopMm: value, marginRightMm: value, marginBottomMm: value, marginLeftMm: value }
     },
-    choose(key) {
+    choose(key, imported = null) {
       const preset = getPreset(key)
-      const { blocks, margins } = preset.build(this.documentTypeId)
+      const built = preset.build(this.documentTypeId)
+      const { margins } = built
+      const blocks = imported ? imported.blocks : built.blocks
       this.$emit('choose', {
-        name: `${documentTitle(this.documentTypeId)} – ${preset.name}`,
+        name: imported ? imported.name : `${documentTitle(this.documentTypeId)} – ${preset.name}`,
         documentTypeId: this.documentTypeId,
         isDefault: false,
         documentSpecific: false,
@@ -198,6 +252,40 @@ h2 {
   font-size: 12px;
   color: var(--color-text-muted);
   line-height: 1.4;
+}
+
+.import-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border);
+}
+
+.import-hint {
+  flex: 1 1 100%;
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+}
+
+/* The native file input stays in the DOM (for the label and keyboard users of the button) but hidden. */
+.file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
+
+.import-error {
+  flex: 1 1 100%;
+  margin: 0;
+  color: var(--color-danger);
+  font-size: var(--font-size-sm);
 }
 
 .start-actions {
