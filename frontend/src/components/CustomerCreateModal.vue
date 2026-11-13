@@ -4,52 +4,55 @@
       <h2>{{ isEditMode ? 'Kunde bearbeiten' : 'Neuer Kunde' }}</h2>
       <form @submit.prevent="submit">
         <div class="form-group">
-          <label>Vorname:</label>
-          <input v-model="form.firstName" required />
+          <label for="customer-firstName">Vorname:</label>
+          <input id="customer-firstName" name="firstName" autocomplete="given-name" v-model="form.firstName" required />
         </div>
         <div class="form-group">
-          <label>Nachname:</label>
-          <input v-model="form.lastName" required />
+          <label for="customer-lastName">Nachname:</label>
+          <input id="customer-lastName" name="lastName" autocomplete="family-name" v-model="form.lastName" required />
         </div>
         <div class="form-group">
-          <label>Straße:</label>
-          <input v-model="form.street" />
+          <label for="customer-street">Straße:</label>
+          <input id="customer-street" name="street" autocomplete="address-line1" v-model="form.street" @change="splitStreetAndNumber(form)" />
         </div>
         <div class="form-group">
-          <label>Hausnummer:</label>
-          <input v-model="form.houseNumber" type="number" />
+          <label for="customer-houseNumber">Hausnummer:</label>
+          <input id="customer-houseNumber" name="houseNumber" autocomplete="off" inputmode="numeric" v-model="form.houseNumber" type="number" />
         </div>
         <div class="form-group">
-          <label>PLZ:</label>
-          <input v-model="form.postalCode" />
+          <label for="customer-postalCode">PLZ:</label>
+          <input id="customer-postalCode" name="postalCode" autocomplete="postal-code" inputmode="numeric" v-model="form.postalCode" />
         </div>
         <div class="form-group">
-          <label>Ort:</label>
-          <input v-model="form.city" />
+          <label for="customer-city">Ort:</label>
+          <input id="customer-city" name="city" autocomplete="address-level2" v-model="form.city" />
         </div>
         <div class="form-group">
-          <label>Telefon:</label>
-          <input v-model="form.phone" />
+          <label for="customer-phone">Telefon:</label>
+          <input id="customer-phone" name="phone" autocomplete="tel" type="tel" v-model="form.phone" />
         </div>
         <div class="form-group">
-          <label>Email:</label>
-          <input v-model="form.email" type="email" />
+          <label for="customer-email">Email:</label>
+          <input id="customer-email" name="email" autocomplete="email" v-model="form.email" type="email" />
         </div>
         <div class="form-group">
-          <label>USt-IdNr. / Steuernummer:</label>
-          <input v-model="form.taxId" placeholder="z. B. DE123456789" />
+          <label for="customer-taxId">USt-IdNr. / Steuernummer:</label>
+          <input id="customer-taxId" name="taxId" autocomplete="off" v-model="form.taxId" placeholder="z. B. DE123456789" />
         </div>
         <div class="form-group">
-          <label>Leitweg-ID / Käuferreferenz:</label>
+          <label for="customer-buyerReference">Leitweg-ID / Käuferreferenz:</label>
           <input
+            id="customer-buyerReference"
             v-model="form.buyerReference"
+            name="buyerReference"
+            autocomplete="off"
             placeholder="nur für E-Rechnungen, z. B. an Behörden"
             data-testid="buyer-reference"
           />
         </div>
         <div class="form-group">
-          <label>Notiz:</label>
-          <textarea v-model="form.note"></textarea>
+          <label for="customer-note">Notiz:</label>
+          <textarea id="customer-note" name="note" autocomplete="off" v-model="form.note"></textarea>
         </div>
         <div class="form-actions">
           <button type="submit" class="btn btn-primary">Speichern</button>
@@ -63,6 +66,7 @@
 </template>
 
 <script setup>
+import { splitStreetAndNumber } from '../utils/addressFields.js'
 import { ref, watch, computed } from 'vue'
 import customerAPI from '../services/customerService.js'
 

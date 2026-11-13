@@ -5,67 +5,67 @@
       <form @submit.prevent="submit">
         <div class="form-row">
           <div class="form-group">
-            <label>Vorname:</label>
-            <input v-model="form.firstName" required />
+            <label for="owner-firstName">Vorname:</label>
+            <input id="owner-firstName" name="firstName" autocomplete="given-name" v-model="form.firstName" required />
           </div>
           <div class="form-group">
-            <label>Nachname:</label>
-            <input v-model="form.lastName" required />
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Firmenname:</label>
-            <input v-model="form.companyName" />
-          </div>
-          <div class="form-group">
-            <label>Firmenart (z.B. GmbH):</label>
-            <input v-model="form.companyType" />
+            <label for="owner-lastName">Nachname:</label>
+            <input id="owner-lastName" name="lastName" autocomplete="family-name" v-model="form.lastName" required />
           </div>
         </div>
         <div class="form-row">
           <div class="form-group">
-            <label>Straße:</label>
-            <input v-model="form.street" />
+            <label for="owner-companyName">Firmenname:</label>
+            <input id="owner-companyName" name="companyName" autocomplete="organization" v-model="form.companyName" />
+          </div>
+          <div class="form-group">
+            <label for="owner-companyType">Firmenart (z.B. GmbH):</label>
+            <input id="owner-companyType" name="companyType" autocomplete="off" v-model="form.companyType" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="owner-street">Straße:</label>
+            <input id="owner-street" name="street" autocomplete="address-line1" v-model="form.street" @change="splitStreetAndNumber(form)" />
           </div>
           <div class="form-group small">
-            <label>Hausnr.:</label>
-            <input v-model="form.houseNumber" type="number" />
+            <label for="owner-houseNumber">Hausnr.:</label>
+            <input id="owner-houseNumber" name="houseNumber" autocomplete="off" inputmode="numeric" v-model="form.houseNumber" type="number" />
           </div>
         </div>
         <div class="form-row">
           <div class="form-group small">
-            <label>PLZ:</label>
-            <input v-model="form.postalCode" />
+            <label for="owner-postalCode">PLZ:</label>
+            <input id="owner-postalCode" name="postalCode" autocomplete="postal-code" inputmode="numeric" v-model="form.postalCode" />
           </div>
           <div class="form-group">
-            <label>Ort:</label>
-            <input v-model="form.city" />
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Telefon:</label>
-            <input v-model="form.phone" />
-          </div>
-          <div class="form-group">
-            <label>Email:</label>
-            <input v-model="form.email" type="email" />
+            <label for="owner-city">Ort:</label>
+            <input id="owner-city" name="city" autocomplete="address-level2" v-model="form.city" />
           </div>
         </div>
         <div class="form-row">
           <div class="form-group">
-            <label>Website:</label>
-            <input v-model="form.url" />
+            <label for="owner-phone">Telefon:</label>
+            <input id="owner-phone" name="phone" autocomplete="tel" type="tel" v-model="form.phone" />
           </div>
           <div class="form-group">
-            <label>Steuer-ID:</label>
-            <input v-model="form.taxId" />
+            <label for="owner-email">Email:</label>
+            <input id="owner-email" name="email" autocomplete="email" v-model="form.email" type="email" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="owner-url">Website:</label>
+            <input id="owner-url" name="url" autocomplete="url" inputmode="url" v-model="form.url" />
+          </div>
+          <div class="form-group">
+            <label for="owner-taxId">Steuer-ID:</label>
+            <input id="owner-taxId" name="taxId" autocomplete="off" v-model="form.taxId" />
           </div>
         </div>
         <div class="form-group">
-          <label>IBAN:</label>
-          <input v-model="form.iban" />
+          <label for="owner-iban">IBAN:</label>
+          <input id="owner-iban" name="iban" autocomplete="off" v-model="form.iban" />
         </div>
         <div class="form-group toggle-group">
           <label class="toggle-label">
@@ -85,6 +85,7 @@
 </template>
 
 <script setup>
+import { splitStreetAndNumber } from '../utils/addressFields.js'
 import { ref, watch, computed } from 'vue'
 import ownerAPI from '../services/ownerService.js'
 

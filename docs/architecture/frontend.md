@@ -424,6 +424,15 @@ on `close` and re-fetches its list on `save`. The modal never fetches
 data on its own except for the resources it needs to populate dropdowns
 (e.g. the customer list in the article/service creation modal).
 
+**Form fields.** Every field has an `id` its `<label for>` points to, a `name` and an
+`autocomplete` token (`given-name`, `family-name`, `organization`, `address-line1`,
+`postal-code`, `address-level2`, `tel`, `email`, `url`; `off` for fields autofill has no token
+for, such as tax id, IBAN or notes), plus `type` / `inputmode` where they fit (`tel`, `email`,
+numeric keyboards), so browsers and phones can fill the owner and customer forms. Autofill knows
+the street only together with the number (`address-line1`); `utils/addressFields.js`
+(`splitStreetAndNumber`, on `change` of the street) moves a trailing number into an empty house
+number field. On phones every text field is 16px (`styles/base.css`), or iOS zooms in on focus.
+
 This is intentionally simple. If a modal grows beyond a single form
 (e.g. multi-step wizards), prefer a sub-component per step rather than
 a state machine inside the modal.
