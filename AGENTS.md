@@ -71,8 +71,18 @@ URL. The backend binds to `127.0.0.1` only (desktop mode has no auth). The port
 stays fixed because stored logo URLs contain it; `src/lib.rs` therefore refuses
 to start (error page) when something else already answers on 8080, and only
 trusts a `/api/health` response carrying its per-launch `DESKTOP_INSTANCE_ID`.
-On exit it calls `POST /api/desktop/shutdown` (token-protected) so H2 closes
-the database file cleanly, and kills the JVM only after a 10 s grace period.
+On exit it calls `POST /api/desktop/shutdown` (token-protected): the backend makes the backup
+on exit (if switched on) and stops so H2 closes the database file cleanly; the shell kills the JVM
+only after a 60 s grace period (`SHUTDOWN_GRACE`). **Backups** (`backend/.../desktop/`,
+Spring profile `desktop`): `DesktopBackupService` writes the H2 database (`BACKUP TO`, consistent
+while open) and the uploaded files as one ZIP into a chosen folder (`<app-data>/backups` by
+default), on exit and on "Jetzt sichern", optionally encrypted (AES-GCM, PBKDF2; `BackupArchive`),
+the newest N kept (only files named `billery-<time>-<reason>.zip[.enc]` are ever deleted). A
+restore is staged as `<app-data>/restore-pending.zip` and applied by `PendingRestore` in
+`MainApp.prepareDatabase()` before H2 opens the file, after a safety copy of the state before; the
+H2 migrations then upgrade an older backup. The settings live in `user_settings` (`backup_*`; no
+endpoint returns the password); the SPA shows the section when `GET /api/config` says
+`desktop: true`.
 There is no Rust toolchain requirement for the backend build, but `cargo check`
 must pass for `src/lib.rs` changes. The bundled `app.jar` (Spring Boot fat JAR) and `resources/runtime/`
 (jlink'd JRE) are produced by `scripts/build-desktop.sh` / `build-desktop.ps1`,

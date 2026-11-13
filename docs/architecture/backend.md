@@ -36,6 +36,9 @@ mail/                  MailProvider interface, SmtpMailProvider implementation, 
 document/              Strategy pattern dispatching on document type
 statistics/            reporting aggregations
 tenant/                CurrentTenant (the active tenant; self-host is always 1)
+desktop/               backups of the desktop app (desktop profile): DesktopBackupService,
+                       DesktopBackupController, BackupArchive (ZIP / AES-GCM), PendingRestore
+                       (applies a staged restore in MainApp before H2 opens the file)
 config/                AppConfig, CorsConfig, SpaWebConfig, WebConfig
 MainApp.java           entry point
 ```
@@ -295,8 +298,9 @@ the common transition table logic.
 flowchart TB
     A[MainApp.main] --> B{PostgreSQL or H2?}
     B -- PostgreSQL --> C[SchemaMigrator<br/>Flyway db/migration]
-    B -- "H2, no customer table" --> C2[DatabaseInitializer.initialize<br/>scheme-h2.sql]
-    B -- "H2, schema exists" --> D{LOAD_DEMO_DATA=true?}
+    B -- "H2" --> R[PendingRestore.applyIfPending<br/>staged desktop restore]
+    R -- "no customer table" --> C2[DatabaseInitializer.initialize<br/>scheme-h2.sql]
+    R -- "schema exists" --> D{LOAD_DEMO_DATA=true?}
     C --> D
     C2 --> D
     D -- yes --> E[DatabaseInitializer.loadDemoData<br/>only into an empty DB]

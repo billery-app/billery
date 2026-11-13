@@ -13,6 +13,8 @@ use tauri::Manager;
 
 /// The backend listens on 127.0.0.1 only (see application-desktop.properties).
 /// The port is fixed because stored logo URLs contain it.
+/// How long the backend may take to stop (incl. the backup on exit) before it is killed.
+const SHUTDOWN_GRACE: Duration = Duration::from_secs(60);
 const BACKEND_URL: &str = "http://127.0.0.1:8080";
 
 /// The running backend plus the secrets it was started with.
@@ -137,7 +139,9 @@ fn start_backend(
 }
 
 /// Asks the backend to shut down (so H2 closes the database file cleanly), and
-/// kills it only if it is still running after a grace period.
+/// kills it only if it is still running after a grace period. The backend makes
+/// the backup on exit first (if switched on in the settings), so the grace period
+/// is generous; a backup cut short leaves only a `.part` file, never a broken backup.
 fn stop_backend(backend: &Backend) {
     let Ok(mut guard) = backend.child.lock() else { return };
     let Some(mut child) = guard.take() else { return };
@@ -145,7 +149,7 @@ fn stop_backend(backend: &Backend) {
         .post(format!("{BACKEND_URL}/api/desktop/shutdown"))
         .header("X-Shutdown-Token", &backend.shutdown_token)
         .send();
-    let deadline = Instant::now() + Duration::from_secs(10);
+    let deadline = Instant::now() + SHUTDOWN_GRACE;
     while Instant::now() < deadline {
         if let Ok(Some(_)) = child.try_wait() {
             return;

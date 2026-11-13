@@ -1,5 +1,6 @@
 package de.billery.api.controller;
 
+import de.billery.desktop.DesktopBackupService;
 import org.springframework.boot.SpringApplication;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Profile;
@@ -11,7 +12,8 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * Desktop-only endpoints (Spring profile {@code desktop}). The Tauri shell calls {@code POST
  * /api/desktop/shutdown} when its window closes, so the JVM stops cleanly and H2 flushes and closes
- * the database file. A hard kill could lose the last committed writes.
+ * the database file. A hard kill could lose the last committed writes. Before it stops, the backup
+ * on exit is made ({@link DesktopBackupService#backupOnExit()}).
  */
 @RestController
 @Profile("desktop")
@@ -25,14 +27,17 @@ public class DesktopController {
       System.getenv().getOrDefault("DESKTOP_SHUTDOWN_TOKEN", "");
 
   private final ApplicationContext context;
+  private final DesktopBackupService backups;
 
   /**
    * Creates the controller.
    *
    * @param context the application context to close on shutdown
+   * @param backups makes the backup on exit
    */
-  public DesktopController(ApplicationContext context) {
+  public DesktopController(ApplicationContext context, DesktopBackupService backups) {
     this.context = context;
+    this.backups = backups;
   }
 
   /**
@@ -49,8 +54,15 @@ public class DesktopController {
     if (SHUTDOWN_TOKEN.isEmpty() || !SHUTDOWN_TOKEN.equals(token)) {
       return ResponseEntity.status(403).build();
     }
+    // The backup on exit (if switched on) runs before the context closes; the Tauri shell waits
+    // for the process to end (lib.rs, stop_backend).
     Thread stopper =
-        new Thread(() -> System.exit(SpringApplication.exit(context, () -> 0)), "desktop-shutdown");
+        new Thread(
+            () -> {
+              backups.backupOnExit();
+              System.exit(SpringApplication.exit(context, () -> 0));
+            },
+            "desktop-shutdown");
     stopper.setDaemon(false);
     stopper.start();
     return ResponseEntity.accepted().build();

@@ -44,7 +44,11 @@ the sign-in callback URL (`/auth/callback?code=…`) with the address the user c
 created at import time navigated back to the callback URL, which has no route (an empty page
 after every sign-in). Unknown paths redirect to the dashboard. No global component registration, no Pinia /
 Vuex — state is local to views and modals, and shared state is held by the parent
-view that's open; the only global state is `services/session.js`.
+view that's open; the only global state is `services/session.js`. `session.desktop` (from
+`GET /api/config`, `desktop: true` in the Tauri app) shows the backup section of the settings
+(`BackupSettings.vue`, `services/backupService.js` → `/api/desktop/backups`): last backup with a
+warning after 7 days, "Jetzt sichern", folder / number kept / backup on exit / encryption, and a
+restore of a listed backup at the next start.
 
 `App.vue` is the shell:
 
