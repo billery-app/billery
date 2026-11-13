@@ -140,8 +140,23 @@ prompt, then update the runtime secret and recreate the backend; see
 password values in command arguments or logs.
 
 The desktop app keeps everything in its app-data folder (`database.mv.db`,
-`files/`, `app.log`, `backend-err.log`); back up the whole folder while the
-app is closed.
+`files/`, `app.log`, `backend-err.log`) and backs it up itself: Einstellungen → Datensicherung.
+
+- **When:** when the app is closed (on by default) and with "Jetzt sichern". The settings page
+  shows the last backup and warns when there is none or it is older than 7 days.
+- **Where:** `<app-data>/backups` unless another folder is chosen. Choose an external drive or a
+  cloud-sync folder: a backup in the app-data folder does not survive the loss of the computer.
+  The newest N backups are kept (10 by default); other files in the folder are never touched.
+- **Encryption:** optional, with a password (at least 8 characters; AES-256-GCM, key from
+  PBKDF2). Without the password an encrypted backup cannot be restored; it is stored in the
+  local database so the automatic backup can use it, and never shown again.
+- **Restore:** choose a backup in the list (from another computer: put the file into the backup
+  folder first); it is checked (and decrypted) at once and restored at the **next start**, after
+  the state before has been saved as `billery-…-vor-wiederherstellung.zip` in
+  `<app-data>/backups`. A backup of an older version is brought up to date by the migrations of
+  that start. "Wiederherstellung abbrechen" withdraws it before the restart.
+- A backup that was cut short (the computer shut down) leaves a `.part` file, never a broken
+  backup; such files can be deleted.
 
 ## Logging
 
