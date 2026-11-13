@@ -2,7 +2,8 @@ package de.billery.service;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import de.billery.service.DocumentConversionService.EditorDocument;
+import de.billery.service.DocumentConversionService.DocumentSection;
+import de.billery.service.DocumentConversionService.ExchangeDocument;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
@@ -16,17 +17,29 @@ import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockMultipartFile;
 
 /**
- * The export to DOCX and ODT. docx4j needs a JAXB implementation at run time (the JAXB API alone is
- * not enough): without {@code docx4j-JAXB-ReferenceImpl} the DOCX export answered 500 in the
- * running application while every other test stayed green.
+ * The exchange format: DOCX / ODT as sections (heading + paragraphs) and back. docx4j needs a JAXB
+ * implementation at run time (the JAXB API alone is not enough): without {@code
+ * docx4j-JAXB-ReferenceImpl} the DOCX export answered 500 in the running application while every
+ * other test stayed green.
  */
 class DocumentConversionServiceTest {
 
-  private static EditorDocument document() {
-    return EditorDocument.builder()
-        .name("Vorlage")
-        .htmlContent("<p>Rechnung für {{kunde}}</p><p>Summe {{betrag}}</p>")
-        .build();
+  private static final DocumentConversionService SERVICE =
+      new DocumentConversionService(new FileSecurityService());
+
+  /** A template as the SPA exports it: one heading per block, "Feld: Wert" lines below. */
+  private static final List<DocumentSection> TEMPLATE =
+      List.of(
+          new DocumentSection(
+              "Kopfzeile", List.of("Firmenname: {{firma}}", "Slogan: Gut & günstig")),
+          new DocumentSection(
+              "Hinweise",
+              List.of(
+                  "Text: Zahlbar innerhalb von 14 Tagen.", "Bitte {{rechnungsnummer}} angeben.")),
+          new DocumentSection("Fußzeile", List.of("Text: Vielen Dank für Ihr Vertrauen!")));
+
+  private static ExchangeDocument importFile(String name, byte[] bytes) {
+    return SERVICE.importDocument(new MockMultipartFile("file", name, null, bytes));
   }
 
   private static List<String> entries(byte[] zipBytes) throws Exception {
@@ -40,64 +53,53 @@ class DocumentConversionServiceTest {
   }
 
   @Test
-  void exportsADocxWithTheTemplateText() throws Exception {
-    byte[] docx = new DocumentConversionService(null).exportToDocx(document());
-
-    List<String> names = entries(docx);
-    assertTrue(names.contains("word/document.xml"), names.toString());
-    try (ZipInputStream zip = new ZipInputStream(new ByteArrayInputStream(docx))) {
-      for (ZipEntry entry = zip.getNextEntry(); entry != null; entry = zip.getNextEntry()) {
-        if ("word/document.xml".equals(entry.getName())) {
-          assertTrue(new String(zip.readAllBytes(), StandardCharsets.UTF_8).contains("kunde"));
-        }
-      }
-    }
+  void exportsADocxAndAnOdt() throws Exception {
+    assertTrue(entries(SERVICE.exportToDocx(TEMPLATE)).contains("word/document.xml"));
+    assertTrue(entries(SERVICE.exportToOdt(TEMPLATE)).contains("content.xml"));
   }
 
   @Test
-  void exportsAnOdt() throws Exception {
-    byte[] odt = new DocumentConversionService(null).exportToOdt(document());
+  void aDocxExportedByTheAppImportsWithItsHeadingsAndVariables() throws Exception {
+    ExchangeDocument imported = importFile("vorlage.docx", SERVICE.exportToDocx(TEMPLATE));
 
-    assertTrue(entries(odt).contains("content.xml"));
-  }
-
-  private static final DocumentConversionService SERVICE =
-      new DocumentConversionService(new FileSecurityService());
-
-  private static EditorDocument importFile(String name, byte[] bytes) throws Exception {
-    return SERVICE.importDocument(new MockMultipartFile("file", name, null, bytes));
-  }
-
-  private static List<String> variableNames(EditorDocument doc) {
-    return doc.getTemplateVariables().stream().map(v -> v.getName()).toList();
+    assertEquals("vorlage", imported.name());
+    assertEquals(TEMPLATE, imported.sections());
   }
 
   @Test
-  void anOdtExportedByTheAppImportsWithItsTextAndVariables() throws Exception {
-    EditorDocument imported = importFile("vorlage.odt", SERVICE.exportToOdt(document()));
-
-    assertEquals(
-        "<div><p>Rechnung für {{kunde}}</p><p>Summe {{betrag}}</p></div>",
-        imported.getHtmlContent());
-    assertEquals(List.of("kunde", "betrag"), variableNames(imported));
-  }
-
-  @Test
-  void aDocxExportedByTheAppImportsWithItsParagraphsAndVariables() throws Exception {
-    EditorDocument imported = importFile("vorlage.docx", SERVICE.exportToDocx(document()));
-
-    assertEquals(
-        "<div><p>Rechnung für {{kunde}}</p><p>Summe {{betrag}}</p></div>",
-        imported.getHtmlContent());
-    assertEquals(List.of("kunde", "betrag"), variableNames(imported));
+  void anOdtExportedByTheAppImportsWithItsHeadingsAndVariables() throws Exception {
+    assertEquals(TEMPLATE, importFile("vorlage.odt", SERVICE.exportToOdt(TEMPLATE)).sections());
   }
 
   @Test
   void aSecondRoundTripChangesNothing() throws Exception {
-    EditorDocument once = importFile("a.odt", SERVICE.exportToOdt(document()));
-    EditorDocument twice = importFile("b.odt", SERVICE.exportToOdt(once));
+    List<DocumentSection> once = importFile("a.odt", SERVICE.exportToOdt(TEMPLATE)).sections();
+    List<DocumentSection> twice = importFile("b.docx", SERVICE.exportToDocx(once)).sections();
 
-    assertEquals(once.getHtmlContent(), twice.getHtmlContent(), "no variables appended per export");
+    assertEquals(once, twice);
+  }
+
+  @Test
+  void aLineBreakInAnExportedParagraphBecomesASpace() throws Exception {
+    List<DocumentSection> withBreak =
+        List.of(new DocumentSection("Hinweise", List.of("Text: Zeile eins\nZeile zwei")));
+
+    assertEquals(
+        List.of(new DocumentSection("Hinweise", List.of("Text: Zeile eins Zeile zwei"))),
+        importFile("x.docx", SERVICE.exportToDocx(withBreak)).sections());
+  }
+
+  @Test
+  void textBeforeTheFirstHeadingIsASectionWithoutHeading() throws Exception {
+    String body =
+        "<text:p>Sehr geehrte Damen und Herren,</text:p>"
+            + "<text:h text:outline-level=\"1\">Fußzeile</text:h><text:p>Danke</text:p>";
+
+    assertEquals(
+        List.of(
+            new DocumentSection(null, List.of("Sehr geehrte Damen und Herren,")),
+            new DocumentSection("Fußzeile", List.of("Danke"))),
+        importFile("brief.odt", odt(body)).sections());
   }
 
   @Test
@@ -114,18 +116,53 @@ class DocumentConversionServiceTest {
             + "<text:p>Fu<text:note text:note-class=\"footnote\"><text:note-body>"
             + "<text:p>Fußnote</text:p></text:note-body></text:note>ß</text:p>";
 
-    EditorDocument imported = importFile("libre.odt", odt(body));
+    assertEquals(
+        List.of(
+            new DocumentSection(
+                "Angebot",
+                List.of(
+                    "Hallo {{kunde}},  Betrag:\t{{betrag}}",
+                    "Danke",
+                    "Punkt <eins> & zwei",
+                    "Zelle",
+                    "Fuß"))),
+        importFile("libre.odt", odt(body)).sections());
+  }
+
+  @Test
+  void aDocxWithWordHeadingsAndATableImportsInReadingOrder() throws Exception {
+    String body =
+        "<w:p><w:pPr><w:pStyle w:val=\"berschrift1\"/></w:pPr><w:r><w:t>Kopfzeile</w:t></w:r></w:p>"
+            + "<w:p><w:r><w:t>Firmenname: {{firma}}</w:t></w:r></w:p>"
+            + "<w:tbl><w:tr><w:tc><w:p><w:r><w:t>Zelle A</w:t></w:r></w:p></w:tc>"
+            + "<w:tc><w:p><w:r><w:t>Zelle B</w:t></w:r></w:p></w:tc></w:tr></w:tbl>"
+            + "<w:p><w:pPr><w:pStyle w:val=\"Heading2\"/></w:pPr><w:r><w:t>Fußzeile</w:t></w:r></w:p>"
+            + "<w:p/><w:p><w:r><w:t>Danke</w:t></w:r></w:p>";
 
     assertEquals(
-        "<div><h1>Angebot</h1><p>Hallo {{kunde}},  Betrag:\t{{betrag}}<br>Danke</p><br>"
-            + "<p>Punkt &lt;eins&gt; &amp; zwei</p><p>Zelle</p><p>Fuß</p></div>",
-        imported.getHtmlContent());
-    assertEquals(List.of("kunde", "betrag"), variableNames(imported));
+        List.of(
+            new DocumentSection(
+                "Kopfzeile", List.of("Firmenname: {{firma}}", "Zelle A", "Zelle B")),
+            new DocumentSection("Fußzeile", List.of("Danke"))),
+        importFile("word.docx", docx(body, false)).sections());
   }
 
   @Test
   void anOdtWithoutTextIsReportedInsteadOfBecomingAnEmptyTemplate() throws Exception {
     assertThrows(EmptyDocumentException.class, () -> importFile("leer.odt", odt("<text:p/>")));
+  }
+
+  @Test
+  void anExportBeyondTheLimitsIsRefused() throws Exception {
+    List<DocumentSection> tooMany =
+        java.util.Collections.nCopies(
+            DocumentConversionService.MAX_SECTIONS + 1, new DocumentSection("X", List.of("y")));
+    assertThrows(IllegalArgumentException.class, () -> SERVICE.exportToDocx(tooMany));
+    String tooLong = "x".repeat(DocumentConversionService.MAX_TEXT_LENGTH + 1);
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> SERVICE.exportToOdt(List.of(new DocumentSection("X", List.of(tooLong)))));
+    assertThrows(IllegalArgumentException.class, () -> SERVICE.exportToOdt(List.of()));
   }
 
   @Test
@@ -137,13 +174,12 @@ class DocumentConversionServiceTest {
             + " xmlns:y=\"urn:oasis:names:tc:opendocument:xmlns:office:1.0\">Hallo<x:s x:c=\"2\"/>{{kunde}}"
             + "<y:annotation><x:p>Geheimer Kommentar</x:p></y:annotation></x:p>";
 
-    EditorDocument prefixed = importFile("praefix.odt", odt(body));
-    EditorDocument plainAfterwards = importFile("normal.odt", SERVICE.exportToOdt(document()));
+    ExchangeDocument prefixed = importFile("praefix.odt", odt(body));
+    ExchangeDocument plainAfterwards = importFile("normal.odt", SERVICE.exportToOdt(TEMPLATE));
 
-    assertEquals("<div><p>Hallo  {{kunde}}</p></div>", prefixed.getHtmlContent());
     assertEquals(
-        "<div><p>Rechnung für {{kunde}}</p><p>Summe {{betrag}}</p></div>",
-        plainAfterwards.getHtmlContent());
+        List.of(new DocumentSection(null, List.of("Hallo  {{kunde}}"))), prefixed.sections());
+    assertEquals(TEMPLATE, plainAfterwards.sections());
   }
 
   @Test
@@ -167,8 +203,8 @@ class DocumentConversionServiceTest {
             .getDocumentElement();
 
     assertEquals(
-        "<div><h2>Titel</h2><p>Hallo  {{kunde}}\tEnde</p><p>Punkt</p></div>",
-        DocumentConversionService.odtBodyToHtml(root));
+        List.of(new DocumentSection("Titel", List.of("Hallo  {{kunde}}\tEnde", "Punkt"))),
+        DocumentConversionService.odtBodyToSections(root));
   }
 
   @Test
@@ -240,8 +276,8 @@ class DocumentConversionServiceTest {
             + "<text:p>Rechnung<text:change text:change-id=\"ct1\"/> für {{kunde}}</text:p>";
 
     assertEquals(
-        "<div><p>Rechnung für {{kunde}}</p></div>",
-        importFile("aenderungen.odt", odt(body)).getHtmlContent());
+        List.of(new DocumentSection(null, List.of("Rechnung für {{kunde}}"))),
+        importFile("aenderungen.odt", odt(body)).sections());
   }
 
   @Test
@@ -253,8 +289,8 @@ class DocumentConversionServiceTest {
             + "<w:r><w:t>{{kunde}}</w:t></w:r></w:p>";
 
     assertEquals(
-        "<div><p>Rechnung für {{kunde}}</p></div>",
-        importFile("aenderungen.docx", docx(body, false)).getHtmlContent());
+        List.of(new DocumentSection(null, List.of("Rechnung für {{kunde}}"))),
+        importFile("aenderungen.docx", docx(body, false)).sections());
   }
 
   @Test
@@ -262,7 +298,9 @@ class DocumentConversionServiceTest {
     String body =
         "<text:p>" + "<text:span>".repeat(40) + "tief" + "</text:span>".repeat(40) + "</text:p>";
 
-    assertEquals("<div><p>tief</p></div>", importFile("ok.odt", odt(body)).getHtmlContent());
+    assertEquals(
+        List.of(new DocumentSection(null, List.of("tief"))),
+        importFile("ok.odt", odt(body)).sections());
   }
 
   private static Throwable rootCause(Throwable t) {

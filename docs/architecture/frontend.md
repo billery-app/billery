@@ -292,8 +292,7 @@ method (see [`../reference/editor.md`](../reference/editor.md#save--cancel)).
 
 A template is a single `InvoiceTemplateDto` from the API. The fields
 that drive the editor are `blocks` (JSON string), the margins and
-`cssContent`; `htmlContent` is generated on save for the DOCX/ODT round
-trip.
+`cssContent`; `htmlContent` is still generated on save (a legacy column nothing reads).
 
 Each stored block is:
 
@@ -315,38 +314,23 @@ operations (create, move, duplicate, layout rows). The editor state is
 Drag-and-drop uses native HTML5 events in `TemplateEditor.vue` and
 `BlockOutline.vue`; the `vuedraggable` dependency is listed but unused.
 
-### The two variable registries
+### Variables
 
-This is the part most likely to confuse new contributors. **There are two
-separate variable systems**, and they exist for historical reasons (the
-project used to ship a free-form HTML template editor; the block-based
-editor was added on top and now co-exists with it).
+There is one variable registry, `utils/variableRegistry.js` (lowercase German names:
+`{{firma}}`, `{{kunde}}`, `{{rechnungsnummer}}`, `{{netto}}`, `{{iban}}` …), used by the editor,
+its preview and, on the server side through the same names, the PDF. The block renderer is
+`BLOCK_TYPES[i].render(data, config, ctx)` in `blockRegistry.js`, called through
+`utils/renderBlockPreview.js`. The former second registry (`templateVariables.js` with
+uppercase `{{OWNER_*}}` names for the old HTML import) was removed together with its endpoints.
 
-| File | Variable style | Used by |
-|------|----------------|---------|
-| `utils/variableRegistry.js` | lowercase: `{{firma}}`, `{{kunde}}`, `{{rechnungsnummer}}`, `{{netto}}`, `{{iban}}` | Block-based editor and its render path. |
-| `utils/templateVariables.js` | uppercase, prefixed: `{{OWNER_COMPANY}}`, `{{CUSTOMER_FIRST_NAME}}`, `{{INVOICE_NUMBER}}` | Legacy HTML template path (DOCX/ODT import, `DocumentController`'s `/variables/list` and `/variables/validate` endpoints, `DocumentConversionService`). |
+### DOCX / ODT exchange
 
-Both registries are static JS arrays of `{ name, label, type, category }`
-records. The block system uses `getPickerGroups()`, `getChipLabel()`
-and `isKnownVariable()` from `variableRegistry.js`; the legacy system
-uses `VARIABLE_CATEGORIES` / `SPECIAL_VARIABLES` from
-`templateVariables.js`.
-
-The renderers in the two paths know nothing about each other:
-
-- The block renderer is `BLOCK_TYPES[i].render(data, config, ctx)` in
-  `blockRegistry.js`, called through `utils/renderBlockPreview.js`,
-  returning an HTML string that the editor's `v-html` puts in the
-  preview pane.
-- The legacy renderer is the block of HTML stored in
-  `invoice_template.html_content`, with `{{OWNER_*}}` placeholders
-  substituted by the backend (`DocumentController`'s conversion path).
-
-A new block on the block side can be added without touching the legacy
-side, and vice versa. `TemplateBasedPdfGenerator` reads `blocks`
-rather than `html_content`; only the import / export endpoints still
-depend on the legacy path.
+`utils/documentExchange.js` maps between a template's blocks and the sections of an exchanged
+file (`templateToSections`, `applySections`); `services/documentService.js` calls
+`POST /api/documents/import` / `export`. Export: the "DOCX" / "ODT" buttons of a template card
+(`TemplatesView`). Import: "Aus Datei übernehmen …" in `TemplateStartModal`, which applies the
+file to the chosen style and opens the editor with the result; nothing is stored before the user
+saves. Format and rules: [`document-pipeline.md`](./document-pipeline.md#document-conversion-docx--odt).
 
 ### Block configuration contract
 

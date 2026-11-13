@@ -11,30 +11,19 @@
 > [`document-pipeline.md`](./document-pipeline.md). For "how do I add
 > a block" see [`../guides/extending.md`](../guides/extending.md).
 
-## Two template systems (and why)
+## One template system
 
-The project has two parallel template representations. They exist for
-historical reasons and the plan is to converge on the block-based
-representation, but right now they are both load-bearing.
+A template is its **blocks** (`invoice_template.blocks`, JSON): the editor (`TemplateEditor.vue`),
+the preview and the PDF (`TemplateBasedPdfGenerator`) all work from them, with the lowercase
+German variables of `utils/variableRegistry.js`. **The PDF renderer does not fall back to HTML**:
+`TemplateBasedPdfGenerator.getTemplateForDocumentType` looks for a template with valid blocks and
+throws `IllegalStateException` if there is none; a template row without blocks (stored by the
+former DOCX/ODT import) gets the default layout from `TemplateBlocksBackfill` at the next startup.
 
-| System | Where it lives | Variable syntax | Used by |
-|--------|----------------|-----------------|---------|
-| **Block-based** (current) | `invoice_template.blocks` (JSON) | `{{firma}}`, `{{kunde}}`, `{{rechnungsnummer}}`, `{{netto}}`, `{{iban}}` | `TemplateEditor.vue` (frontend), `TemplateBasedPdfGenerator` (backend). The default for every template. |
-| **HTML-template** (legacy) | `invoice_template.html_content` + `css_content` | **Lowercase**: `{{firma}}`, `{{kunde}}`, `{{rechnungsnummer}}`, `{{positionen}}`, `{{netto}}`, etc. The hard-coded `getAvailableVariables` list in `DocumentController` exposes these under uppercase English aliases (`OWNER_COMPANY`, `CUSTOMER_FIRST_NAME`, `INVOICE_NUMBER`, `NET_AMOUNT`, …) for the DOCX/ODT import picker. | `DocumentController` import / export (DOCX, ODT), `DocumentConversionService`. |
-
-The block system is the **authoritative** source for the editor and for
-the invoice PDF pipeline. The HTML system is the **authoritative** source
-for the import / export endpoints and for users who hand-edit a
-template's HTML directly.
-
-When both are present for the same template, the block JSON wins at
-render time. **`TemplateBasedPdfGenerator.getTemplateForDocumentType`
-does *not* fall back to the HTML path** — it walks the templates
-looking for one with valid blocks and throws `IllegalStateException`
-if none is found (`TemplateBasedPdfGenerator.java:86-106`). There is no
-HTML fallback: a template without blocks (an imported DOCX/ODT) cannot
-render until `TemplateBlocksBackfill` has given it the default layout
-at the next startup.
+The older HTML representation (`html_content`, `css_content`) is gone as a path: `html_content`
+is still written by the editor and read by nothing, `css_content` is the template's own CSS of
+the block path. The DOCX/ODT exchange works from the blocks too
+([`document-pipeline.md`](./document-pipeline.md#document-conversion-docx--odt)).
 
 ## Block-based system: end to end
 
@@ -80,8 +69,8 @@ understands.
    is missing or a block exceeds its limit.
 
 The block JSON is the editor's source of truth. `css_content` is edited
-under "Für Fortgeschrittene: eigenes CSS"; `html_content` is generated
-from the blocks (placeholders kept) for the DOCX/ODT round trip.
+under "Für Fortgeschrittene: eigenes CSS"; `html_content` is still generated
+from the blocks (placeholders kept) but read by nothing.
 
 ### Block model and registry (frontend)
 
@@ -184,16 +173,6 @@ The editor's sample data (`SAMPLE_DATA`) only feeds the preview.
   labels and titles are escaped too, colors must be hex colors and font
   names plain names.
 
-The legacy HTML (`html_content`) uses **lowercase**
-`{{variable}}` names (`{{firma}}`, `{{kunde}}`, `{{positionen}}`,
-`{{netto}}`, etc.). The uppercase
-English aliases (`OWNER_COMPANY`, `CUSTOMER_FIRST_NAME`,
-`INVOICE_NUMBER`, `NET_AMOUNT`, …) appear only in the hard-coded
-`DocumentController.getAvailableVariables` list, which is the picker
-shown during DOCX/ODT import. The two registries are not bridged at
-runtime — the uppercase names are a legacy naming surface for the
-import flow.
-
 ## Where the editor meets the renderer
 
 | Concern | Frontend | Backend |
@@ -212,9 +191,6 @@ import flow.
   Courier); other fonts print in the font of their generic family.
 - No repeating page header / footer and no fixed DIN 5008 address
   window: blocks flow from top to bottom.
-- The two variable registries (block path and DOCX/ODT import) use
-  different naming conventions and there is no migration path between
-  them. New work should use the block system.
 
 **Next:** [`document-pipeline.md`](./document-pipeline.md) — the PDF
 generation, XRechnung output, and the mail subsystem.

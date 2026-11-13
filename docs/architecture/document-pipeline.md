@@ -45,15 +45,15 @@ flowchart LR
     XRG -- "XML string" --> IC
     IC -- "application/xml" --> UI
 
-    UI -- "POST /api/documents/import" --> DC
+    UI -- "POST /api/documents/import (file)" --> DC
     DC --> DCS
-    DCS -- "HTML" --> DC
-    DC -- "JDBC save" --> DB
+    DCS -- "sections" --> DC
+    DC -- "JSON sections (nothing stored)" --> UI
 
-    UI -- "POST /api/documents/export/{id}" --> DC
+    UI -- "POST /api/documents/export (sections)" --> DC
     DC --> DCS
     DCS -- "DOCX/ODT bytes" --> DC
-    DC -- "binary stream" --> UI
+    DC -- "download" --> UI
 
     UI -. "POST /api/invoices/{id}/mail<br/>(endpoint not yet wired)" .-> IC
     IC -. SM
@@ -280,64 +280,74 @@ generators and into `ZugferdTest.FIELDS`.
 
 ## Document conversion (DOCX / ODT)
 
-`service/DocumentConversionService.java` handles DOCX and ODT import
-and export. The flow:
+Templates can be exchanged with word processors: exported as DOCX or ODT, edited there, and read
+back into a new template. The exchange format is a list of **sections**, each a heading with
+plain-text paragraphs below it:
 
-- **Import** (`POST /api/documents/import` in `DocumentController`):
-  the user uploads a DOCX or ODT file, the service converts it to
-  HTML, and a new `InvoiceTemplate` row is created carrying the HTML
-  in `html_content` and an empty `blocks` column (which
-  `TemplateBlocksBackfill` fills with the default layout on the next startup).
-- **Export** (`POST /api/documents/export/{templateId}` and
-  `/api/documents/export/new`): the service takes the template's
-  HTML and serialises it back to DOCX or ODT. The block JSON is
-  ignored — only the HTML path is used here.
+```
+Kopfzeile
+Firmenname: {{firma}}
+Slogan: Gut & günstig
+Hinweise
+Text: Zahlbar innerhalb von 14 Tagen.
+Bitte {{rechnungsnummer}} angeben.
+Fußzeile
+Text: Vielen Dank für Ihr Vertrauen!
+```
 
-The DOCX / ODT code lives in `DocumentConversionService` (POI for the
-DOCX import, docx4j for the DOCX export, odfdom for ODT). What it keeps:
+One section per block with text (its display name, "Adresse – Absender", a second block of the
+same kind "Hinweise (2)"); one line "Label: Wert" per text field, further lines of a multi-line
+field on lines of their own; `{{variables}}` as they are. Line items and totals have no section:
+their content comes from the document.
 
-- **Text, paragraphs and `{{variables}}`.** Export writes one paragraph
-  per HTML block (`p`, `div`, `h1`–`h6`, `li`, `br`); the variables stay
-  where they are in the text (they used to be appended once more, so every
-  round trip duplicated them). Import turns paragraphs into `<p>`, ODT
-  headings into `<h1>`–`<h6>` and empty paragraphs into `<br>`, escapes the
-  text and resolves ODT spaces (`text:s`), tabs and line breaks. Lists,
-  tables and sections are read paragraph by paragraph; ODT comments,
-  footnotes and the change-tracking store (`text:tracked-changes`, which
-  holds *deleted* paragraphs) are left out, so deleted text never reaches a
-  template. The DOCX import drops deleted runs (`w:del` / `w:delText`) and
-  keeps inserted ones (`w:ins`); a test covers both formats.
-- **Not kept:** fonts, bold/italic, list bullets and table structure — the
-  HTML is a round-trip vehicle, not rendered (see the PDF pipeline).
-- **ODT import reads paragraph by paragraph** on purpose: odfdom 0.13
-  returns an empty `getTextContent()` for the `office:text` root, which made
-  every ODT import an empty template. **Elements are matched by
-  namespace URI and local name, never by prefix:** prefixes are free in XML,
-  and odfdom keeps the first prefix it saw for a namespace for the whole
-  process, so after one upload with `x:` instead of `text:` every later ODT
-  arrives as `x:p` too.
-- **Nesting depth is checked before parsing.** odfdom and POI both recurse
-  over the XML nesting, so a deeply nested upload overflowed the stack inside
-  the library (`StackOverflowError`, 500). `checkXmlDepth` streams every
-  `.xml` / `.rels` part with StAX (DTDs and external entities off) and refuses
-  more than 200 levels with the generic 400.
-- **An import without any text** answers 400 with "Das Dokument enthält
-  keinen Text; es wurde keine Vorlage angelegt." (`EmptyDocumentException`)
-  instead of saving an empty template.
+**Who does what.** The backend only converts files and sections; the mapping between sections and
+blocks lives in the SPA, which knows the fields (`utils/documentExchange.js` with the labels of
+`blockRegistry.js`):
 
-The SPA does not offer the import or export; they are reachable through the
-API only.
+- **Export** — Templates view, buttons "DOCX" / "ODT" on each template:
+  `templateToSections(blocks)` → `POST /api/documents/export` `{name, format, sections}` →
+  `DocumentController` → `DocumentConversionService.exportToDocx` (docx4j, headings in Word's
+  style "Heading 1") / `exportToOdt` (odfdom, `text:h` of outline level 1) → download. The file
+  name comes from the template name with path separators, quotes and control characters removed
+  (`ContentDisposition`, UTF-8). Limits: 200 sections, 2 000 paragraphs, 10 000 characters per
+  text (`checkExportLimits`, 400 with a German message).
+- **Import** — "Neue Vorlage" → "Aus Datei übernehmen …" (`TemplateStartModal`):
+  `POST /api/documents/import` (multipart `file`) → `importDocument` reads the sections and
+  **stores nothing** → `applySections(presetBlocks, sections)` fills the blocks of the chosen
+  style: a heading that names a block (case and a trailing colon ignored) maps its "Label: Wert"
+  lines into that block's fields (a block the preset lacks is added before the footer); every
+  other line, and every section whose heading is no block (an ordinary letter), becomes free text
+  in the notes block, before its `{{notizen}}`. The result opens in the template editor like any
+  new template and is saved through the normal template endpoints, so validation, the block
+  model and the PDF apply to it unchanged.
 
-### Variable list and validation
+What `DocumentConversionService` reads (POI for DOCX, odfdom for ODT):
 
-`DocumentController.getAvailableVariables` returns the list of
-uppercase variables (the legacy set), and
-`DocumentController.validateVariables` checks a chunk of HTML for
-malformed `{{...}}` patterns (unclosed, empty) and returns the
-extracted variables. These endpoints are about the **legacy** HTML
-template system. The block-based editor uses
-`utils/variableRegistry.js` client-side and doesn't need a server-side
-variable list.
+- **Headings** start a section: DOCX paragraphs whose style id or style name is a heading or
+  title (`Heading1`, Word's German id `berschrift1`, `Title`), ODT `text:h`. Text before the first
+  heading is a section without heading. Lists, tables (cell by cell, in reading order) and
+  sections are read paragraph by paragraph; empty paragraphs are dropped; a line break inside a
+  paragraph splits it. ODT spaces (`text:s`) and tabs are resolved.
+- **Left out:** ODT comments, footnotes and the change-tracking store (`text:tracked-changes`,
+  which holds *deleted* paragraphs), so deleted text never reaches a template; the DOCX import
+  drops deleted runs (`w:del` / `w:delText`) and keeps inserted ones (`w:ins`). Fonts, bold and
+  italic, list bullets and table structure are not carried.
+- **ODT is read paragraph by paragraph** on purpose: odfdom 0.13 returns an empty
+  `getTextContent()` for the `office:text` root. **Elements are matched by namespace URI and
+  local name, never by prefix:** prefixes are free in XML, and odfdom keeps the first prefix it
+  saw for a namespace for the whole process.
+- **Nesting depth is checked before parsing.** odfdom and POI both recurse over the XML nesting,
+  so a deeply nested upload overflowed the stack inside the library. `checkXmlDepth` streams every
+  `.xml` / `.rels` part with StAX (DTDs and external entities off) and refuses more than
+  `MAX_ODT_DEPTH` (100) levels; the archive limits come from `FileSecurityService`.
+- **A file without any text** answers 400 with "Das Dokument enthält keinen Text; es wurde keine
+  Vorlage angelegt." (`EmptyDocumentException`); any other unreadable file 400 with a German
+  message naming the accepted formats.
+
+The legacy column `html_content` is not part of the exchange any more (it is still written by the
+editor and read by nothing). There is one variable set, `utils/variableRegistry.js`: the former
+uppercase aliases (`OWNER_COMPANY`, …) and their endpoints `/api/documents/variables/*` are gone;
+unknown variables in an imported file show up in the editor's validation.
 
 ## Mail subsystem
 

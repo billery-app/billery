@@ -243,11 +243,14 @@ the repo no longer holds a generated SVG for it. See
   payments, cancel), import/export and the SaaS build are not covered in the
   browser.
 - **DOCX / ODT** has unit tests in `service/DocumentConversionServiceTest`
-  (round trip in both formats, a second round trip changes nothing, an ODT
-  with LibreOffice-style markup built in the test, the empty document) and
-  `FileSecurityServiceTest` (archive limits). `DocumentController` itself has no
-  tests (`TemplateBlocksBackfillTest` covers the layout an imported template gets); the ODT fixture is hand-made,
-  not written by LibreOffice.
+  (sections round trip in both formats, Word heading styles and tables,
+  an ODT with LibreOffice-style markup built in the test, change tracking,
+  nesting depth, the empty document, export limits),
+  `api/controller/DocumentControllerTest` (export → import, refusals, file
+  name), `FileSecurityServiceTest` (archive limits) and, for the mapping to
+  blocks, `utils/documentExchange.spec.js`, `TemplateStartModal.spec.js` and
+  `TemplatesView.spec.js`. The fixtures are hand-made or written by the app,
+  not by Word or LibreOffice.
 - **Mail** is a preparation for a future feature and has no tests yet.
 - **Desktop shell** (`app-desktop/src/lib.rs`) has no automated test; CI
   does not even compile it. Run `cargo check` in `app-desktop/` after

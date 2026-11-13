@@ -831,8 +831,9 @@ export default {
     // --- save / close ----------------------------------------------------------
 
     /**
-     * HTML of the template with placeholders kept, stored in `htmlContent`
-     * for the DOCX/ODT export round trip (the PDF renderer does not use it).
+     * HTML of the template with placeholders kept, stored in the legacy column
+     * `htmlContent`. Nothing reads it: the PDF renders the blocks, and the
+     * DOCX/ODT exchange (utils/documentExchange.js) works from the blocks too.
      * @returns {string}
      */
     generateRenderedHtml() {

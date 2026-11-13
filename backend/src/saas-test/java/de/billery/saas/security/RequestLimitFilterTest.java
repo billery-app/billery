@@ -123,7 +123,7 @@ class RequestLimitFilterTest {
           "/api/invoices/12/xrechnung",
           "/api/templates/preview",
           "/api/export/gobd",
-          "/api/documents/export/3",
+          "/api/documents/export",
           "/api/documents/import"
         }) {
       assertTrue(RequestLimitFilter.HEAVY.matcher(path).matches(), path);

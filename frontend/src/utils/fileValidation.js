@@ -1,115 +1,55 @@
 /**
- * File validation utilities for document import/export operations
+ * Checks for the template import (DOCX / ODT) and the download of exported files.
  */
 
-export const SUPPORTED_IMPORT_TYPES = {
-  DOCX: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  ODT: 'application/vnd.oasis.opendocument.text'
-}
+/** The file types the template import reads, by extension (phones often send no MIME type). */
+export const IMPORT_EXTENSIONS = ['docx', 'odt']
 
-export const SUPPORTED_EXPORT_FORMATS = ['docx', 'odt']
-
-export const FILE_SIZE_LIMITS = {
-  IMPORT: 10 * 1024 * 1024, // 10MB
-  EXPORT: 50 * 1024 * 1024  // 50MB (for safety)
-}
+/** The server's upload limit (`spring.servlet.multipart.max-file-size`). */
+export const MAX_IMPORT_BYTES = 2 * 1024 * 1024
 
 /**
- * Validates if a file type is supported for import
- * @param {string} mimeType - The MIME type to check
- * @returns {boolean} - True if supported
- */
-export function isSupportedImportType(mimeType) {
-  return Object.values(SUPPORTED_IMPORT_TYPES).includes(mimeType)
-}
-
-/**
- * Validates if an export format is supported
- * @param {string} format - The format to check (e.g., 'docx', 'odt')
- * @returns {boolean} - True if supported
- */
-export function isSupportedExportFormat(format) {
-  return SUPPORTED_EXPORT_FORMATS.includes(format.toLowerCase())
-}
-
-/**
- * Validates file size against import limits
- * @param {number} sizeInBytes - File size in bytes
- * @param {number} limit - Optional custom limit (defaults to IMPORT limit)
- * @returns {boolean} - True if within limits
- */
-export function isFileSizeValid(sizeInBytes, limit = FILE_SIZE_LIMITS.IMPORT) {
-  return sizeInBytes <= limit
-}
-
-/**
- * Validates a file for import operations
- * @param {File} file - The file object to validate
- * @returns {Object} - Validation result with isValid and error properties
- */
-export function validateImportFile(file) {
-  const errors = []
-
-  // Check file type
-  if (!isSupportedImportType(file.type)) {
-    errors.push('Bitte wählen Sie eine gültige DOCX oder ODT Datei.')
-  }
-
-  // Check file size
-  if (!isFileSizeValid(file.size)) {
-    errors.push(`Die Datei ist zu groß. Maximale Größe: ${formatFileSize(FILE_SIZE_LIMITS.IMPORT)}.`)
-  }
-
-  // Check if file exists
-  if (!file) {
-    errors.push('Bitte wählen Sie eine Datei aus.')
-  }
-
-  return {
-    isValid: errors.length === 0,
-    errors
-  }
-}
-
-/**
- * Formats file size in bytes to human readable format
- * @param {number} bytes - File size in bytes
- * @returns {string} - Formatted file size string
- */
-export function formatFileSize(bytes) {
-  if (bytes === 0) return '0 Bytes'
-  
-  const k = 1024
-  const sizes = ['Bytes', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-}
-
-/**
- * Gets file extension from filename
- * @param {string} filename - The filename
- * @returns {string} - The file extension (without dot)
+ * @param {string} filename
+ * @returns {string} the extension in lower case, without dot ('' when there is none)
  */
 export function getFileExtension(filename) {
-  return filename.split('.').pop().toLowerCase()
+  const name = String(filename || '')
+  const dot = name.lastIndexOf('.')
+  return dot > 0 ? name.slice(dot + 1).toLowerCase() : ''
 }
 
 /**
- * Creates a filename with proper extension
- * @param {string} baseName - The base filename
- * @param {string} format - The format (e.g., 'docx', 'odt')
- * @returns {string} - Complete filename with extension
+ * Checks a file before it is sent to the import.
+ * @param {File|null|undefined} file
+ * @returns {{isValid: boolean, errors: string[]}}
  */
-export function createFilename(baseName, format) {
-  const cleanName = baseName.replace(/\.[^/.]+$/, '') // Remove existing extension
-  return `${cleanName}.${format.toLowerCase()}`
+export function validateImportFile(file) {
+  if (!file) return { isValid: false, errors: ['Bitte eine Datei auswählen.'] }
+  const errors = []
+  if (!IMPORT_EXTENSIONS.includes(getFileExtension(file.name))) {
+    errors.push('Bitte eine DOCX- oder ODT-Datei wählen.')
+  }
+  if (file.size > MAX_IMPORT_BYTES) {
+    errors.push(`Die Datei ist zu groß (höchstens ${formatFileSize(MAX_IMPORT_BYTES)}).`)
+  }
+  return { isValid: errors.length === 0, errors }
 }
 
 /**
- * Downloads a blob as a file
- * @param {Blob} blob - The blob data to download
- * @param {string} filename - The filename for the download
+ * @param {number} bytes
+ * @returns {string} e.g. "2 MB"
+ */
+export function formatFileSize(bytes) {
+  if (!bytes) return '0 Bytes'
+  const units = ['Bytes', 'KB', 'MB', 'GB']
+  const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1)
+  return `${parseFloat((bytes / Math.pow(1024, i)).toFixed(2))} ${units[i]}`
+}
+
+/**
+ * Saves a blob as a download.
+ * @param {Blob} blob
+ * @param {string} filename
  */
 export function downloadBlob(blob, filename) {
   const url = window.URL.createObjectURL(blob)

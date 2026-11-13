@@ -294,7 +294,7 @@ representation side by side:
 
 | Column | Used by |
 |--------|---------|
-| `html_content` | Legacy HTML template (imported DOCX/ODT or hand-edited). |
+| `html_content` | Legacy HTML of the template, still written by the editor, read by nothing (the PDF and the DOCX/ODT exchange use `blocks`). |
 | `binary_content` (`LONGBLOB`) | Imported binary templates (DOCX, ODT, PDF). |
 | `file_name` | Original filename for binary imports. |
 | `css_content` | Legacy CSS. |
@@ -306,8 +306,8 @@ representation side by side:
 | `created_at`, `updated_at` | `TIMESTAMP`. |
 
 The same template row carries both representations. A row with empty
-`blocks` (the DOCX/ODT import stores only HTML) gets the default layout
-from `TemplateBlocksBackfill` at the next startup.
+`blocks` (stored by the former DOCX/ODT import, which today stores nothing)
+gets the default layout from `TemplateBlocksBackfill` at the next startup.
 
 ## Self-referential and circular FKs
 
