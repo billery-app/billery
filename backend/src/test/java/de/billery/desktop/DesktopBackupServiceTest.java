@@ -137,6 +137,25 @@ class DesktopBackupServiceTest {
   }
 
   @Test
+  void backupsWithinTheSameSecondNeverReplaceOrPruneEachOther() throws Exception {
+    service.updateSettings("", 1, true, null);
+
+    BackupFile last = null;
+    for (int i = 0; i < 4; i++) {
+      BackupFile written = service.backup(BackupNames.MANUAL);
+      assertTrue(
+          Files.exists(locations.defaultBackupDirectory().resolve(written.name())),
+          "the backup just written is kept: " + written.name());
+      if (last != null) {
+        assertTrue(written.createdAt().isAfter(last.createdAt()), "names only grow");
+      }
+      last = written;
+    }
+    assertEquals(
+        List.of(last.name()), service.status().backups().stream().map(BackupFile::name).toList());
+  }
+
+  @Test
   void theBackupOnExitFollowsTheSettingAndSkipsAWaitingRestore() throws Exception {
     service.updateSettings("", 10, false, null);
     service.backupOnExit();

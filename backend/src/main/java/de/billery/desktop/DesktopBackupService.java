@@ -163,15 +163,16 @@ public class DesktopBackupService {
     PendingRestore.deletePartFiles(directory); // left by an interrupted backup
     String password = password();
     boolean encrypted = !password.isEmpty();
-    // The name carries the second; a second backup within the same second gets the next one, so
-    // it never replaces the first.
+    // The name carries the second, and the names must only grow: pruning keeps the newest by the
+    // time in the name. A backup within the same second as (or, after a clock change, before) the
+    // newest one gets the second after it, so it never replaces or sorts below an older backup.
     LocalDateTime time = LocalDateTime.now().withNano(0);
-    Path candidate = directory.resolve(BackupNames.name(time, reason, encrypted));
-    while (Files.exists(candidate)) {
-      time = time.plusSeconds(1);
-      candidate = directory.resolve(BackupNames.name(time, reason, encrypted));
+    for (BackupFile existing : list()) {
+      if (!time.isAfter(existing.createdAt())) {
+        time = existing.createdAt().plusSeconds(1);
+      }
     }
-    Path target = candidate;
+    Path target = directory.resolve(BackupNames.name(time, reason, encrypted));
     Path work = Files.createTempDirectory(locations.appData(), "backup-");
     try {
       Path h2Copy = work.resolve("h2.zip");
@@ -189,9 +190,10 @@ public class DesktopBackupService {
     } finally {
       PendingRestore.deleteTree(work);
     }
-    prune(directory);
+    BackupFile written = BackupFile.fromFile(target);
+    prune(directory, written.name());
     LOGGER.info(() -> "Backup written: " + target);
-    return BackupFile.fromFile(target);
+    return written;
   }
 
   /**
@@ -341,11 +343,14 @@ public class DesktopBackupService {
    * safety copies made before a restore: they hold what was entered after the restored backup and
    * fall under the retention duty (GoBD), so only the user deletes them.
    */
-  private void prune(Path directory) throws IOException {
+  private void prune(Path directory, String justWritten) throws IOException {
     List<BackupFile> backups =
-        list().stream().filter(b -> !BackupNames.BEFORE_RESTORE.equals(b.reason())).toList();
-    int keep = keep();
-    for (BackupFile old : backups.subList(Math.min(keep, backups.size()), backups.size())) {
+        list().stream()
+            .filter(b -> !BackupNames.BEFORE_RESTORE.equals(b.reason()))
+            .filter(b -> !b.name().equals(justWritten))
+            .toList();
+    int others = keep() - 1; // the backup just written is one of those kept
+    for (BackupFile old : backups.subList(Math.min(others, backups.size()), backups.size())) {
       Files.deleteIfExists(directory.resolve(old.name()));
     }
   }
