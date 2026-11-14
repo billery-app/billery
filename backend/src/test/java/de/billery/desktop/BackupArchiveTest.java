@@ -42,6 +42,23 @@ class BackupArchiveTest {
   }
 
   @Test
+  void aSecondDatabaseOrDescriptionIsRefused() throws Exception {
+    // The check would read the first database, the restore would write the second.
+    for (String twice : new String[] {"database.mv.db", "backup.json", "files/logo.png"}) {
+      // ZipOutputStream refuses duplicates; write a look-alike name, then patch the raw bytes.
+      String lookAlike = twice.substring(0, twice.length() - 1) + "Q";
+      Path zip = zip("twice.zip", "backup.json", "database.mv.db", "files/logo.png", lookAlike);
+      byte[] raw = Files.readAllBytes(zip);
+      String patched = new String(raw, StandardCharsets.ISO_8859_1).replace(lookAlike, twice);
+      Files.write(zip, patched.getBytes(StandardCharsets.ISO_8859_1));
+      IOException e = assertThrows(IOException.class, () -> BackupArchive.validate(zip), twice);
+      assertTrue(e.getMessage().contains("Duplicate"), e.getMessage());
+      assertThrows(
+          IOException.class, () -> BackupArchive.extract(zip, dir.resolve("w-" + twice.length())));
+    }
+  }
+
+  @Test
   void aZipWithoutDatabaseOrDescriptionIsNoBackup() throws Exception {
     assertThrows(IOException.class, () -> BackupArchive.validate(zip("a.zip", "backup.json")));
     assertThrows(IOException.class, () -> BackupArchive.validate(zip("b.zip", "database.mv.db")));

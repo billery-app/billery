@@ -288,9 +288,9 @@ public final class BackupArchive {
 
   /**
    * Checks that a plain ZIP is a backup: it has the database and the description, every uploaded
-   * file is a plain name (no path that could leave the upload folder), and it stays within {@link
-   * #MAX_ENTRIES} entries and {@link #MAX_TOTAL_BYTES} bytes once unpacked (counted while reading,
-   * not taken from the headers).
+   * file is a plain name (no path that could leave the upload folder), every name occurs once, and
+   * it stays within {@link #MAX_ENTRIES} entries and {@link #MAX_TOTAL_BYTES} bytes once unpacked
+   * (counted while reading, not taken from the headers).
    *
    * @param plainZip the ZIP
    * @throws IOException if it is no backup, exceeds a limit or cannot be read
@@ -374,6 +374,7 @@ public final class BackupArchive {
     boolean meta = false;
     int entries = 0;
     long total = 0;
+    java.util.Set<String> seen = new java.util.HashSet<>();
     byte[] buffer = new byte[64 * 1024];
     try (ZipInputStream zip = new ZipInputStream(Files.newInputStream(plainZip))) {
       for (ZipEntry entry = zip.getNextEntry(); entry != null; entry = zip.getNextEntry()) {
@@ -382,6 +383,10 @@ public final class BackupArchive {
           throw new IOException("Backup has too many entries");
         }
         String name = entry.getName();
+        // Each name once: with two databases the check would read one and the restore the other.
+        if (!seen.add(name)) {
+          throw new IOException("Duplicate entry in backup: " + name);
+        }
         database |= DATABASE.equals(name);
         meta |= META.equals(name);
         Optional<Path> out = destination(target, name);
