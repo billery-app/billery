@@ -185,6 +185,39 @@ class DesktopBackupServiceTest {
   }
 
   @Test
+  void aPreparedBackupWithAFreshTimeCannotHideWhatTheRestoreLoses() throws Exception {
+    try (var conn = Database.getConnection();
+        var stmt = conn.createStatement()) {
+      stmt.execute("SET REFERENTIAL_INTEGRITY FALSE");
+      stmt.execute(
+          "INSERT INTO document_history (invoice_id, action, notes) VALUES (1, 'ISSUED', 'x')");
+      stmt.execute("SET REFERENTIAL_INTEGRITY TRUE");
+    }
+    // A plain ZIP in the backup format whose description claims a snapshot of right now.
+    java.time.LocalDateTime now = java.time.LocalDateTime.now().withNano(0);
+    String name = BackupNames.name(now, BackupNames.MANUAL, false);
+    Path folder = Files.createDirectories(locations.defaultBackupDirectory());
+    try (var zip = new java.util.zip.ZipOutputStream(Files.newOutputStream(folder.resolve(name)))) {
+      zip.putNextEntry(new java.util.zip.ZipEntry(BackupArchive.META));
+      zip.write(
+          BackupNames.meta(BackupNames.MANUAL, now, null)
+              .getBytes(java.nio.charset.StandardCharsets.UTF_8));
+      zip.closeEntry();
+      zip.putNextEntry(new java.util.zip.ZipEntry(BackupArchive.DATABASE));
+      zip.write(new byte[] {1, 2, 3});
+      zip.closeEntry();
+    }
+
+    DesktopBackupService.RestoreLossException refused =
+        assertThrows(
+            DesktopBackupService.RestoreLossException.class,
+            () -> service.stageRestore(name, null, false));
+    assertEquals(1, refused.loss().issued(), "unsigned: everything counts");
+    assertFalse(
+        Files.exists(locations.pendingRestore()), "staged only for the count, then removed");
+  }
+
+  @Test
   void aFileWithAnImpossibleDateInItsNameIsIgnored() throws Exception {
     Path folder = Files.createDirectories(locations.defaultBackupDirectory());
     Files.writeString(folder.resolve("billery-2026-99-99_99-99-99-manuell.zip"), "x");

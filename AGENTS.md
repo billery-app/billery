@@ -88,8 +88,10 @@ safety copy of the state before (encrypted with the stored public key), swap, ap
 `wiederherstellungen.log` (app data and backup folder, with the numbers recounted at that moment);
 the H2 migrations then upgrade an older backup; `cleanLeftovers` removes interrupted work at every
 start. While a restore waits, `RestorePendingFilter` refuses every changing API request (409).
-What a restore loses is counted from the snapshot time in `backup.json`
-(`BackupNames.trustedSnapshot`). The backup endpoints need the window's per-launch
+What a restore loses is counted from the snapshot time in `backup.json`, trusted only when
+signed with this installation's key (`backup_manifest_key`, HMAC) and plausible
+(`BackupNames.trustedSnapshot`); otherwise everything counts. The restore is staged before the
+count, so the write lock already holds while counting. The backup endpoints need the window's per-launch
 `DESKTOP_UI_TOKEN` (`X-Desktop-Token`; the shell opens the window at `/#desktop-token=…`, the SPA
 keeps it in `sessionStorage`, `services/desktopToken.js`). The settings live in `user_settings`
 (`backup_*`); the SPA shows the section when `GET /api/config`

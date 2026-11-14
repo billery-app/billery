@@ -168,8 +168,10 @@ The desktop app keeps everything in its app-data folder (`database.mv.db`,
   migrations of that start. "Wiederherstellung abbrechen" withdraws it before the restart.
   **Until the restart nothing is saved** (`RestorePendingFilter`: changing API requests answer 409),
   and the restart counts again what the restore takes out and logs those numbers next to the
-  confirmed ones. A snapshot time after the backup's name or after now is not trusted (everything
-  counts).
+  confirmed ones. The snapshot time in `backup.json` is signed with the installation's key
+  (HMAC); an unsigned or foreign one, or one after the backup's name or after now, is not trusted
+  and everything counts (a backup from a lost computer restored into a new, empty installation
+  has nothing to lose anyway).
 - **Access:** the backup endpoints need the window's per-launch token (`X-Desktop-Token`, from the
   Tauri shell via the URL fragment); other programs on the computer cannot use them. The rest of
   the desktop API has no authentication (it binds to 127.0.0.1 only).

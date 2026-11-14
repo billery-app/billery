@@ -13,6 +13,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -49,6 +50,9 @@ public class DesktopBackupService {
   static final String KEY_ON_EXIT = "backup_on_exit";
   static final String KEY_PUBLIC_KEY = "backup_public_key";
   static final String KEY_LOCKED_KEY = "backup_locked_private_key";
+
+  /** The installation's key that signs backup.json (HMAC), so only its own snapshot times count. */
+  static final String KEY_MANIFEST = "backup_manifest_key";
 
   /** Backups kept unless the user chose another number. */
   static final int DEFAULT_KEEP = 10;
@@ -182,6 +186,7 @@ public class DesktopBackupService {
       }
     }
     Path target = directory.resolve(BackupNames.name(time, reason, encrypted));
+    manifestKey(); // created before the copy, so the backup's database holds it too
     Path work = Files.createTempDirectory(locations.appData(), "backup-");
     try {
       Path h2Copy = work.resolve("h2.zip");
@@ -297,11 +302,17 @@ public class DesktopBackupService {
       } catch (IOException e) {
         throw new IllegalArgumentException("Die Datei ist keine gültige Billery-Sicherung.", e);
       }
+      // Staged first: from here on RestorePendingFilter refuses every write, so the count below
+      // covers everything that can still change (a request already past the filter may still
+      // commit within milliseconds; the restart counts again and logs the actual numbers).
       LocalDateTime snapshotAt =
           BackupNames.trustedSnapshot(
-              BackupArchive.readMeta(partial), fileName, LocalDateTime.now());
+              BackupArchive.readMeta(partial), fileName, LocalDateTime.now(), manifestKey());
+      Files.move(
+          partial, staged, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
       RestoreLoss loss = lossSince(snapshotAt);
       if (loss.any() && !confirmLoss) {
+        Files.deleteIfExists(staged);
         throw new RestoreLossException(loss);
       }
       Properties info = new Properties();
@@ -313,8 +324,6 @@ public class DesktopBackupService {
           Files.newBufferedWriter(locations.pendingRestoreInfo(), StandardCharsets.UTF_8)) {
         info.store(writer, "Restore chosen at " + LocalDateTime.now().withNano(0));
       }
-      Files.move(
-          partial, staged, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
     } finally {
       Files.deleteIfExists(partial);
     }
@@ -371,7 +380,8 @@ public class DesktopBackupService {
     try (ZipOutputStream zip = new ZipOutputStream(Files.newOutputStream(target));
         ZipFile h2 = new ZipFile(h2Copy.toFile())) {
       zip.putNextEntry(new ZipEntry(BackupArchive.META));
-      zip.write(BackupNames.meta(reason, snapshotAt).getBytes(StandardCharsets.UTF_8));
+      zip.write(
+          BackupNames.meta(reason, snapshotAt, manifestKey()).getBytes(StandardCharsets.UTF_8));
       zip.closeEntry();
       ZipEntry database =
           h2.stream()
@@ -409,6 +419,18 @@ public class DesktopBackupService {
 
   private boolean onExit() {
     return Boolean.parseBoolean(settings.getSetting(KEY_ON_EXIT, "true"));
+  }
+
+  /** The installation's manifest key; created on first use. */
+  private byte[] manifestKey() {
+    String stored = settings.getSetting(KEY_MANIFEST, "");
+    if (stored == null || stored.isBlank()) {
+      byte[] key = new byte[32];
+      new java.security.SecureRandom().nextBytes(key);
+      stored = Base64.getEncoder().encodeToString(key);
+      settings.updateSetting(KEY_MANIFEST, stored);
+    }
+    return Base64.getDecoder().decode(stored);
   }
 
   /** The keys of encrypted backups, if encryption is switched on. */

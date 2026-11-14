@@ -111,22 +111,35 @@ class BackupArchiveTest {
   }
 
   @Test
-  void theSnapshotTimeIsOnlyTrustedWhenItIsPlausible() {
+  void theSnapshotTimeIsOnlyTrustedWhenThisInstallationSignedItAndItIsPlausible() {
     java.time.LocalDateTime now = java.time.LocalDateTime.of(2026, 11, 14, 12, 0);
     String name = BackupNames.name(now.minusHours(2), BackupNames.MANUAL, false);
     java.time.LocalDateTime snapshot = now.minusHours(2).plusNanos(5_000_000);
+    byte[] key =
+        "0123456789abcdef0123456789abcdef".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+    byte[] otherKey =
+        "fedcba9876543210fedcba9876543210".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
 
     assertEquals(
         snapshot,
-        BackupNames.trustedSnapshot(BackupNames.meta(BackupNames.MANUAL, snapshot), name, now));
+        BackupNames.trustedSnapshot(
+            BackupNames.meta(BackupNames.MANUAL, snapshot, key), name, now, key));
     for (String meta :
         new String[] {
-          BackupNames.meta(BackupNames.MANUAL, now.plusDays(1)), // in the future
-          BackupNames.meta(BackupNames.MANUAL, now.minusHours(1)), // long after the name
-          "{\"format\":1}", // none
-          "{\"snapshotAt\":\"gestern\"}" // unreadable
+          BackupNames.meta(BackupNames.MANUAL, snapshot, null), // not signed (prepared)
+          BackupNames.meta(BackupNames.MANUAL, snapshot, otherKey), // another installation
+          BackupNames.meta(BackupNames.MANUAL, snapshot, key)
+              .replace("manuell", "beenden"), // changed
+          BackupNames.meta(BackupNames.MANUAL, now.plusDays(1), key), // in the future
+          BackupNames.meta(BackupNames.MANUAL, now.minusHours(1), key), // long after the name
+          "{\"format\":1}" // none
         }) {
-      assertEquals(BackupNames.EVERYTHING, BackupNames.trustedSnapshot(meta, name, now), meta);
+      assertEquals(BackupNames.EVERYTHING, BackupNames.trustedSnapshot(meta, name, now, key), meta);
     }
+    assertEquals(
+        BackupNames.EVERYTHING,
+        BackupNames.trustedSnapshot(
+            BackupNames.meta(BackupNames.MANUAL, snapshot, key), name, now, null),
+        "an installation without a key trusts nothing");
   }
 }

@@ -125,11 +125,13 @@ public final class PendingRestore {
     // were refused since it was chosen, so this is what the user confirmed, unless that refusal
     // was bypassed); written to the log next to the confirmed numbers.
     String backupName = readInfo(locations).getProperty("backup", "");
+    Map<String, String> settings = currentSettings();
+    byte[] manifestKey = manifestKey(settings);
     String actual =
         countSince(
             BackupNames.trustedSnapshot(
-                BackupArchive.readMeta(staged), backupName, LocalDateTime.now()));
-    Path safetyCopy = saveCurrentState(locations, currentSettings());
+                BackupArchive.readMeta(staged), backupName, LocalDateTime.now(), manifestKey));
+    Path safetyCopy = saveCurrentState(locations, settings);
     LOGGER.info(() -> "Restoring a backup; the state before is saved in " + safetyCopy);
 
     Files.deleteIfExists(locations.databaseFile());
@@ -167,10 +169,11 @@ public final class PendingRestore {
         PreparedStatement query =
             conn.prepareStatement(
                 "SELECT setting_key, setting_value FROM user_settings"
-                    + " WHERE setting_key IN (?, ?, ?)")) {
+                    + " WHERE setting_key IN (?, ?, ?, ?)")) {
       query.setString(1, DesktopBackupService.KEY_PUBLIC_KEY);
       query.setString(2, DesktopBackupService.KEY_LOCKED_KEY);
       query.setString(3, DesktopBackupService.KEY_DIRECTORY);
+      query.setString(4, DesktopBackupService.KEY_MANIFEST);
       try (ResultSet rows = query.executeQuery()) {
         while (rows.next()) {
           settings.put(rows.getString(1), rows.getString(2));
@@ -217,7 +220,7 @@ public final class PendingRestore {
       try (ZipOutputStream zip = new ZipOutputStream(Files.newOutputStream(plain))) {
         zip.putNextEntry(new ZipEntry(BackupArchive.META));
         zip.write(
-            BackupNames.meta(BackupNames.BEFORE_RESTORE, LocalDateTime.now())
+            BackupNames.meta(BackupNames.BEFORE_RESTORE, LocalDateTime.now(), manifestKey(settings))
                 .getBytes(StandardCharsets.UTF_8));
         zip.closeEntry();
         if (Files.exists(locations.databaseFile())) {
@@ -244,6 +247,18 @@ public final class PendingRestore {
       Files.deleteIfExists(plain);
     }
     return target;
+  }
+
+  /** The installation's manifest key from the settings, empty if it has none. */
+  static byte[] manifestKey(Map<String, String> settings) {
+    String stored = settings.get(DesktopBackupService.KEY_MANIFEST);
+    try {
+      return stored == null || stored.isBlank()
+          ? new byte[0]
+          : java.util.Base64.getDecoder().decode(stored);
+    } catch (IllegalArgumentException e) {
+      return new byte[0];
+    }
   }
 
   /** What the user confirmed when choosing the restore. */
