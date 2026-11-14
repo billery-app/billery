@@ -111,7 +111,7 @@ class BackupArchiveTest {
   }
 
   @Test
-  void theSnapshotTimeIsOnlyTrustedWhenThisInstallationSignedItAndItIsPlausible() {
+  void theSnapshotTimeIsOnlyTrustedWhenThisInstallationSignedItForThisDatabase() {
     java.time.LocalDateTime now = java.time.LocalDateTime.of(2026, 11, 14, 12, 0);
     String name = BackupNames.name(now.minusHours(2), BackupNames.MANUAL, false);
     java.time.LocalDateTime snapshot = now.minusHours(2).plusNanos(5_000_000);
@@ -119,27 +119,30 @@ class BackupArchiveTest {
         "0123456789abcdef0123456789abcdef".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
     byte[] otherKey =
         "fedcba9876543210fedcba9876543210".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+    String db = "ab".repeat(32);
+    String otherDb = "cd".repeat(32);
 
     assertEquals(
         snapshot,
         BackupNames.trustedSnapshot(
-            BackupNames.meta(BackupNames.MANUAL, snapshot, key), name, now, key));
-    for (String meta :
-        new String[] {
-          BackupNames.meta(BackupNames.MANUAL, snapshot, null), // not signed (prepared)
-          BackupNames.meta(BackupNames.MANUAL, snapshot, otherKey), // another installation
-          BackupNames.meta(BackupNames.MANUAL, snapshot, key)
-              .replace("manuell", "beenden"), // changed
-          BackupNames.meta(BackupNames.MANUAL, now.plusDays(1), key), // in the future
-          BackupNames.meta(BackupNames.MANUAL, now.minusHours(1), key), // long after the name
-          "{\"format\":1}" // none
-        }) {
-      assertEquals(BackupNames.EVERYTHING, BackupNames.trustedSnapshot(meta, name, now, key), meta);
+            BackupNames.meta(BackupNames.MANUAL, snapshot, db, key), name, now, key, db));
+    String[][] untrusted = {
+      {BackupNames.meta(BackupNames.MANUAL, snapshot, db, new byte[0]), db}, // not signed
+      {BackupNames.meta(BackupNames.MANUAL, snapshot, db, otherKey), db}, // another installation
+      {BackupNames.meta(BackupNames.MANUAL, snapshot, db, key), otherDb}, // database exchanged
+      {BackupNames.meta(BackupNames.MANUAL, snapshot, db, key).replace("manuell", "beenden"), db},
+      {BackupNames.meta(BackupNames.MANUAL, now.plusDays(1), db, key), db}, // in the future
+      {BackupNames.meta(BackupNames.MANUAL, now.minusHours(1), db, key), db}, // after the name
+      {"{\"format\":1}", db} // none
+    };
+    for (String[] c : untrusted) {
+      assertEquals(
+          BackupNames.EVERYTHING, BackupNames.trustedSnapshot(c[0], name, now, key, c[1]), c[0]);
     }
     assertEquals(
         BackupNames.EVERYTHING,
         BackupNames.trustedSnapshot(
-            BackupNames.meta(BackupNames.MANUAL, snapshot, key), name, now, null),
+            BackupNames.meta(BackupNames.MANUAL, snapshot, db, key), name, now, new byte[0], db),
         "an installation without a key trusts nothing");
   }
 }

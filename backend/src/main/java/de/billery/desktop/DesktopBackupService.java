@@ -13,7 +13,6 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -50,9 +49,6 @@ public class DesktopBackupService {
   static final String KEY_ON_EXIT = "backup_on_exit";
   static final String KEY_PUBLIC_KEY = "backup_public_key";
   static final String KEY_LOCKED_KEY = "backup_locked_private_key";
-
-  /** The installation's key that signs backup.json (HMAC), so only its own snapshot times count. */
-  static final String KEY_MANIFEST = "backup_manifest_key";
 
   /** Backups kept unless the user chose another number. */
   static final int DEFAULT_KEEP = 10;
@@ -190,7 +186,6 @@ public class DesktopBackupService {
       }
     }
     Path target = directory.resolve(BackupNames.name(time, reason, encrypted));
-    manifestKey(); // created before the copy, so the backup's database holds it too
     Path work = Files.createTempDirectory(locations.appData(), "backup-");
     try {
       Path h2Copy = work.resolve("h2.zip");
@@ -309,9 +304,14 @@ public class DesktopBackupService {
       // Staged first: from here on RestorePendingFilter refuses every write, so the count below
       // covers everything that can still change (a request already past the filter may still
       // commit within milliseconds; the restart counts again and logs the actual numbers).
+      checkDatabaseOpens(partial);
       LocalDateTime snapshotAt =
           BackupNames.trustedSnapshot(
-              BackupArchive.readMeta(partial), fileName, LocalDateTime.now(), manifestKey());
+              BackupArchive.readMeta(partial),
+              fileName,
+              LocalDateTime.now(),
+              ManifestKey.load(locations),
+              BackupArchive.databaseDigest(partial));
       Files.move(
           partial, staged, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
       awaitWritesInProgress(staged);
@@ -384,18 +384,15 @@ public class DesktopBackupService {
       throws IOException {
     try (ZipOutputStream zip = new ZipOutputStream(Files.newOutputStream(target));
         ZipFile h2 = new ZipFile(h2Copy.toFile())) {
-      zip.putNextEntry(new ZipEntry(BackupArchive.META));
-      zip.write(
-          BackupNames.meta(reason, snapshotAt, manifestKey()).getBytes(StandardCharsets.UTF_8));
-      zip.closeEntry();
       ZipEntry database =
           h2.stream()
               .filter(e -> e.getName().endsWith(".mv.db"))
               .findFirst()
               .orElseThrow(() -> new IOException("H2 backup without database file"));
       zip.putNextEntry(new ZipEntry(BackupArchive.DATABASE));
+      String digest;
       try (InputStream in = h2.getInputStream(database)) {
-        in.transferTo(zip);
+        digest = BackupArchive.sha256(new TeeInputStream(in, zip));
       }
       zip.closeEntry();
       for (Path file : PendingRestore.regularFiles(locations.filesDirectory())) {
@@ -403,6 +400,40 @@ public class DesktopBackupService {
         Files.copy(file, zip);
         zip.closeEntry();
       }
+      // Last: it signs the digest of the database above.
+      zip.putNextEntry(new ZipEntry(BackupArchive.META));
+      zip.write(
+          BackupNames.meta(reason, snapshotAt, digest, ManifestKey.loadOrCreate(locations))
+              .getBytes(StandardCharsets.UTF_8));
+      zip.closeEntry();
+    }
+  }
+
+  /** Copies what is read into a second stream (the ZIP), so one pass both writes and hashes. */
+  private static final class TeeInputStream extends java.io.FilterInputStream {
+    private final java.io.OutputStream copy;
+
+    TeeInputStream(InputStream in, java.io.OutputStream copy) {
+      super(in);
+      this.copy = copy;
+    }
+
+    @Override
+    public int read() throws IOException {
+      int b = super.read();
+      if (b != -1) {
+        copy.write(b);
+      }
+      return b;
+    }
+
+    @Override
+    public int read(byte[] buffer, int offset, int length) throws IOException {
+      int read = super.read(buffer, offset, length);
+      if (read > 0) {
+        copy.write(buffer, offset, read);
+      }
+      return read;
     }
   }
 
@@ -426,6 +457,37 @@ public class DesktopBackupService {
     return Boolean.parseBoolean(settings.getSetting(KEY_ON_EXIT, "true"));
   }
 
+  /**
+   * Opens the backup's database read-only in a scratch folder before anything is staged: a file H2
+   * cannot open (or that is no Billery database) would otherwise only show at the next start, after
+   * the current state was replaced.
+   */
+  private void checkDatabaseOpens(Path plainZip) throws IOException {
+    Path check = locations.appData().resolve("restore-check");
+    PendingRestore.deleteTree(check);
+    try {
+      BackupArchive.extract(plainZip, check);
+      Files.move(check.resolve(BackupArchive.DATABASE), check.resolve("check.mv.db"));
+      String url =
+          "jdbc:h2:file:"
+              + check.resolve("check")
+              + ";MODE=MariaDB;ACCESS_MODE_DATA=r;IFEXISTS=TRUE";
+      try (java.sql.Connection conn =
+              java.sql.DriverManager.getConnection(
+                  url, Database.getUser(), Database.getPassword());
+          java.sql.Statement stmt = conn.createStatement()) {
+        stmt.executeQuery("SELECT COUNT(*) FROM customer").close();
+      } catch (java.sql.SQLException e) {
+        throw new IllegalArgumentException(
+            "Die Datenbank in dieser Sicherung lässt sich nicht öffnen; sie wird nicht"
+                + " wiederhergestellt.",
+            e);
+      }
+    } finally {
+      PendingRestore.deleteTree(check);
+    }
+  }
+
   /** Waits until the writes that started before the restore was staged have finished. */
   private void awaitWritesInProgress(Path staged) throws IOException {
     try {
@@ -439,18 +501,6 @@ public class DesktopBackupService {
     throw new IllegalArgumentException(
         "Gerade wird noch gespeichert. Bitte einen Moment warten und die Wiederherstellung erneut"
             + " wählen.");
-  }
-
-  /** The installation's manifest key; created on first use. */
-  private byte[] manifestKey() {
-    String stored = settings.getSetting(KEY_MANIFEST, "");
-    if (stored == null || stored.isBlank()) {
-      byte[] key = new byte[32];
-      new java.security.SecureRandom().nextBytes(key);
-      stored = Base64.getEncoder().encodeToString(key);
-      settings.updateSetting(KEY_MANIFEST, stored);
-    }
-    return Base64.getDecoder().decode(stored);
   }
 
   /** The keys of encrypted backups, if encryption is switched on. */

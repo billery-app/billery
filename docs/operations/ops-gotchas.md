@@ -155,7 +155,8 @@ The desktop app keeps everything in its app-data folder (`database.mv.db`,
   the database file cannot open the backups. Without the password an encrypted backup cannot be
   restored.
 - **Restore:** choose a backup in the list (from another computer: put the file into the backup
-  folder first); it is checked (and decrypted) at once and restored at the **next start**. If
+  folder first); it is checked (and decrypted) at once, its database is opened read-only to make
+  sure H2 can read it, and restored at the **next start**. If
   documents were issued, payments recorded or documents changed after the backup, the app says
   how many and needs an explicit "Trotzdem wiederherstellen". At the start the backup is unpacked
   completely first (limits: 10 000 entries, 4 GiB), then the state before is saved as
@@ -171,8 +172,9 @@ The desktop app keeps everything in its app-data folder (`database.mv.db`,
   and the restart counts again what the restore takes out and logs those numbers next to the
   confirmed ones. The number counters of the replaced database are carried over where higher, so
   no document number is given twice; the numbers given after the backup remain a documented gap
-  (they are in the safety copy). The snapshot time in `backup.json` is signed with the installation's key
-  (HMAC); an unsigned or foreign one, or one after the backup's name or after now, is not trusted
+  (they are in the safety copy). The snapshot time in `backup.json` is signed, together with the SHA-256 of the
+  backed-up database, with the installation's key (`<app-data>/backup-signing.key`, HMAC; neither
+  in the database nor in any backup); an unsigned, foreign or changed one, or one after the backup's name or after now, is not trusted
   and everything counts (a backup from a lost computer restored into a new, empty installation
   has nothing to lose anyway).
 - **Access:** the backup endpoints need the window's per-launch token (`X-Desktop-Token`, from the

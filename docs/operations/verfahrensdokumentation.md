@@ -167,7 +167,9 @@ Damit dabei keine aufbewahrungspflichtigen Daten verloren gehen:
   wiederhergestellte Sicherung, Ablageort der Sicherheitskopie, Zahl der
   betroffenen Belege, Zahlungen und Änderungen). Das Programm schreibt nur Zeilen
   hinzu. Gezählt wird ab dem Zeitpunkt, zu dem die Sicherung gezogen wurde; er steht,
-  mit einem Schlüssel dieser Installation signiert, in der Sicherung selbst. Fehlt die
+  zusammen mit einer Prüfsumme der gesicherten Datenbank mit einem Schlüssel dieser
+  Installation signiert (der Schlüssel liegt weder in der Datenbank noch in einer
+  Sicherung), in der Sicherung selbst. Fehlt die
   Signatur oder passt sie nicht, zählt das Programm alle vorhandenen Belege.
 
 Gegen das Löschen dieser Dateien auf dem eigenen Rechner kann das Programm nichts

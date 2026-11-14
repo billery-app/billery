@@ -186,7 +186,14 @@ class DesktopBackupServiceTest {
   }
 
   @Test
-  void aPreparedBackupWithAFreshTimeCannotHideWhatTheRestoreLoses() throws Exception {
+  void aPreparedOrChangedBackupCannotHideWhatTheRestoreLoses() throws Exception {
+    BackupFile real = service.backup(BackupNames.MANUAL); // signed by this installation
+    Path folder = locations.defaultBackupDirectory();
+    byte[] realDatabase;
+    try (var zip = new java.util.zip.ZipFile(folder.resolve(real.name()).toFile())) {
+      realDatabase = zip.getInputStream(zip.getEntry(BackupArchive.DATABASE)).readAllBytes();
+    }
+    Thread.sleep(1100);
     try (var conn = Database.getConnection();
         var stmt = conn.createStatement()) {
       stmt.execute("SET REFERENTIAL_INTEGRITY FALSE");
@@ -194,28 +201,66 @@ class DesktopBackupServiceTest {
           "INSERT INTO document_history (invoice_id, action, notes) VALUES (1, 'ISSUED', 'x')");
       stmt.execute("SET REFERENTIAL_INTEGRITY TRUE");
     }
-    // A plain ZIP in the backup format whose description claims a snapshot of right now.
+    // A ZIP in the backup format with a real database, claiming an unsigned snapshot of now.
     java.time.LocalDateTime now = java.time.LocalDateTime.now().withNano(0);
-    String name = BackupNames.name(now, BackupNames.MANUAL, false);
-    Path folder = Files.createDirectories(locations.defaultBackupDirectory());
-    try (var zip = new java.util.zip.ZipOutputStream(Files.newOutputStream(folder.resolve(name)))) {
+    String prepared = BackupNames.name(now, BackupNames.MANUAL, false);
+    try (var zip =
+        new java.util.zip.ZipOutputStream(Files.newOutputStream(folder.resolve(prepared)))) {
+      zip.putNextEntry(new java.util.zip.ZipEntry(BackupArchive.DATABASE));
+      zip.write(realDatabase);
+      zip.closeEntry();
       zip.putNextEntry(new java.util.zip.ZipEntry(BackupArchive.META));
       zip.write(
-          BackupNames.meta(BackupNames.MANUAL, now, null)
+          BackupNames.meta(BackupNames.MANUAL, now, "00", new byte[0])
               .getBytes(java.nio.charset.StandardCharsets.UTF_8));
-      zip.closeEntry();
-      zip.putNextEntry(new java.util.zip.ZipEntry(BackupArchive.DATABASE));
-      zip.write(new byte[] {1, 2, 3});
       zip.closeEntry();
     }
 
     DesktopBackupService.RestoreLossException refused =
         assertThrows(
             DesktopBackupService.RestoreLossException.class,
-            () -> service.stageRestore(name, null, false));
+            () -> service.stageRestore(prepared, null, false));
     assertEquals(1, refused.loss().issued(), "unsigned: everything counts");
     assertFalse(
         Files.exists(locations.pendingRestore()), "staged only for the count, then removed");
+  }
+
+  @Test
+  void theSigningKeyIsNeitherInTheDatabaseNorInTheBackup() throws Exception {
+    BackupFile backup = service.backup(BackupNames.MANUAL);
+    String key = Files.readString(locations.signingKeyFile()).strip();
+
+    assertFalse(key.isEmpty());
+    try (var zip =
+        new java.util.zip.ZipFile(
+            locations.defaultBackupDirectory().resolve(backup.name()).toFile())) {
+      byte[] database = zip.getInputStream(zip.getEntry(BackupArchive.DATABASE)).readAllBytes();
+      assertFalse(
+          new String(database, java.nio.charset.StandardCharsets.ISO_8859_1).contains(key),
+          "the key is not in the backed-up database");
+      assertEquals(null, zip.getEntry("backup-signing.key"));
+    }
+  }
+
+  @Test
+  void aBackupWhoseDatabaseCannotBeOpenedIsRefusedBeforeAnythingIsStaged() throws Exception {
+    Path folder = Files.createDirectories(locations.defaultBackupDirectory());
+    String name =
+        BackupNames.name(java.time.LocalDateTime.now().withNano(0), BackupNames.MANUAL, false);
+    try (var zip = new java.util.zip.ZipOutputStream(Files.newOutputStream(folder.resolve(name)))) {
+      zip.putNextEntry(new java.util.zip.ZipEntry(BackupArchive.META));
+      zip.write("{}".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+      zip.closeEntry();
+      zip.putNextEntry(new java.util.zip.ZipEntry(BackupArchive.DATABASE));
+      zip.write(new byte[] {1, 2, 3});
+      zip.closeEntry();
+    }
+
+    IllegalArgumentException refused =
+        assertThrows(IllegalArgumentException.class, () -> service.stageRestore(name, null, true));
+    assertTrue(refused.getMessage().contains("nicht öffnen"), refused.getMessage());
+    assertFalse(Files.exists(locations.pendingRestore()));
+    assertFalse(Files.exists(appData.resolve("restore-check")));
   }
 
   @Test

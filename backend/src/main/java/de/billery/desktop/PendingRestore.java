@@ -73,7 +73,9 @@ public final class PendingRestore {
       for (Path entry : entries.toList()) {
         String name = entry.getFileName().toString();
         if (Files.isDirectory(entry)
-            && (name.startsWith("backup-") || "restore-work".equals(name))) {
+            && (name.startsWith("backup-")
+                || "restore-work".equals(name)
+                || "restore-check".equals(name))) {
           deleteTree(entry);
         } else if (name.endsWith(".zip.part")) {
           Files.deleteIfExists(entry);
@@ -128,11 +130,14 @@ public final class PendingRestore {
     // was bypassed); written to the log next to the confirmed numbers.
     String backupName = readInfo(locations).getProperty("backup", "");
     Map<String, String> settings = currentSettings();
-    byte[] manifestKey = manifestKey(settings);
     String actual =
         countSince(
             BackupNames.trustedSnapshot(
-                BackupArchive.readMeta(staged), backupName, LocalDateTime.now(), manifestKey));
+                BackupArchive.readMeta(staged),
+                backupName,
+                LocalDateTime.now(),
+                ManifestKey.load(locations),
+                BackupArchive.databaseDigest(staged)));
     // Kept in a file before the swap: if the start fails after it, the next attempt still knows
     // the counters of the replaced database (and keeps the higher of both).
     Map<String, Long> counters = rememberCounters(locations, numberCounters());
@@ -176,11 +181,10 @@ public final class PendingRestore {
         PreparedStatement query =
             conn.prepareStatement(
                 "SELECT setting_key, setting_value FROM user_settings"
-                    + " WHERE setting_key IN (?, ?, ?, ?)")) {
+                    + " WHERE setting_key IN (?, ?, ?)")) {
       query.setString(1, DesktopBackupService.KEY_PUBLIC_KEY);
       query.setString(2, DesktopBackupService.KEY_LOCKED_KEY);
       query.setString(3, DesktopBackupService.KEY_DIRECTORY);
-      query.setString(4, DesktopBackupService.KEY_MANIFEST);
       try (ResultSet rows = query.executeQuery()) {
         while (rows.next()) {
           settings.put(rows.getString(1), rows.getString(2));
@@ -225,9 +229,19 @@ public final class PendingRestore {
     Path plain = locations.appData().resolve("restore-safety-copy.zip.part");
     try {
       try (ZipOutputStream zip = new ZipOutputStream(Files.newOutputStream(plain))) {
+        String digest = "";
+        if (Files.exists(locations.databaseFile())) {
+          try (InputStream in = Files.newInputStream(locations.databaseFile())) {
+            digest = BackupArchive.sha256(in);
+          }
+        }
         zip.putNextEntry(new ZipEntry(BackupArchive.META));
         zip.write(
-            BackupNames.meta(BackupNames.BEFORE_RESTORE, LocalDateTime.now(), manifestKey(settings))
+            BackupNames.meta(
+                    BackupNames.BEFORE_RESTORE,
+                    LocalDateTime.now(),
+                    digest,
+                    ManifestKey.loadOrCreate(locations))
                 .getBytes(StandardCharsets.UTF_8));
         zip.closeEntry();
         if (Files.exists(locations.databaseFile())) {
@@ -254,18 +268,6 @@ public final class PendingRestore {
       Files.deleteIfExists(plain);
     }
     return target;
-  }
-
-  /** The installation's manifest key from the settings, empty if it has none. */
-  static byte[] manifestKey(Map<String, String> settings) {
-    String stored = settings.get(DesktopBackupService.KEY_MANIFEST);
-    try {
-      return stored == null || stored.isBlank()
-          ? new byte[0]
-          : java.util.Base64.getDecoder().decode(stored);
-    } catch (IllegalArgumentException e) {
-      return new byte[0];
-    }
   }
 
   /** Where the counters of the replaced database are kept until the restore is complete. */

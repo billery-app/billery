@@ -89,8 +89,12 @@ safety copy of the state before (encrypted with the stored public key), swap, ap
 the H2 migrations then upgrade an older backup; `cleanLeftovers` removes interrupted work at every
 start. While a restore waits, `RestorePendingFilter` refuses every changing API request (409).
 What a restore loses is counted from the snapshot time in `backup.json`, trusted only when
-signed with this installation's key (`backup_manifest_key`, HMAC) and plausible
-(`BackupNames.trustedSnapshot`); otherwise everything counts. The restore is staged before the
+signed with this installation's key (`<app-data>/backup-signing.key`, `ManifestKey`: HMAC over
+time, reason and the SHA-256 of the database file; the key is in neither the database nor any
+backup), the database in the backup matches the signed digest, and the time is plausible
+(`BackupNames.trustedSnapshot`); otherwise everything counts. Before staging, the backup's
+database is opened read-only in a scratch folder (`restore-check`), so a file H2 cannot open is
+refused before the current state is touched. The restore is staged before the
 count and waits for the writes already under way (`WriteGate`, entered by `RestorePendingFilter`
 before it checks), so the count is final. At the restore the number counters
 (`document_number_series`) of the replaced database are carried over where higher: a document

@@ -14,6 +14,7 @@ import java.security.GeneralSecurityException;
 import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
+import java.security.MessageDigest;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.SecureRandom;
@@ -327,6 +328,44 @@ public final class BackupArchive {
       }
     }
     return "";
+  }
+
+  /**
+   * The SHA-256 (hex) of the database file in a plain backup ZIP.
+   *
+   * @param plainZip the ZIP
+   * @return the digest, or an empty string if there is no database
+   * @throws IOException if the ZIP cannot be read
+   */
+  public static String databaseDigest(Path plainZip) throws IOException {
+    try (ZipInputStream zip = new ZipInputStream(Files.newInputStream(plainZip))) {
+      for (ZipEntry entry = zip.getNextEntry(); entry != null; entry = zip.getNextEntry()) {
+        if (DATABASE.equals(entry.getName())) {
+          return sha256(zip);
+        }
+      }
+    }
+    return "";
+  }
+
+  /**
+   * The SHA-256 (hex) of a stream, read to its end.
+   *
+   * @param in the stream
+   * @return the digest
+   * @throws IOException if it cannot be read
+   */
+  public static String sha256(InputStream in) throws IOException {
+    try {
+      MessageDigest digest = MessageDigest.getInstance("SHA-256");
+      byte[] buffer = new byte[64 * 1024];
+      for (int read = in.read(buffer); read != -1; read = in.read(buffer)) {
+        digest.update(buffer, 0, read);
+      }
+      return java.util.HexFormat.of().formatHex(digest.digest());
+    } catch (java.security.NoSuchAlgorithmException e) {
+      throw new IllegalStateException("SHA-256 not available", e);
+    }
   }
 
   /** Reads every entry; with a target, writes it there. */

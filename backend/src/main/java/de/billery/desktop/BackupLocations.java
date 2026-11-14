@@ -85,6 +85,15 @@ public record BackupLocations(Path databaseBase, Path filesDirectory) {
   }
 
   /**
+   * The installation's key that signs {@code backup.json}; not in the database, not in backups.
+   *
+   * @return {@code <app-data>/backup-signing.key}
+   */
+  public Path signingKeyFile() {
+    return appData().resolve("backup-signing.key");
+  }
+
+  /**
    * Where a restore is unpacked before anything of the current state is touched.
    *
    * @return {@code <app-data>/restore-work}
