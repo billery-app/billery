@@ -147,10 +147,12 @@ Eine **Wiederherstellung** setzt das Programm auf den Stand der Sicherung zurüc
 Damit dabei keine aufbewahrungspflichtigen Daten verloren gehen:
 
 - zählt das Programm vorher, wie viele Belege nach der Sicherung ausgestellt oder
-  storniert, wie viele Zahlungen erfasst und wie viele Änderungen an Dokumenten
-  gemacht wurden; ist es mindestens eins, muss die Wiederherstellung ausdrücklich
+  storniert, wie viele Zahlungen erfasst, wie viele Änderungen an Dokumenten
+  gemacht und wie viele hochgeladene Dateien (Logos, Anhänge) neu angelegt oder
+  geändert wurden; ist es mindestens eins, muss die Wiederherstellung ausdrücklich
   bestätigt werden;
-- nimmt es nach dem Vormerken bis zum Neustart keine Änderungen mehr an, damit
+- nimmt es nach dem Vormerken bis zum Neustart keine Änderungen mehr an (auch
+  keine an den Sicherungseinstellungen und keine neue Sicherung), damit
   nichts unbemerkt verloren geht, und zählt beim Neustart erneut;
 - übernimmt es die Zählerstände der Nummernkreise aus dem ersetzten Bestand, wo sie
   höher sind: eine Belegnummer wird nie doppelt vergeben. Die nach der Sicherung
@@ -165,9 +167,9 @@ Damit dabei keine aufbewahrungspflichtigen Daten verloren gehen:
   `wiederherstellungen.log` im Anwendungsdatenverzeichnis und im Sicherungsordner
   neben der Sicherheitskopie (Zeitpunkt,
   wiederhergestellte Sicherung, Ablageort der Sicherheitskopie, Zahl der
-  betroffenen Belege, Zahlungen und Änderungen). Das Programm schreibt nur Zeilen
+  betroffenen Belege, Zahlungen, Änderungen und Dateien). Das Programm schreibt nur Zeilen
   hinzu. Gezählt wird ab dem Zeitpunkt, zu dem die Sicherung gezogen wurde; er steht,
-  zusammen mit einer Prüfsumme der gesicherten Datenbank mit einem Schlüssel dieser
+  zusammen mit Prüfsummen der gesicherten Datenbank und jeder gesicherten Datei mit einem Schlüssel dieser
   Installation signiert (der Schlüssel liegt weder in der Datenbank noch in einer
   Sicherung), in der Sicherung selbst. Fehlt die
   Signatur oder passt sie nicht, zählt das Programm alle vorhandenen Belege.

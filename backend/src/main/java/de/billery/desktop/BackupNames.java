@@ -41,6 +41,7 @@ public final class BackupNames {
   private static final Pattern REASON_FIELD = Pattern.compile("\"reason\"\\s*:\\s*\"([^\"]+)\"");
   private static final Pattern DATABASE_FIELD =
       Pattern.compile("\"database\"\\s*:\\s*\"([0-9a-f]+)\"");
+  private static final Pattern FILES_FIELD = Pattern.compile("\"files\"\\s*:\\s*\"([0-9a-f]+)\"");
   private static final Pattern SIG_FIELD = Pattern.compile("\"sig\"\\s*:\\s*\"([^\"]+)\"");
 
   private BackupNames() {}
@@ -103,11 +104,12 @@ public final class BackupNames {
    * @param snapshotAt when the copy of the database was taken (before the copy started); the time
    *     in the file name may be later (names only grow), so this one decides what a restore loses
    * @param database the SHA-256 (hex) of the backup's database file
+   * @param files the {@link BackupArchive#inventoryDigest} of the backup's uploaded files
    * @param manifestKey the installation's key ({@link ManifestKey}); empty writes no signature
    * @return a small JSON document
    */
   public static String meta(
-      String reason, LocalDateTime snapshotAt, String database, byte[] manifestKey) {
+      String reason, LocalDateTime snapshotAt, String database, String files, byte[] manifestKey) {
     String json =
         "{\"format\":1,\"snapshotAt\":\""
             + snapshotAt
@@ -115,10 +117,14 @@ public final class BackupNames {
             + reason
             + "\",\"database\":\""
             + database
+            + "\",\"files\":\""
+            + files
             + "\"";
     if (manifestKey != null && manifestKey.length > 0) {
       json +=
-          ",\"sig\":\"" + signature(manifestKey, snapshotAt.toString(), reason, database) + "\"";
+          ",\"sig\":\""
+              + signature(manifestKey, snapshotAt.toString(), reason, database, files)
+              + "\"";
     }
     return json + "}";
   }
@@ -137,14 +143,21 @@ public final class BackupNames {
    * @param now the current time
    * @param manifestKey this installation's key, empty if it has none
    * @param database the SHA-256 (hex) of the database file actually in the backup
+   * @param files the {@link BackupArchive#inventoryDigest} of the files actually in the backup
    * @return the time to count from
    */
   public static LocalDateTime trustedSnapshot(
-      String meta, String fileName, LocalDateTime now, byte[] manifestKey, String database) {
+      String meta,
+      String fileName,
+      LocalDateTime now,
+      byte[] manifestKey,
+      String database,
+      String files) {
     LocalDateTime snapshot = snapshotAt(meta);
     LocalDateTime named = time(fileName);
     String reason = field(meta, REASON_FIELD);
     String signedDatabase = field(meta, DATABASE_FIELD);
+    String signedFiles = field(meta, FILES_FIELD);
     String sig = field(meta, SIG_FIELD);
     if (snapshot == null
         || named == null
@@ -153,8 +166,11 @@ public final class BackupNames {
         || reason == null
         || sig == null
         || signedDatabase == null
+        || signedFiles == null
         || !equal(signedDatabase, database)
-        || !equal(sig, signature(manifestKey, field(meta, SNAPSHOT), reason, signedDatabase))
+        || !equal(signedFiles, files)
+        || !equal(
+            sig, signature(manifestKey, field(meta, SNAPSHOT), reason, signedDatabase, signedFiles))
         || snapshot.isAfter(named.plusMinutes(1))
         || snapshot.isAfter(now)) {
       return EVERYTHING;
@@ -168,13 +184,14 @@ public final class BackupNames {
             a.getBytes(StandardCharsets.US_ASCII), b.getBytes(StandardCharsets.US_ASCII));
   }
 
-  private static String signature(byte[] key, String snapshotAt, String reason, String database) {
+  private static String signature(
+      byte[] key, String snapshotAt, String reason, String database, String files) {
     try {
       Mac mac = Mac.getInstance("HmacSHA256");
       mac.init(new SecretKeySpec(key, "HmacSHA256"));
       byte[] digest =
           mac.doFinal(
-              ("billery-backup-2|" + snapshotAt + "|" + reason + "|" + database)
+              ("billery-backup-3|" + snapshotAt + "|" + reason + "|" + database + "|" + files)
                   .getBytes(StandardCharsets.UTF_8));
       return Base64.getEncoder().encodeToString(digest);
     } catch (GeneralSecurityException e) {

@@ -39,6 +39,14 @@ class RestorePendingFilterTest {
     assertEquals(200, status(filter, "GET", "/api/invoices/page"), "reading stays possible");
     assertEquals(200, status(filter, "DELETE", "/api/desktop/backups/restore"), "withdrawing too");
     assertEquals(200, status(filter, "POST", "/api/desktop/shutdown"), "and closing the app");
+    assertEquals(
+        200, status(filter, "POST", "/api/desktop/backups/restore"), "choosing another one");
+    assertEquals(
+        409,
+        status(filter, "PUT", "/api/desktop/backups/settings"),
+        "the restore would overwrite changed backup settings");
+    assertEquals(409, status(filter, "POST", "/api/desktop/backups"), "no manual backup meanwhile");
+    assertEquals(200, status(filter, "GET", "/api/desktop/backups"));
 
     MockHttpServletResponse refused = new MockHttpServletResponse();
     filter.doFilter(

@@ -27,6 +27,13 @@ public class RestorePendingFilter extends OncePerRequestFilter {
 
   private static final Set<String> READING = Set.of("GET", "HEAD", "OPTIONS");
 
+  /** The changing desktop requests that stay possible while a restore waits. */
+  private static final Set<String> ALLOWED_WHILE_PENDING =
+      Set.of(
+          "POST /api/desktop/backups/restore",
+          "DELETE /api/desktop/backups/restore",
+          "POST /api/desktop/shutdown");
+
   static final String MESSAGE =
       "Eine Wiederherstellung ist vorgemerkt: bis zum Neustart wird nichts mehr gespeichert. Bitte"
           + " Billery beenden und neu starten, oder die Wiederherstellung unter Einstellungen →"
@@ -62,11 +69,20 @@ public class RestorePendingFilter extends OncePerRequestFilter {
       HttpServletRequest request, HttpServletResponse response, FilterChain chain)
       throws ServletException, IOException {
     String path = UrlPathHelper.defaultInstance.getPathWithinApplication(request);
-    boolean writes =
-        !READING.contains(request.getMethod())
-            && path.startsWith("/api/")
-            && !path.startsWith("/api/desktop/");
+    boolean writes = !READING.contains(request.getMethod()) && path.startsWith("/api/");
     if (!writes || locations == null) {
+      chain.doFilter(request, response);
+      return;
+    }
+    if (path.startsWith("/api/desktop/")) {
+      // The desktop endpoints stay outside the gate (a manual backup pauses the writes itself);
+      // while a restore waits only choosing or withdrawing it and closing the app are allowed:
+      // changed backup settings would be overwritten by the restore.
+      if (Files.exists(locations.pendingRestore())
+          && !ALLOWED_WHILE_PENDING.contains(request.getMethod() + " " + path)) {
+        refuse(response);
+        return;
+      }
       chain.doFilter(request, response);
       return;
     }
@@ -74,15 +90,19 @@ public class RestorePendingFilter extends OncePerRequestFilter {
     gate.enter();
     try {
       if (Files.exists(locations.pendingRestore())) {
-        response.setStatus(HttpServletResponse.SC_CONFLICT);
-        response.setContentType("application/json");
-        response.setCharacterEncoding("UTF-8");
-        response.getWriter().write("{\"message\":\"" + MESSAGE + "\"}");
+        refuse(response);
         return;
       }
       chain.doFilter(request, response);
     } finally {
       gate.leave();
     }
+  }
+
+  private static void refuse(HttpServletResponse response) throws IOException {
+    response.setStatus(HttpServletResponse.SC_CONFLICT);
+    response.setContentType("application/json");
+    response.setCharacterEncoding("UTF-8");
+    response.getWriter().write("{\"message\":\"" + MESSAGE + "\"}");
   }
 }

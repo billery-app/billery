@@ -139,28 +139,60 @@ class BackupArchiveTest {
         "fedcba9876543210fedcba9876543210".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
     String db = "ab".repeat(32);
     String otherDb = "cd".repeat(32);
+    String files = "ef".repeat(32);
+    String otherFiles = "01".repeat(32);
 
     assertEquals(
         snapshot,
         BackupNames.trustedSnapshot(
-            BackupNames.meta(BackupNames.MANUAL, snapshot, db, key), name, now, key, db));
+            BackupNames.meta(BackupNames.MANUAL, snapshot, db, files, key),
+            name,
+            now,
+            key,
+            db,
+            files));
     String[][] untrusted = {
-      {BackupNames.meta(BackupNames.MANUAL, snapshot, db, new byte[0]), db}, // not signed
-      {BackupNames.meta(BackupNames.MANUAL, snapshot, db, otherKey), db}, // another installation
-      {BackupNames.meta(BackupNames.MANUAL, snapshot, db, key), otherDb}, // database exchanged
-      {BackupNames.meta(BackupNames.MANUAL, snapshot, db, key).replace("manuell", "beenden"), db},
-      {BackupNames.meta(BackupNames.MANUAL, now.plusDays(1), db, key), db}, // in the future
-      {BackupNames.meta(BackupNames.MANUAL, now.minusHours(1), db, key), db}, // after the name
-      {"{\"format\":1}", db} // none
+      {
+        BackupNames.meta(BackupNames.MANUAL, snapshot, db, files, new byte[0]), db, files
+      }, // not signed
+      {
+        BackupNames.meta(BackupNames.MANUAL, snapshot, db, files, otherKey), db, files
+      }, // another installation
+      {
+        BackupNames.meta(BackupNames.MANUAL, snapshot, db, files, key), otherDb, files
+      }, // database exchanged
+      {
+        BackupNames.meta(BackupNames.MANUAL, snapshot, db, files, key), db, otherFiles
+      }, // files exchanged
+      {
+        BackupNames.meta(BackupNames.MANUAL, snapshot, db, files, key)
+            .replace("manuell", "beenden"),
+        db,
+        files
+      },
+      {
+        BackupNames.meta(BackupNames.MANUAL, now.plusDays(1), db, files, key), db, files
+      }, // in the future
+      {
+        BackupNames.meta(BackupNames.MANUAL, now.minusHours(1), db, files, key), db, files
+      }, // after the name
+      {"{\"format\":1}", db, files} // none
     };
     for (String[] c : untrusted) {
       assertEquals(
-          BackupNames.EVERYTHING, BackupNames.trustedSnapshot(c[0], name, now, key, c[1]), c[0]);
+          BackupNames.EVERYTHING,
+          BackupNames.trustedSnapshot(c[0], name, now, key, c[1], c[2]),
+          c[0]);
     }
     assertEquals(
         BackupNames.EVERYTHING,
         BackupNames.trustedSnapshot(
-            BackupNames.meta(BackupNames.MANUAL, snapshot, db, key), name, now, new byte[0], db),
+            BackupNames.meta(BackupNames.MANUAL, snapshot, db, files, key),
+            name,
+            now,
+            new byte[0],
+            db,
+            files),
         "an installation without a key trusts nothing");
   }
 }

@@ -81,7 +81,8 @@ backup, key wrapped with an RSA public key; the database stores only the public 
 private key locked with the password, never the password),
 the newest N kept (only files named `billery-<time>-<reason>.zip[.enc]` are ever deleted, and
 never the safety copies `…-vor-wiederherstellung`: GoBD). A restore needs an explicit confirmation
-when documents, payments or changes came after the backup (`RestoreLoss`, 409), is staged as
+when documents, payments, changes or uploaded files (new or changed) came after the backup
+(`RestoreLoss`, 409), is staged as
 `<app-data>/restore-pending.zip` and applied by `PendingRestore` in `MainApp.prepareDatabase()`
 before H2 opens the file: unpack completely (limits, `BackupArchive.inside` against Zip Slip),
 safety copy of the state before (encrypted with the stored public key), swap, append to
@@ -90,11 +91,14 @@ the H2 migrations then upgrade an older backup; `cleanLeftovers` removes interru
 start (only the `.billery-backup-work-*` and `restore-*` folders, never a folder the user made).
 While a backup copies database and uploads, new writes pause (`WriteGate.beginExclusive`); a
 backup beyond the restore limits (10 000 entries, 4 GiB) is refused when it is made. While a
-restore waits, `RestorePendingFilter` refuses every changing API request (409).
+restore waits, `RestorePendingFilter` refuses every changing API request (409), the desktop
+endpoints included (backup settings, "Jetzt sichern"); only choosing / withdrawing the restore and
+the shutdown pass.
 What a restore loses is counted from the snapshot time in `backup.json`, trusted only when
 signed with this installation's key (`<app-data>/backup-signing.key`, `ManifestKey`: HMAC over
-time, reason and the SHA-256 of the database file; the key is in neither the database nor any
-backup), the database in the backup matches the signed digest, and the time is plausible
+time, reason, the SHA-256 of the database file and of the file inventory (name and SHA-256 of
+every upload); the key is in neither the database nor any
+backup), the database and the files in the backup match the signed digests, and the time is plausible
 (`BackupNames.trustedSnapshot`); otherwise everything counts. Before staging, the backup's
 database is opened read-only in a scratch folder (`restore-check`), so a file H2 cannot open is
 refused before the current state is touched. The restore is staged before the

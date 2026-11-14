@@ -15,6 +15,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.logging.Level;
@@ -258,7 +259,7 @@ public class DesktopBackupService {
             .param("since", snapshotAt)
             .query(Long.class)
             .single();
-    return new RestoreLoss(issued, payments, changes);
+    return new RestoreLoss(issued, payments, changes, 0);
   }
 
   /**
@@ -317,11 +318,17 @@ public class DesktopBackupService {
               fileName,
               LocalDateTime.now(),
               ManifestKey.load(locations),
-              BackupArchive.databaseDigest(partial));
+              BackupArchive.databaseDigest(partial),
+              BackupArchive.inventoryDigest(BackupArchive.fileDigests(partial)));
+      Map<String, String> backupFiles = BackupArchive.fileDigests(partial);
       Files.move(
           partial, staged, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
       awaitWritesInProgress(staged);
-      RestoreLoss loss = lossSince(snapshotAt);
+      RestoreLoss loss =
+          lossSince(snapshotAt)
+              .withFiles(
+                  BackupArchive.changedFiles(
+                      BackupArchive.folderDigests(locations.filesDirectory()), backupFiles));
       if (loss.any() && !confirmLoss) {
         Files.deleteIfExists(staged);
         throw new RestoreLossException(loss);
@@ -331,6 +338,7 @@ public class DesktopBackupService {
       info.setProperty("issued", Long.toString(loss.issued()));
       info.setProperty("payments", Long.toString(loss.payments()));
       info.setProperty("changes", Long.toString(loss.changes()));
+      info.setProperty("files", Long.toString(loss.files()));
       try (Writer writer =
           Files.newBufferedWriter(locations.pendingRestoreInfo(), StandardCharsets.UTF_8)) {
         info.store(writer, "Restore chosen at " + LocalDateTime.now().withNano(0));
@@ -410,15 +418,24 @@ public class DesktopBackupService {
         digest = BackupArchive.sha256(new TeeInputStream(in, zip));
       }
       zip.closeEntry();
+      Map<String, String> fileDigests = new java.util.TreeMap<>();
       for (Path file : files) {
         zip.putNextEntry(new ZipEntry(BackupArchive.FILES_PREFIX + file.getFileName()));
-        Files.copy(file, zip);
+        try (InputStream in = Files.newInputStream(file)) {
+          fileDigests.put(
+              file.getFileName().toString(), BackupArchive.sha256(new TeeInputStream(in, zip)));
+        }
         zip.closeEntry();
       }
       // Last: it signs the digest of the database above.
       zip.putNextEntry(new ZipEntry(BackupArchive.META));
       zip.write(
-          BackupNames.meta(reason, snapshotAt, digest, ManifestKey.loadOrCreate(locations))
+          BackupNames.meta(
+                  reason,
+                  snapshotAt,
+                  digest,
+                  BackupArchive.inventoryDigest(fileDigests),
+                  ManifestKey.loadOrCreate(locations))
               .getBytes(StandardCharsets.UTF_8));
       zip.closeEntry();
     }
@@ -588,15 +605,26 @@ public class DesktopBackupService {
    * @param issued documents issued or cancelled after the backup
    * @param payments payments (and reversals) recorded after the backup
    * @param changes document history entries after the backup (all kinds)
+   * @param files uploaded files (logos, attachments) now that the backup lacks or has differently
    */
-  public record RestoreLoss(long issued, long payments, long changes) {
+  public record RestoreLoss(long issued, long payments, long changes, long files) {
     /**
      * Whether anything would be lost.
      *
      * @return {@code true} if any count is above zero
      */
     public boolean any() {
-      return issued > 0 || payments > 0 || changes > 0;
+      return issued > 0 || payments > 0 || changes > 0 || files > 0;
+    }
+
+    /**
+     * The same counts with the number of files.
+     *
+     * @param changedFiles files now that the backup lacks or has differently
+     * @return the counts
+     */
+    public RestoreLoss withFiles(long changedFiles) {
+      return new RestoreLoss(issued, payments, changes, changedFiles);
     }
   }
 
@@ -624,9 +652,11 @@ public class DesktopBackupService {
               + loss.issued()
               + " Belege ausgestellt oder storniert, "
               + loss.payments()
-              + " Zahlungen erfasst und "
+              + " Zahlungen erfasst, "
               + loss.changes()
-              + " Änderungen an Dokumenten gemacht. Sie fehlen nach der Wiederherstellung im"
+              + " Änderungen an Dokumenten gemacht und "
+              + loss.files()
+              + " hochgeladene Dateien (Logos, Anhänge) neu angelegt oder geändert. Sie fehlen nach der Wiederherstellung im"
               + " Programm; erhalten bleiben sie in der Sicherheitskopie, die vorher angelegt und"
               + " nicht automatisch gelöscht wird und wie alle Rechnungen aufzubewahren ist (§ 147 AO).");
       this.counts = loss;

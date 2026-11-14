@@ -360,6 +360,81 @@ public final class BackupArchive {
   }
 
   /**
+   * The SHA-256 (hex) of every uploaded file in a plain backup ZIP.
+   *
+   * @param plainZip the ZIP
+   * @return file name to digest
+   * @throws IOException if the ZIP cannot be read
+   */
+  public static java.util.Map<String, String> fileDigests(Path plainZip) throws IOException {
+    java.util.Map<String, String> digests = new java.util.TreeMap<>();
+    try (ZipInputStream zip = new ZipInputStream(Files.newInputStream(plainZip))) {
+      for (ZipEntry entry = zip.getNextEntry(); entry != null; entry = zip.getNextEntry()) {
+        String name = fileName(entry.getName());
+        if (name != null) {
+          digests.put(name, sha256(zip));
+        }
+      }
+    }
+    return digests;
+  }
+
+  /**
+   * The SHA-256 (hex) of every file directly in a folder (the upload folder is flat).
+   *
+   * @param folder the folder
+   * @return file name to digest; empty if the folder does not exist
+   * @throws IOException if a file cannot be read
+   */
+  public static java.util.Map<String, String> folderDigests(Path folder) throws IOException {
+    java.util.Map<String, String> digests = new java.util.TreeMap<>();
+    if (!Files.isDirectory(folder)) {
+      return digests;
+    }
+    try (java.util.stream.Stream<Path> files = Files.list(folder)) {
+      for (Path file : files.filter(Files::isRegularFile).toList()) {
+        try (InputStream in = Files.newInputStream(file)) {
+          digests.put(file.getFileName().toString(), sha256(in));
+        }
+      }
+    }
+    return digests;
+  }
+
+  /**
+   * One SHA-256 (hex) over a file inventory (names and digests, sorted by name), for the signature.
+   *
+   * @param digests file name to digest
+   * @return the digest of the inventory
+   */
+  public static String inventoryDigest(java.util.Map<String, String> digests) {
+    StringBuilder inventory = new StringBuilder();
+    new java.util.TreeMap<>(digests)
+        .forEach((name, digest) -> inventory.append(name).append('\0').append(digest).append('\n'));
+    try {
+      return sha256(
+          new java.io.ByteArrayInputStream(inventory.toString().getBytes(StandardCharsets.UTF_8)));
+    } catch (IOException e) {
+      throw new IllegalStateException(e);
+    }
+  }
+
+  /**
+   * How many of the current files a restore would remove or replace: those missing from the backup
+   * or different there.
+   *
+   * @param current the files now
+   * @param backup the files in the backup
+   * @return the count
+   */
+  public static long changedFiles(
+      java.util.Map<String, String> current, java.util.Map<String, String> backup) {
+    return current.entrySet().stream()
+        .filter(file -> !file.getValue().equals(backup.get(file.getKey())))
+        .count();
+  }
+
+  /**
    * The SHA-256 (hex) of a stream, read to its end.
    *
    * @param in the stream

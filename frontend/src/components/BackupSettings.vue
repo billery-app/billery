@@ -22,7 +22,7 @@
           <span v-if="isOld" class="backup-warning">
             {{ latest ? 'Die letzte Sicherung ist älter als 7 Tage.' : 'Bitte jetzt eine Sicherung anlegen.' }}
           </span>
-          <button type="button" class="btn btn-primary btn-small" :disabled="busy" @click="backupNow">
+          <button type="button" class="btn btn-primary btn-small" :disabled="busy || status.restorePending" @click="backupNow">
             {{ busy ? 'Sichere …' : 'Jetzt sichern' }}
           </button>
         </div>
@@ -68,7 +68,7 @@
               </small>
             </template>
           </div>
-          <button type="submit" class="btn btn-secondary" :disabled="busy">Einstellungen speichern</button>
+          <button type="submit" class="btn btn-secondary" :disabled="busy || status.restorePending">Einstellungen speichern</button>
         </form>
 
         <h3 class="backup-heading">Vorhandene Sicherungen</h3>
@@ -146,7 +146,7 @@ export default {
       notice: '',
       restoring: null,
       restorePassword: '',
-      // A restore the server refused because documents were entered after the backup: { backup, message }
+      // A restore the server refused because documents or uploaded files came after the backup: { backup, message }
       loss: null
     }
   },

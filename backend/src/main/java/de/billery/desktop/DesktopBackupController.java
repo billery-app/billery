@@ -177,7 +177,8 @@ public class DesktopBackupController {
                   "message", e.getMessage(),
                   "issued", e.loss().issued(),
                   "payments", e.loss().payments(),
-                  "changes", e.loss().changes()));
+                  "changes", e.loss().changes(),
+                  "files", e.loss().files()));
     } catch (IllegalArgumentException e) {
       return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
     }

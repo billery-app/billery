@@ -59,7 +59,8 @@ class DesktopBackupServiceTest {
     settings.updateSetting("test_marker", "nachher");
     Files.delete(files.resolve("logo.png"));
     Files.writeString(files.resolve("neu.png"), "neues Logo");
-    service.stageRestore(backup.name(), null, false);
+    // neu.png came after the backup and would be lost: the user confirms that
+    service.stageRestore(backup.name(), null, true);
     assertTrue(service.status().restorePending());
 
     shutdownDatabase(); // the app is closed
@@ -211,7 +212,7 @@ class DesktopBackupServiceTest {
       zip.closeEntry();
       zip.putNextEntry(new java.util.zip.ZipEntry(BackupArchive.META));
       zip.write(
-          BackupNames.meta(BackupNames.MANUAL, now, "00", new byte[0])
+          BackupNames.meta(BackupNames.MANUAL, now, "00", "00", new byte[0])
               .getBytes(java.nio.charset.StandardCharsets.UTF_8));
       zip.closeEntry();
     }
@@ -317,6 +318,27 @@ class DesktopBackupServiceTest {
   }
 
   @Test
+  void aFileUploadedOrChangedAfterTheBackupCountsAsLost() throws Exception {
+    Files.writeString(files.resolve("logo.png"), "alt");
+    BackupFile backup = service.backup(BackupNames.MANUAL);
+    Files.writeString(files.resolve("logo.png"), "neu"); // changed
+    Files.writeString(files.resolve("anhang.pdf"), "x"); // new
+
+    DesktopBackupService.RestoreLossException refused =
+        assertThrows(
+            DesktopBackupService.RestoreLossException.class,
+            () -> service.stageRestore(backup.name(), null, false));
+    assertEquals(2, refused.loss().files());
+    assertTrue(refused.getMessage().contains("2 hochgeladene Dateien"), refused.getMessage());
+
+    service.stageRestore(backup.name(), null, true);
+    shutdownDatabase();
+    PendingRestore.applyIfPending(locations);
+    assertTrue(Files.readString(locations.restoreLog()).contains("2 Dateien"));
+    assertEquals("alt", Files.readString(files.resolve("logo.png")));
+  }
+
+  @Test
   void aFileWithAnImpossibleDateInItsNameIsIgnored() throws Exception {
     Path folder = Files.createDirectories(locations.defaultBackupDirectory());
     Files.writeString(folder.resolve("billery-2026-99-99_99-99-99-manuell.zip"), "x");
@@ -419,7 +441,7 @@ class DesktopBackupServiceTest {
         assertThrows(
             DesktopBackupService.RestoreLossException.class,
             () -> service.stageRestore(backup.name(), null, false));
-    assertEquals(new DesktopBackupService.RestoreLoss(1, 0, 2), refused.loss());
+    assertEquals(new DesktopBackupService.RestoreLoss(1, 0, 2, 0), refused.loss());
     assertTrue(refused.getMessage().contains("Sicherheitskopie"));
     assertFalse(Files.exists(locations.pendingRestore()), "nothing staged without confirmation");
 

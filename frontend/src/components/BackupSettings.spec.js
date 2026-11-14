@@ -54,6 +54,14 @@ describe('BackupSettings', () => {
     expect(backupAPI.getStatus).toHaveBeenCalledTimes(2)
   })
 
+  it('offers neither a backup nor a settings change while a restore waits for the restart', async () => {
+    const wrapper = await mounted(status({ restorePending: true }))
+    const button = text => wrapper.findAll('button').find(b => b.text() === text)
+    expect(button('Jetzt sichern').attributes('disabled')).toBeDefined()
+    expect(button('Einstellungen speichern').attributes('disabled')).toBeDefined()
+    expect(button('Wiederherstellung abbrechen').attributes('disabled')).toBeUndefined()
+  })
+
   it('switches encryption on only with a password and keeps it on a later save', async () => {
     const wrapper = await mounted(status())
     await wrapper.find('[data-testid="backup-encrypt"]').setValue(true)

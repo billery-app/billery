@@ -139,12 +139,18 @@ public final class PendingRestore {
     Map<String, String> settings = currentSettings();
     String actual =
         countSince(
-            BackupNames.trustedSnapshot(
-                BackupArchive.readMeta(staged),
-                backupName,
-                LocalDateTime.now(),
-                ManifestKey.load(locations),
-                BackupArchive.databaseDigest(staged)));
+                BackupNames.trustedSnapshot(
+                    BackupArchive.readMeta(staged),
+                    backupName,
+                    LocalDateTime.now(),
+                    ManifestKey.load(locations),
+                    BackupArchive.databaseDigest(staged),
+                    BackupArchive.inventoryDigest(BackupArchive.fileDigests(staged))))
+            + ", "
+            + BackupArchive.changedFiles(
+                BackupArchive.folderDigests(locations.filesDirectory()),
+                BackupArchive.fileDigests(staged))
+            + " Dateien";
     // Kept in a file before the swap: if the start fails after it, the next attempt still knows
     // the counters of the replaced database (and keeps the higher of both).
     Map<String, Long> counters = rememberCounters(locations, numberCounters());
@@ -248,6 +254,8 @@ public final class PendingRestore {
                     BackupNames.BEFORE_RESTORE,
                     LocalDateTime.now(),
                     digest,
+                    BackupArchive.inventoryDigest(
+                        BackupArchive.folderDigests(locations.filesDirectory())),
                     ManifestKey.loadOrCreate(locations))
                 .getBytes(StandardCharsets.UTF_8));
         zip.closeEntry();
@@ -435,7 +443,9 @@ public final class PendingRestore {
             + info.getProperty("payments", "?")
             + " Zahlungen, "
             + info.getProperty("changes", "?")
-            + " Änderungen an Dokumenten"
+            + " Änderungen an Dokumenten, "
+            + info.getProperty("files", "?")
+            + " Dateien"
             + System.lineSeparator();
     // In the app-data folder, and next to the safety copy in the backup folder (an external drive
     // or a cloud folder outlives the computer).
