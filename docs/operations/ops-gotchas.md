@@ -166,9 +166,12 @@ The desktop app keeps everything in its app-data folder (`database.mv.db`,
   Safety copies are **never** deleted automatically (they hold the later records; GoBD,
   `verfahrensdokumentation.md` §8). A backup of an older version is brought up to date by the
   migrations of that start. "Wiederherstellung abbrechen" withdraws it before the restart.
-  **Until the restart nothing is saved** (`RestorePendingFilter`: changing API requests answer 409),
+  **Until the restart nothing is saved** (`RestorePendingFilter`: changing API requests answer 409;
+  choosing the restore waits for the saves already under way, so the confirmed count is final),
   and the restart counts again what the restore takes out and logs those numbers next to the
-  confirmed ones. The snapshot time in `backup.json` is signed with the installation's key
+  confirmed ones. The number counters of the replaced database are carried over where higher, so
+  no document number is given twice; the numbers given after the backup remain a documented gap
+  (they are in the safety copy). The snapshot time in `backup.json` is signed with the installation's key
   (HMAC); an unsigned or foreign one, or one after the backup's name or after now, is not trusted
   and everything counts (a backup from a lost computer restored into a new, empty installation
   has nothing to lose anyway).

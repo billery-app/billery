@@ -40,7 +40,8 @@ class DesktopBackupServiceTest {
     files = Files.createDirectories(appData.resolve("files"));
     locations = new BackupLocations(appData.resolve("database"), files);
     settings = new UserSettingsRepository(TestWiring.jdbcClient());
-    service = new DesktopBackupService(TestWiring.jdbcClient(), settings, locations);
+    service =
+        new DesktopBackupService(TestWiring.jdbcClient(), settings, locations, new WriteGate());
   }
 
   @AfterEach
@@ -215,6 +216,44 @@ class DesktopBackupServiceTest {
     assertEquals(1, refused.loss().issued(), "unsigned: everything counts");
     assertFalse(
         Files.exists(locations.pendingRestore()), "staged only for the count, then removed");
+  }
+
+  @Test
+  void aNumberGivenAfterTheBackupIsNeverGivenAgain() throws Exception {
+    try (var conn = Database.getConnection();
+        var stmt = conn.createStatement()) {
+      stmt.execute("DELETE FROM document_number_series");
+      stmt.execute(
+          "INSERT INTO document_number_series (document_type_id, doc_year, last_number) VALUES (1, 2026, 3)");
+    }
+    BackupFile backup = service.backup(BackupNames.MANUAL);
+    try (var conn = Database.getConnection();
+        var stmt = conn.createStatement()) {
+      // after the backup: invoices 4 to 7 issued, and a first credit note
+      stmt.execute("UPDATE document_number_series SET last_number = 7 WHERE document_type_id = 1");
+      stmt.execute(
+          "INSERT INTO document_number_series (document_type_id, doc_year, last_number) VALUES (6, 2026, 1)");
+    }
+    service.stageRestore(backup.name(), null, true);
+    shutdownDatabase();
+
+    PendingRestore.applyIfPending(locations);
+    MainAppTestAccess.prepareDatabase();
+
+    try (var conn = Database.getConnection();
+        var stmt = conn.createStatement();
+        var rows =
+            stmt.executeQuery(
+                "SELECT document_type_id, last_number FROM document_number_series ORDER BY 1")) {
+      List<String> counters = new ArrayList<>();
+      while (rows.next()) {
+        counters.add(rows.getInt(1) + "=" + rows.getLong(2));
+      }
+      assertEquals(
+          List.of("1=7", "6=1"), counters, "the next invoice is 8, the next credit note 2");
+    }
+    assertTrue(Files.readString(locations.restoreLog()).contains("Nummernkreise angehoben: 2"));
+    assertFalse(Files.exists(PendingRestore.countersFile(locations)));
   }
 
   @Test

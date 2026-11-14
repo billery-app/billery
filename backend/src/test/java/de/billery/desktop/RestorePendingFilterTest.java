@@ -27,7 +27,7 @@ class RestorePendingFilterTest {
   void writesAreRefusedOnlyWhileARestoreWaits() throws Exception {
     BackupLocations locations =
         new BackupLocations(appData.resolve("database"), appData.resolve("files"));
-    RestorePendingFilter filter = new RestorePendingFilter(locations);
+    RestorePendingFilter filter = new RestorePendingFilter(locations, new WriteGate());
 
     assertEquals(200, status(filter, "POST", "/api/invoices"), "no restore waiting");
 
@@ -48,6 +48,30 @@ class RestorePendingFilterTest {
 
   @Test
   void withoutAFileDatabaseNothingIsRefused() throws Exception {
-    assertEquals(200, status(new RestorePendingFilter(null), "POST", "/api/invoices"));
+    assertEquals(
+        200, status(new RestorePendingFilter(null, new WriteGate()), "POST", "/api/invoices"));
+  }
+
+  @Test
+  void aWriteHoldsTheGateWhileItRunsAndReleasesItAfterwards() throws Exception {
+    BackupLocations locations =
+        new BackupLocations(appData.resolve("database"), appData.resolve("files"));
+    WriteGate gate = new WriteGate();
+    RestorePendingFilter filter = new RestorePendingFilter(locations, gate);
+    boolean[] heldDuringTheWrite = {false};
+
+    filter.doFilter(
+        new MockHttpServletRequest("POST", "/api/invoices"),
+        new MockHttpServletResponse(),
+        (req, res) -> {
+          try {
+            heldDuringTheWrite[0] = !gate.awaitIdle(java.time.Duration.ZERO);
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+          }
+        });
+
+    assertTrue(heldDuringTheWrite[0], "a restore chosen now would wait for this write");
+    assertTrue(gate.awaitIdle(java.time.Duration.ZERO), "released afterwards");
   }
 }

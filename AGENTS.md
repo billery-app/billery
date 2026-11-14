@@ -91,7 +91,10 @@ start. While a restore waits, `RestorePendingFilter` refuses every changing API 
 What a restore loses is counted from the snapshot time in `backup.json`, trusted only when
 signed with this installation's key (`backup_manifest_key`, HMAC) and plausible
 (`BackupNames.trustedSnapshot`); otherwise everything counts. The restore is staged before the
-count, so the write lock already holds while counting. The backup endpoints need the window's per-launch
+count and waits for the writes already under way (`WriteGate`, entered by `RestorePendingFilter`
+before it checks), so the count is final. At the restore the number counters
+(`document_number_series`) of the replaced database are carried over where higher: a document
+number is never given twice (GoBD). The backup endpoints need the window's per-launch
 `DESKTOP_UI_TOKEN` (`X-Desktop-Token`; the shell opens the window at `/#desktop-token=…`, the SPA
 keeps it in `sessionStorage`, `services/desktopToken.js`). The settings live in `user_settings`
 (`backup_*`); the SPA shows the section when `GET /api/config`

@@ -39,7 +39,9 @@ import java.util.zip.ZipOutputStream;
  *       encryption is on (with the stored public key; no password needed), in the chosen backup
  *       folder; safety copies are never deleted automatically, because they hold what was entered
  *       after the restored backup (GoBD);
- *   <li>the database file and the uploaded files are replaced by the unpacked ones;
+ *   <li>the database file and the uploaded files are replaced by the unpacked ones, and the number
+ *       counters ({@code document_number_series}) of the replaced database are carried over where
+ *       they are higher: a number issued after the backup is never issued again;
  *   <li>the restore is appended to {@code wiederherstellungen.log} in the app-data folder and in
  *       the backup folder next to the safety copy.
  * </ol>
@@ -131,6 +133,9 @@ public final class PendingRestore {
         countSince(
             BackupNames.trustedSnapshot(
                 BackupArchive.readMeta(staged), backupName, LocalDateTime.now(), manifestKey));
+    // Kept in a file before the swap: if the start fails after it, the next attempt still knows
+    // the counters of the replaced database (and keeps the higher of both).
+    Map<String, Long> counters = rememberCounters(locations, numberCounters());
     Path safetyCopy = saveCurrentState(locations, settings);
     LOGGER.info(() -> "Restoring a backup; the state before is saved in " + safetyCopy);
 
@@ -151,10 +156,12 @@ public final class PendingRestore {
           StandardCopyOption.REPLACE_EXISTING);
     }
     deleteTree(work);
+    int raised = carryOverNumberCounters(counters);
 
-    appendToLog(locations, safetyCopy, actual);
+    appendToLog(locations, safetyCopy, actual + " | Nummernkreise angehoben: " + raised);
     Files.delete(staged);
     Files.deleteIfExists(locations.pendingRestoreInfo());
+    Files.deleteIfExists(countersFile(locations));
     LOGGER.info("Backup restored.");
     return safetyCopy;
   }
@@ -259,6 +266,98 @@ public final class PendingRestore {
     } catch (IllegalArgumentException e) {
       return new byte[0];
     }
+  }
+
+  /** Where the counters of the replaced database are kept until the restore is complete. */
+  static Path countersFile(BackupLocations locations) {
+    return locations.appData().resolve("restore-pending-counters.properties");
+  }
+
+  /** Merges the counters with those remembered by an earlier attempt, keeps them, returns them. */
+  static Map<String, Long> rememberCounters(BackupLocations locations, Map<String, Long> counters)
+      throws IOException {
+    Map<String, Long> merged = new HashMap<>(counters);
+    Path file = countersFile(locations);
+    Properties stored = new Properties();
+    if (Files.exists(file)) {
+      try (Reader reader = Files.newBufferedReader(file, StandardCharsets.UTF_8)) {
+        stored.load(reader);
+      }
+      for (String key : stored.stringPropertyNames()) {
+        merged.merge(key, Long.parseLong(stored.getProperty(key)), Math::max);
+      }
+    }
+    Properties out = new Properties();
+    merged.forEach((key, value) -> out.setProperty(key, Long.toString(value)));
+    try (java.io.Writer writer = Files.newBufferedWriter(file, StandardCharsets.UTF_8)) {
+      out.store(writer, "Number counters of the database replaced by a restore");
+    }
+    return merged;
+  }
+
+  /**
+   * The number counters of the current database, {@code "<type>:<year>"} to the last number given.
+   * An unreadable database has none.
+   */
+  static Map<String, Long> numberCounters() {
+    Map<String, Long> counters = new HashMap<>();
+    try (Connection conn = Database.getConnection();
+        PreparedStatement query =
+            conn.prepareStatement(
+                "SELECT document_type_id, doc_year, last_number FROM document_number_series");
+        ResultSet rows = query.executeQuery()) {
+      while (rows.next()) {
+        counters.put(rows.getInt(1) + ":" + rows.getInt(2), rows.getLong(3));
+      }
+    } catch (SQLException e) {
+      LOGGER.log(Level.WARNING, "Number counters of the current database not readable", e);
+    }
+    return counters;
+  }
+
+  /**
+   * Raises the number counters of the restored database to those of the replaced one where they are
+   * lower (GoBD: a document number is never given twice; the numbers given after the backup stay a
+   * documented gap).
+   *
+   * @param counters the counters of the replaced database
+   * @return how many counters were raised or added
+   * @throws IOException if the restored database cannot be updated
+   */
+  static int carryOverNumberCounters(Map<String, Long> counters) throws IOException {
+    int raised = 0;
+    try (Connection conn = Database.getConnection()) {
+      for (Map.Entry<String, Long> counter : counters.entrySet()) {
+        String[] key = counter.getKey().split(":");
+        int type = Integer.parseInt(key[0]);
+        int year = Integer.parseInt(key[1]);
+        try (PreparedStatement update =
+            conn.prepareStatement(
+                "UPDATE document_number_series SET last_number = ?"
+                    + " WHERE document_type_id = ? AND doc_year = ? AND last_number < ?")) {
+          update.setLong(1, counter.getValue());
+          update.setInt(2, type);
+          update.setInt(3, year);
+          update.setLong(4, counter.getValue());
+          raised += update.executeUpdate();
+        }
+        try (PreparedStatement insert =
+            conn.prepareStatement(
+                "INSERT INTO document_number_series (document_type_id, doc_year, last_number)"
+                    + " SELECT ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM document_number_series"
+                    + " WHERE document_type_id = ? AND doc_year = ?)")) {
+          insert.setInt(1, type);
+          insert.setInt(2, year);
+          insert.setLong(3, counter.getValue());
+          insert.setInt(4, type);
+          insert.setInt(5, year);
+          raised += insert.executeUpdate();
+        }
+      }
+    } catch (SQLException e) {
+      throw new IOException("Could not carry the number counters over to the restored database", e);
+    }
+    return raised;
   }
 
   /** What the user confirmed when choosing the restore. */

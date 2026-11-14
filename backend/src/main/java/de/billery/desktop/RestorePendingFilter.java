@@ -33,21 +33,28 @@ public class RestorePendingFilter extends OncePerRequestFilter {
           + " Datensicherung abbrechen.";
 
   private final BackupLocations locations;
+  private final WriteGate gate;
 
-  /** Uses the database and upload directory of this process. */
+  /**
+   * Uses the database and upload directory of this process.
+   *
+   * @param gate counts the writes in progress
+   */
   @Autowired
-  public RestorePendingFilter() {
-    this(BackupLocations.forDatabase(Database.getUrl(), AppConfig.FILES_PATH));
+  public RestorePendingFilter(WriteGate gate) {
+    this(BackupLocations.forDatabase(Database.getUrl(), AppConfig.FILES_PATH), gate);
   }
 
   /**
    * Uses the given locations (tests).
    *
    * @param locations the desktop data; {@code null} when the database is no H2 file
+   * @param gate counts the writes in progress
    */
-  RestorePendingFilter(BackupLocations locations) {
+  RestorePendingFilter(BackupLocations locations, WriteGate gate) {
     super();
     this.locations = locations;
+    this.gate = gate;
   }
 
   @Override
@@ -59,13 +66,23 @@ public class RestorePendingFilter extends OncePerRequestFilter {
         !READING.contains(request.getMethod())
             && path.startsWith("/api/")
             && !path.startsWith("/api/desktop/");
-    if (writes && locations != null && Files.exists(locations.pendingRestore())) {
-      response.setStatus(HttpServletResponse.SC_CONFLICT);
-      response.setContentType("application/json");
-      response.setCharacterEncoding("UTF-8");
-      response.getWriter().write("{\"message\":\"" + MESSAGE + "\"}");
+    if (!writes || locations == null) {
+      chain.doFilter(request, response);
       return;
     }
-    chain.doFilter(request, response);
+    // Enter before checking: a restore staged after this point waits for this request.
+    gate.enter();
+    try {
+      if (Files.exists(locations.pendingRestore())) {
+        response.setStatus(HttpServletResponse.SC_CONFLICT);
+        response.setContentType("application/json");
+        response.setCharacterEncoding("UTF-8");
+        response.getWriter().write("{\"message\":\"" + MESSAGE + "\"}");
+        return;
+      }
+      chain.doFilter(request, response);
+    } finally {
+      gate.leave();
+    }
   }
 }

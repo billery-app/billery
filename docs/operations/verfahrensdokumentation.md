@@ -152,6 +152,10 @@ Damit dabei keine aufbewahrungspflichtigen Daten verloren gehen:
   bestätigt werden;
 - nimmt es nach dem Vormerken bis zum Neustart keine Änderungen mehr an, damit
   nichts unbemerkt verloren geht, und zählt beim Neustart erneut;
+- übernimmt es die Zählerstände der Nummernkreise aus dem ersetzten Bestand, wo sie
+  höher sind: eine Belegnummer wird nie doppelt vergeben. Die nach der Sicherung
+  vergebenen Nummern bilden eine Lücke, die durch Sicherheitskopie und Protokoll
+  belegt ist;
 - sichert es unmittelbar vor der Wiederherstellung den bisherigen Stand
   (`billery-…-vor-wiederherstellung.zip`, verschlüsselt, wenn ein Passwort
   eingestellt ist). Diese Sicherheitskopien löscht das Programm **nie**

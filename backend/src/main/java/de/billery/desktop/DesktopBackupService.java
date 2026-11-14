@@ -68,6 +68,7 @@ public class DesktopBackupService {
   private final JdbcClient jdbc;
   private final UserSettingsRepository settings;
   private final BackupLocations locations;
+  private final WriteGate gate;
 
   /**
    * Uses the database and upload directory of this process.
@@ -76,8 +77,9 @@ public class DesktopBackupService {
    * @param settings where the backup settings are stored
    */
   @Autowired
-  public DesktopBackupService(JdbcClient jdbc, UserSettingsRepository settings) {
-    this(jdbc, settings, BackupLocations.forDatabase(Database.getUrl(), AppConfig.FILES_PATH));
+  public DesktopBackupService(JdbcClient jdbc, UserSettingsRepository settings, WriteGate gate) {
+    this(
+        jdbc, settings, BackupLocations.forDatabase(Database.getUrl(), AppConfig.FILES_PATH), gate);
   }
 
   /**
@@ -86,12 +88,14 @@ public class DesktopBackupService {
    * @param jdbc the database
    * @param settings where the backup settings are stored
    * @param locations the desktop data; {@code null} when the database is no H2 file
+   * @param gate counts the writes in progress
    */
   DesktopBackupService(
-      JdbcClient jdbc, UserSettingsRepository settings, BackupLocations locations) {
+      JdbcClient jdbc, UserSettingsRepository settings, BackupLocations locations, WriteGate gate) {
     this.jdbc = jdbc;
     this.settings = settings;
     this.locations = locations;
+    this.gate = gate;
   }
 
   /**
@@ -310,6 +314,7 @@ public class DesktopBackupService {
               BackupArchive.readMeta(partial), fileName, LocalDateTime.now(), manifestKey());
       Files.move(
           partial, staged, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+      awaitWritesInProgress(staged);
       RestoreLoss loss = lossSince(snapshotAt);
       if (loss.any() && !confirmLoss) {
         Files.deleteIfExists(staged);
@@ -419,6 +424,21 @@ public class DesktopBackupService {
 
   private boolean onExit() {
     return Boolean.parseBoolean(settings.getSetting(KEY_ON_EXIT, "true"));
+  }
+
+  /** Waits until the writes that started before the restore was staged have finished. */
+  private void awaitWritesInProgress(Path staged) throws IOException {
+    try {
+      if (gate.awaitIdle(java.time.Duration.ofSeconds(30))) {
+        return;
+      }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
+    Files.deleteIfExists(staged);
+    throw new IllegalArgumentException(
+        "Gerade wird noch gespeichert. Bitte einen Moment warten und die Wiederherstellung erneut"
+            + " wählen.");
   }
 
   /** The installation's manifest key; created on first use. */
