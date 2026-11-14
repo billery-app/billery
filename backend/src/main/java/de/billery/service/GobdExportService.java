@@ -80,6 +80,7 @@ public class GobdExportService {
 
   private int maxDocuments = 10_000;
   private int maxDocumentsWithFiles = 5_000;
+  private long maxOutputBytes = 2L * 1024 * 1024 * 1024;
   private int maxPeriodDays = 3_660;
   private int maxConcurrentExports = 1;
 
@@ -115,6 +116,8 @@ public class GobdExportService {
    *
    * @param maxDocuments most documents in one export
    * @param maxDocumentsWithFiles most documents when PDFs and XRechnungs are rendered as well
+   * @param maxOutputBytes largest ZIP one export may send; beyond it the export breaks off (the
+   *     size is only known while streaming, so this cannot answer 413 any more)
    * @param maxPeriodDays longest period between {@code from} and {@code to}, in days
    * @param maxConcurrentExports exports that may run at the same time
    */
@@ -122,10 +125,12 @@ public class GobdExportService {
   public void configureLimits(
       @Value("${export.max-documents:10000}") int maxDocuments,
       @Value("${export.max-documents-with-files:5000}") int maxDocumentsWithFiles,
+      @Value("${export.max-output-bytes:2147483648}") long maxOutputBytes,
       @Value("${export.max-period-days:3660}") int maxPeriodDays,
       @Value("${export.max-concurrent:1}") int maxConcurrentExports) {
     this.maxDocuments = maxDocuments;
     this.maxDocumentsWithFiles = maxDocumentsWithFiles;
+    this.maxOutputBytes = maxOutputBytes;
     this.maxPeriodDays = maxPeriodDays;
     this.maxConcurrentExports = maxConcurrentExports;
   }
@@ -187,9 +192,10 @@ public class GobdExportService {
      *
      * @param out where the ZIP goes (the HTTP response)
      * @throws IOException if writing fails (e.g. the client went away)
+     * @throws ExportLimitException if the ZIP grows beyond the output limit (it breaks off)
      */
     public void writeTo(OutputStream out) throws IOException {
-      CuttableStream guard = new CuttableStream(out);
+      CuttableStream guard = new CuttableStream(out, maxOutputBytes);
       // Closing releases the deflater; it does not close out.
       try (ZipOutputStream zip = new ZipOutputStream(guard, StandardCharsets.UTF_8)) {
         boolean complete = false;
@@ -569,14 +575,29 @@ public class GobdExportService {
 
   /**
    * Passes the ZIP to the client until {@link #cut()}; from then on it drops every byte, so closing
-   * the ZIP after a failure releases its resources without completing the archive. Never closes the
-   * client's stream (the container does).
+   * the ZIP after a failure releases its resources without completing the archive. Refuses to send
+   * more than the output limit. Never closes the client's stream (the container does).
    */
   private static final class CuttableStream extends FilterOutputStream {
+    private final long limit;
+    private long sent;
     private boolean dropping;
 
-    private CuttableStream(OutputStream out) {
+    private CuttableStream(OutputStream out, long limit) {
       super(out);
+      this.limit = limit;
+    }
+
+    private void count(long bytes) {
+      sent += bytes;
+      if (sent > limit) {
+        dropping = true;
+        throw new ExportLimitException(
+            "Der Export ist zu groß (höchstens "
+                + limit / (1024 * 1024)
+                + " MB) und wurde abgebrochen. Bitte den Zeitraum verkleinern oder ohne"
+                + " Belegdateien exportieren.");
+      }
     }
 
     private void cut() {
@@ -586,6 +607,7 @@ public class GobdExportService {
     @Override
     public void write(int b) throws IOException {
       if (!dropping) {
+        count(1);
         out.write(b);
       }
     }
@@ -593,6 +615,7 @@ public class GobdExportService {
     @Override
     public void write(byte[] b, int off, int len) throws IOException {
       if (!dropping) {
+        count(len);
         out.write(b, off, len);
       }
     }
