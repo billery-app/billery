@@ -130,9 +130,9 @@ minutes.
 | `EXPORT_MAX_PERIOD_DAYS` | `3660` | Longest allowed span between `from` and `to`, in days. |
 | `EXPORT_MAX_DOCUMENTS` | `10000` | Most documents (issued invoices and credit notes) in one export. |
 | `EXPORT_MAX_DOCUMENTS_WITH_FILES` | `5000` | Most documents when the PDF and XRechnung of each are rendered too (`documents=true`); rendering is the expensive part. |
-| `EXPORT_MAX_OUTPUT_BYTES` | `2147483648` (2 GiB) | Largest ZIP one export may send (bandwidth, not heap: nothing holds the whole ZIP); checked while streaming, the export breaks off beyond it. Logos are embedded in every PDF, so large logos make large exports. |
+| `EXPORT_MAX_OUTPUT_BYTES` | `1073741824` (1 GiB) | Largest ZIP one export may send; checked while streaming, the export breaks off beyond it. Not for the server's heap (nothing holds the whole ZIP) but for bandwidth and for the browser: the SPA receives the download as one blob before saving it. Logos are embedded in every PDF, so large logos make large exports. |
 | `EXPORT_MAX_CONCURRENT` | `2` | Exports allowed to run at the same time per instance. Each tenant (company) has at most one of them, so one tenant cannot take every slot; a running export holds its slot until the download has finished. |
-| `EXPORT_MAX_DURATION_MINUTES` | `30` | Longest time one export may take, transfer included; beyond it the export breaks off (unreadable) and frees its slot, so a slow client cannot hold a slot longer. A client that stops reading is cut off earlier by the server's write timeout. |
+| `EXPORT_MAX_DURATION_MINUTES` | `30` | Longest time one export may take from its checks on, transfer included; beyond it the export breaks off (unreadable) and frees its slot, so a slow client cannot hold a slot longer. It is checked before every write; a write the client does not accept ends with Tomcat's write timeout (the connection timeout, 60 s unless `server.tomcat.connection-timeout` is set), so the slot is free at the latest that much later. |
 
 ## Files and startup
 

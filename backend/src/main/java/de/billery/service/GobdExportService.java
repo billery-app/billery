@@ -86,7 +86,7 @@ public class GobdExportService {
 
   private int maxDocuments = 10_000;
   private int maxDocumentsWithFiles = 5_000;
-  private long maxOutputBytes = 2L * 1024 * 1024 * 1024;
+  private long maxOutputBytes = 1024L * 1024 * 1024;
   private int maxPeriodDays = 3_660;
   private int maxConcurrentExports = 2;
   private Duration maxDuration = Duration.ofMinutes(30);
@@ -132,14 +132,15 @@ public class GobdExportService {
    * @param maxConcurrentExports exports that may run at the same time on this instance; each tenant
    *     has at most one of them, so one tenant cannot take every slot (while streaming, a slow
    *     client holds its slot)
-   * @param maxDurationMinutes longest time one export may take, transfer included; beyond it the
-   *     export breaks off and frees its slot
+   * @param maxDurationMinutes longest time one export may take from {@link #prepare} on, transfer
+   *     included; checked before every write, so it breaks off at the latest one write timeout of
+   *     the server later (a write the client does not accept ends with that timeout)
    */
   @Autowired
   public void configureLimits(
       @Value("${export.max-documents:10000}") int maxDocuments,
       @Value("${export.max-documents-with-files:5000}") int maxDocumentsWithFiles,
-      @Value("${export.max-output-bytes:2147483648}") long maxOutputBytes,
+      @Value("${export.max-output-bytes:1073741824}") long maxOutputBytes,
       @Value("${export.max-period-days:3660}") int maxPeriodDays,
       @Value("${export.max-concurrent:2}") int maxConcurrentExports,
       @Value("${export.max-duration-minutes:30}") int maxDurationMinutes) {
@@ -168,10 +169,11 @@ public class GobdExportService {
           "Der Zeitraum ist zu lang (höchstens " + maxPeriodDays + " Tage pro Export).");
     }
     int tenant = takeSlot();
+    long deadline = System.nanoTime() + maxDuration.toNanos();
     try {
       List<Invoice> documents = documentsIn(from, to);
       checkDocumentCount(documents.size(), includeDocuments);
-      return new PreparedExport(tenant, from, to, includeDocuments, documents);
+      return new PreparedExport(tenant, deadline, from, to, includeDocuments, documents);
     } catch (RuntimeException e) {
       releaseSlot(tenant);
       throw e;
@@ -202,6 +204,7 @@ public class GobdExportService {
    */
   public final class PreparedExport implements AutoCloseable {
     private final int tenant;
+    private final long deadline;
     private final LocalDate from;
     private final LocalDate to;
     private final boolean includeDocuments;
@@ -210,11 +213,13 @@ public class GobdExportService {
 
     private PreparedExport(
         int tenant,
+        long deadline,
         LocalDate from,
         LocalDate to,
         boolean includeDocuments,
         List<Invoice> documents) {
       this.tenant = tenant;
+      this.deadline = deadline;
       this.from = from;
       this.to = to;
       this.includeDocuments = includeDocuments;
@@ -232,8 +237,7 @@ public class GobdExportService {
      *     allowed (it breaks off)
      */
     public void writeTo(OutputStream out) throws IOException {
-      CuttableStream guard =
-          new CuttableStream(out, maxOutputBytes, System.nanoTime() + maxDuration.toNanos());
+      CuttableStream guard = new CuttableStream(out, maxOutputBytes, deadline);
       // Closing releases the deflater; it does not close out.
       try (ZipOutputStream zip = new ZipOutputStream(guard, StandardCharsets.UTF_8)) {
         boolean complete = false;

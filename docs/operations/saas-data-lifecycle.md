@@ -86,7 +86,7 @@ Every member of a tenant, whatever the role, can export in the application:
   tables `belege.csv`, `positionen.csv`, `zahlungen.csv`, `historie.csv`, `kunden.csv`, the
   description `index.xml` (GDPdU) and, when chosen, the PDF and the XRechnung of every document.
   The ZIP is streamed while it is produced. One export holds at most 10 000 documents, 5 000 when
-  the files are included, and 2 GiB; larger archives are exported year by year. Limits: [`../reference/env-vars.md`](../reference/env-vars.md).
+  the files are included, and 1 GiB; larger archives are exported year by year. Limits: [`../reference/env-vars.md`](../reference/env-vars.md).
 - Each document as **PDF** and each invoice as **XRechnung**.
 
 **Not in any export:** the templates and logos, the catalog (articles, services, equipment), the

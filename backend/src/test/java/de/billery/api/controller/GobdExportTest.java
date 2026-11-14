@@ -434,6 +434,8 @@ class GobdExportTest {
     service.configureLimits(10, 10, BIG, 3_660, 1, 0); // no time at all
 
     try (GobdExportService.PreparedExport prepared = service.prepare(JAN_1, DEC_31, false)) {
+      // the clock runs from the checks on, not from the first byte
+      service.configureLimits(10, 10, BIG, 3_660, 1, 30);
       ExportLimitException e =
           assertThrows(
               ExportLimitException.class, () -> prepared.writeTo(new ByteArrayOutputStream()));
