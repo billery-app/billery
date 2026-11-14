@@ -80,7 +80,7 @@
 </template>
 
 <script>
-import exportAPI from '../services/exportService.js'
+import exportAPI, { isCompleteZip } from '../services/exportService.js'
 import AccountSettings from '../components/AccountSettings.vue'
 import TeamSettings from '../components/TeamSettings.vue'
 import BackupSettings from '../components/BackupSettings.vue'
@@ -160,7 +160,13 @@ export default {
       this.exportError = null
       try {
         const response = await exportAPI.gobdExport(this.exportFrom, this.exportTo, this.exportDocuments)
-        const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/zip' }))
+        const zip = new Blob([response.data], { type: 'application/zip' })
+        // The server streams the archive; one that broke off on the way is not the export.
+        if (!(await isCompleteZip(zip))) {
+          this.exportError = 'Der Export ist unvollständig angekommen. Bitte erneut versuchen.'
+          return
+        }
+        const url = window.URL.createObjectURL(zip)
         const a = document.createElement('a')
         a.href = url
         a.download = `GoBD-Export_${this.exportFrom}_${this.exportTo}.zip`

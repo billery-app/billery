@@ -115,18 +115,23 @@ startup; restart the backend after a change.
 ## GoBD export limits
 
 Read by `GobdExportService.configureLimits` from the `export.*` properties of `application.properties`.
-One export builds its whole ZIP in memory, so these bound heap and CPU per request. An export that
-would exceed a limit is refused with HTTP 413 and a message naming the limit (never truncated); a
-second export while all slots are taken gets HTTP 429 with `Retry-After`. Raise a limit only
-together with the JVM heap.
+The ZIP is streamed into the response while it is produced (only one document's files and one
+chunk of table rows are in memory), so the limits bound database load and run time, not the heap.
+They are checked before the first byte: an export that would exceed a limit is refused with HTTP
+413 and a message naming the limit (never truncated); a second export while all slots are taken
+gets HTTP 429 with `Retry-After`. Rendering the PDF and XRechnung takes about 0.1 s per document
+(measured with the demo data), so 5 000 documents with files hold an export slot for roughly ten
+minutes.
 
 | Variable | Default | Notes |
 |----------|---------|-------|
 | `EXPORT_MAX_PERIOD_DAYS` | `3660` | Longest allowed span between `from` and `to`, in days. |
 | `EXPORT_MAX_DOCUMENTS` | `10000` | Most documents (issued invoices and credit notes) in one export. |
-| `EXPORT_MAX_DOCUMENTS_WITH_FILES` | `2000` | Most documents when the PDF and XRechnung of each are rendered too (`documents=true`); rendering is the expensive part. |
-| `EXPORT_MAX_OUTPUT_BYTES` | `134217728` (128 MB) | Largest ZIP held in memory; the export aborts as soon as it grows beyond it. |
+| `EXPORT_MAX_DOCUMENTS_WITH_FILES` | `5000` | Most documents when the PDF and XRechnung of each are rendered too (`documents=true`); rendering is the expensive part. |
 | `EXPORT_MAX_CONCURRENT` | `1` | Exports allowed to run at the same time per instance. |
+
+`EXPORT_MAX_OUTPUT_BYTES` is gone: nothing holds the whole ZIP any more. A value still set is
+ignored.
 
 ## Files and startup
 

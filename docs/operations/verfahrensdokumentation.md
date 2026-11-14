@@ -120,10 +120,12 @@ Exportiert werden alle ausgestellten Rechnungen und Stornorechnungen, deren
 Belegdatum im Zeitraum liegt.
 
 Ein Export ist durch Betriebsgrenzen beschränkt, damit er den Server nicht
-überlastet: standardmäßig höchstens 3 660 Tage, 10 000 Belege (2 000, wenn PDF und
-XRechnung mit erzeugt werden), 128 MB Archivgröße und ein gleichzeitiger Export.
+überlastet: standardmäßig höchstens 3 660 Tage, 10 000 Belege (5 000, wenn PDF und
+XRechnung mit erzeugt werden) und ein gleichzeitiger Export.
 Wird eine Grenze überschritten, lehnt das Programm den Export mit einer Meldung ab;
-es kürzt ihn **nie** stillschweigend. In dem Fall ist der Zeitraum auf mehrere
+es kürzt ihn **nie** stillschweigend. Bricht ein Export unterwegs ab (etwa bei
+einem Verbindungsabbruch), ist die angekommene Datei kein lesbares ZIP-Archiv,
+und das Programm speichert sie nicht; der Export ist dann zu wiederholen. In dem Fall ist der Zeitraum auf mehrere
 Exporte aufzuteilen oder ohne PDF und XRechnung zu exportieren. Der Betreiber kann
 die Grenzen anpassen (Variablen `EXPORT_*`, siehe
 [`../reference/env-vars.md`](../reference/env-vars.md#gobd-export-limits)).

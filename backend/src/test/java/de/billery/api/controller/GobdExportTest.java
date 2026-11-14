@@ -10,22 +10,32 @@ import de.billery.api.dto.InvoiceDto;
 import de.billery.api.dto.InvoiceItemDto;
 import de.billery.api.dto.PaymentRequest;
 import de.billery.api.dto.StatusChangeRequest;
+import de.billery.data.Invoice;
 import de.billery.data.InvoiceTemplate;
 import de.billery.data.Owner;
 import de.billery.data.TestDatabaseConfig;
+import de.billery.service.DocumentPdfService;
+import de.billery.service.EInvoiceService;
 import de.billery.service.ExportBusyException;
 import de.billery.service.ExportLimitException;
 import de.billery.service.GobdExportService;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.OutputStream;
 import java.io.StringReader;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.zip.ZipEntry;
+import java.util.zip.ZipException;
+import java.util.zip.ZipFile;
 import java.util.zip.ZipInputStream;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -35,6 +45,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.mock.web.MockHttpServletResponse;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
@@ -108,11 +119,13 @@ class GobdExportTest {
     issue(LocalDate.of(2025, 12, 31), "Vorjahr", 1, 10); // outside the period
     draft(LocalDate.of(2026, 5, 1)); // drafts are not records
 
-    ResponseEntity<byte[]> response =
-        export.gobdExport(LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31), true);
+    MockHttpServletResponse response =
+        exportResponse(LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31), true);
 
-    assertEquals(HttpStatus.OK, response.getStatusCode());
-    Map<String, byte[]> zip = unzip(response.getBody());
+    assertEquals(200, response.getStatus());
+    assertEquals("application/zip", response.getContentType());
+    assertTrue(response.getHeader("Content-Disposition").contains("GoBD-Export_2026-01-01"));
+    Map<String, byte[]> zip = unzip(response.getContentAsByteArray());
     List<String> belege = lines(zip.get("belege.csv"));
     assertEquals(4, belege.size(), "header + 2 invoices + 1 credit note");
     assertTrue(belege.get(1).contains("\"238,00\";\"238,00\""), "gross and paid");
@@ -133,7 +146,9 @@ class GobdExportTest {
   void everyCsvHeaderMatchesTheColumnsDeclaredInIndexXml() throws Exception {
     issue(LocalDate.now(), "A", 1, 1);
     Map<String, byte[]> zip =
-        unzip(export.gobdExport(LocalDate.now().minusDays(1), LocalDate.now(), false).getBody());
+        unzip(
+            exportResponse(LocalDate.now().minusDays(1), LocalDate.now(), false)
+                .getContentAsByteArray());
 
     DocumentBuilderFactory factory = withoutExternalEntities();
     factory.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false);
@@ -167,7 +182,9 @@ class GobdExportTest {
     issue(LocalDate.now(), "A", 1, 1);
     String index =
         new String(
-            unzip(export.gobdExport(LocalDate.now().minusDays(1), LocalDate.now(), false).getBody())
+            unzip(
+                    exportResponse(LocalDate.now().minusDays(1), LocalDate.now(), false)
+                        .getContentAsByteArray())
                 .get("index.xml"),
             StandardCharsets.UTF_8);
     String doctype = "<!DOCTYPE DataSet SYSTEM \"gdpdu-01-09-2004.dtd\">";
@@ -209,12 +226,9 @@ class GobdExportTest {
   }
 
   @Test
-  void anInvertedPeriodIsRejected() {
+  void anInvertedPeriodIsRejected() throws Exception {
     assertEquals(
-        HttpStatus.BAD_REQUEST,
-        export
-            .gobdExport(LocalDate.of(2026, 2, 1), LocalDate.of(2026, 1, 1), false)
-            .getStatusCode());
+        400, exportResponse(LocalDate.of(2026, 2, 1), LocalDate.of(2026, 1, 1), false).getStatus());
   }
 
   private static final LocalDate JAN_1 = LocalDate.of(2026, 1, 1);
@@ -222,69 +236,191 @@ class GobdExportTest {
 
   /** Limits as in application.properties, with {@code overrides} applied by the caller. */
   private static GobdExportService serviceWithLimits(
-      int maxDocuments, int maxWithFiles, long maxBytes, int maxDays, int maxConcurrent) {
+      int maxDocuments, int maxWithFiles, int maxDays, int maxConcurrent) {
     GobdExportService service = TestWiring.gobdExportService();
-    service.configureLimits(maxDocuments, maxWithFiles, maxBytes, maxDays, maxConcurrent);
+    service.configureLimits(maxDocuments, maxWithFiles, maxDays, maxConcurrent);
     return service;
+  }
+
+  /** Prepares, writes and closes one export, as the controller does. */
+  private static byte[] run(GobdExportService service, LocalDate from, LocalDate to, boolean files)
+      throws Exception {
+    try (GobdExportService.PreparedExport prepared = service.prepare(from, to, files)) {
+      ByteArrayOutputStream out = new ByteArrayOutputStream();
+      prepared.writeTo(out);
+      return out.toByteArray();
+    }
+  }
+
+  private MockHttpServletResponse exportResponse(LocalDate from, LocalDate to, boolean files)
+      throws Exception {
+    MockHttpServletResponse response = new MockHttpServletResponse();
+    export.gobdExport(from, to, files, response);
+    return response;
   }
 
   @Test
   void aPeriodLongerThanTheLimitIsRejected() {
-    GobdExportService service = serviceWithLimits(10_000, 2_000, 134_217_728L, 30, 1);
+    GobdExportService service = serviceWithLimits(10_000, 2_000, 30, 1);
 
     ExportLimitException e =
         assertThrows(
-            ExportLimitException.class,
-            () -> service.export(JAN_1, LocalDate.of(2026, 3, 1), false));
+            ExportLimitException.class, () -> run(service, JAN_1, LocalDate.of(2026, 3, 1), false));
 
     assertTrue(e.getMessage().contains("30 Tage"));
-    assertDoesNotThrow(() -> service.export(JAN_1, LocalDate.of(2026, 1, 31), false));
+    assertDoesNotThrow(() -> run(service, JAN_1, LocalDate.of(2026, 1, 31), false));
   }
 
   @Test
   void tooManyDocumentsAreRejected() {
     issue(LocalDate.of(2026, 3, 1), "A", 1, 1);
     issue(LocalDate.of(2026, 3, 2), "B", 1, 1);
-    GobdExportService service = serviceWithLimits(1, 1, 134_217_728L, 3_660, 1);
+    GobdExportService service = serviceWithLimits(1, 1, 3_660, 1);
 
-    assertThrows(ExportLimitException.class, () -> service.export(JAN_1, DEC_31, false));
+    assertThrows(ExportLimitException.class, () -> run(service, JAN_1, DEC_31, false));
   }
 
   @Test
   void theLimitForExportsWithFilesIsLowerThanWithoutThem() {
     issue(LocalDate.of(2026, 3, 1), "A", 1, 1);
     issue(LocalDate.of(2026, 3, 2), "B", 1, 1);
-    GobdExportService service = serviceWithLimits(10, 1, 134_217_728L, 3_660, 1);
+    GobdExportService service = serviceWithLimits(10, 1, 3_660, 1);
 
-    assertThrows(ExportLimitException.class, () -> service.export(JAN_1, DEC_31, true));
-    assertDoesNotThrow(() -> service.export(JAN_1, DEC_31, false));
-  }
-
-  @Test
-  void anExportThatOutgrowsTheSizeLimitIsAborted() {
-    issue(LocalDate.of(2026, 3, 1), "A", 1, 1);
-    GobdExportService service = serviceWithLimits(10, 10, 100L, 3_660, 1);
-
-    assertThrows(ExportLimitException.class, () -> service.export(JAN_1, DEC_31, false));
+    assertThrows(ExportLimitException.class, () -> run(service, JAN_1, DEC_31, true));
+    assertDoesNotThrow(() -> run(service, JAN_1, DEC_31, false));
   }
 
   @Test
   void exportsAreRefusedWhileAllSlotsAreTaken() {
-    GobdExportService service = serviceWithLimits(10, 10, 134_217_728L, 3_660, 0);
+    GobdExportService service = serviceWithLimits(10, 10, 3_660, 0);
 
-    assertThrows(ExportBusyException.class, () -> service.export(JAN_1, DEC_31, false));
+    assertThrows(ExportBusyException.class, () -> run(service, JAN_1, DEC_31, false));
   }
 
   @Test
   void aFailedExportReleasesItsSlot() {
     issue(LocalDate.of(2026, 3, 1), "A", 1, 1);
-    GobdExportService tooSmall = serviceWithLimits(0, 0, 134_217_728L, 3_660, 1);
+    GobdExportService tooSmall = serviceWithLimits(0, 0, 3_660, 1);
 
-    assertThrows(ExportLimitException.class, () -> tooSmall.export(JAN_1, DEC_31, false));
-    assertThrows(ExportLimitException.class, () -> tooSmall.export(JAN_1, DEC_31, false));
+    assertThrows(ExportLimitException.class, () -> run(tooSmall, JAN_1, DEC_31, false));
+    assertThrows(ExportLimitException.class, () -> run(tooSmall, JAN_1, DEC_31, false));
 
-    tooSmall.configureLimits(10, 10, 134_217_728L, 3_660, 1);
-    assertDoesNotThrow(() -> tooSmall.export(JAN_1, DEC_31, false));
+    tooSmall.configureLimits(10, 10, 3_660, 1);
+    assertDoesNotThrow(() -> run(tooSmall, JAN_1, DEC_31, false));
+  }
+
+  /** A service whose PDFs and e-invoice checks are the given stand-ins. */
+  private static GobdExportService serviceWith(DocumentPdfService pdfs, EInvoiceService eInvoices) {
+    GobdExportService service =
+        new GobdExportService(
+            TestWiring.invoiceRepository(),
+            TestWiring.paymentRepository(),
+            TestWiring.historyRepository(),
+            TestWiring.customerRepository(),
+            eInvoices,
+            pdfs);
+    service.configureLimits(10_000, 10_000, 3_660, 1);
+    return service;
+  }
+
+  @Test
+  void theZipLeavesTheServerDocumentByDocumentInsteadOfBeingCollected() throws Exception {
+    for (int i = 1; i <= 5; i++) {
+      issue(LocalDate.of(2026, 3, i), "Beleg " + i, 1, 1);
+    }
+    int megabyte = 1024 * 1024;
+    long[] sent = {0};
+    List<Long> sentWhenRendering = new ArrayList<>();
+    DocumentPdfService bigPdfs =
+        new DocumentPdfService(TestWiring.pdfGenerator(), TestWiring.eInvoiceService()) {
+          @Override
+          public byte[] pdf(Invoice invoice) {
+            sentWhenRendering.add(sent[0]);
+            byte[] pdf = new byte[megabyte];
+            new Random(invoice.getId()).nextBytes(pdf); // does not compress
+            return pdf;
+          }
+        };
+    OutputStream client =
+        new OutputStream() {
+          @Override
+          public void write(int b) {
+            sent[0]++;
+          }
+
+          @Override
+          public void write(byte[] b, int off, int len) {
+            sent[0] += len;
+          }
+        };
+
+    try (GobdExportService.PreparedExport prepared =
+        serviceWith(bigPdfs, TestWiring.eInvoiceService()).prepare(JAN_1, DEC_31, true)) {
+      prepared.writeTo(client);
+    }
+
+    assertEquals(5, sentWhenRendering.size());
+    for (int k = 1; k < 5; k++) {
+      assertTrue(
+          sentWhenRendering.get(k) >= (long) k * megabyte - 64 * 1024,
+          "the PDFs before document " + k + " already went out: " + sentWhenRendering);
+    }
+    assertTrue(sent[0] >= 5L * megabyte);
+  }
+
+  @Test
+  void aFailureOnTheWayLeavesAnArchiveThatCannotBeOpened() throws Exception {
+    issue(LocalDate.of(2026, 3, 1), "A", 1, 1);
+    issue(LocalDate.of(2026, 3, 2), "B", 1, 1);
+    int[] checks = {0};
+    EInvoiceService failing =
+        new EInvoiceService(
+            TestWiring.invoiceRepository(),
+            TestWiring.customerRepository(),
+            TestWiring.ownerRepository()) {
+          @Override
+          public List<String> check(int id) {
+            if (++checks[0] == 2) {
+              throw new IllegalStateException("database gone");
+            }
+            return super.check(id);
+          }
+        };
+    GobdExportService service = serviceWith(TestWiring.documentPdfService(), failing);
+    ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+    try (GobdExportService.PreparedExport prepared = service.prepare(JAN_1, DEC_31, true)) {
+      assertThrows(IllegalStateException.class, () -> prepared.writeTo(out));
+    }
+
+    assertTrue(out.size() > 0, "the first document had already gone out");
+    Path cutOff = Files.createTempFile("gobd", ".zip");
+    try {
+      Files.write(cutOff, out.toByteArray());
+      assertThrows(ZipException.class, () -> new ZipFile(cutOff.toFile()).close());
+    } finally {
+      Files.delete(cutOff);
+    }
+    checks[0] = 10; // works again; the slot was released
+    assertDoesNotThrow(() -> run(service, JAN_1, DEC_31, true));
+  }
+
+  @Test
+  void theSlotIsHeldUntilTheExportIsClosed() throws Exception {
+    GobdExportService service = serviceWithLimits(10, 10, 3_660, 1);
+    GobdExportService.PreparedExport first = service.prepare(JAN_1, DEC_31, false);
+
+    assertThrows(ExportBusyException.class, () -> service.prepare(JAN_1, DEC_31, false));
+    first.writeTo(new ByteArrayOutputStream());
+    assertThrows(ExportBusyException.class, () -> service.prepare(JAN_1, DEC_31, false));
+    first.close();
+    first.close(); // twice releases once
+    assertDoesNotThrow(() -> run(service, JAN_1, DEC_31, false));
+    service.configureLimits(10, 10, 3_660, 2);
+    try (var a = service.prepare(JAN_1, DEC_31, false);
+        var b = service.prepare(JAN_1, DEC_31, false)) {
+      assertThrows(ExportBusyException.class, () -> service.prepare(JAN_1, DEC_31, false));
+    }
   }
 
   @Test
