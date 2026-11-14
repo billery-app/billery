@@ -156,6 +156,50 @@ class DesktopBackupServiceTest {
   }
 
   @Test
+  void theLossIsCountedFromTheSnapshotNotFromTheLaterTimeInTheName() throws Exception {
+    // A backup "from the future" in the folder pushes the name of the next one ahead of the clock.
+    Path folder = Files.createDirectories(locations.defaultBackupDirectory());
+    Files.writeString(
+        folder.resolve(
+            BackupNames.name(
+                java.time.LocalDateTime.now().withNano(0).plusSeconds(30),
+                BackupNames.MANUAL,
+                false)),
+        "x");
+    BackupFile backup = service.backup(BackupNames.MANUAL);
+    assertTrue(backup.createdAt().isAfter(java.time.LocalDateTime.now().plusSeconds(20)));
+
+    try (var conn = Database.getConnection();
+        var stmt = conn.createStatement()) {
+      stmt.execute("SET REFERENTIAL_INTEGRITY FALSE");
+      stmt.execute(
+          "INSERT INTO document_history (invoice_id, action, notes) VALUES (1, 'ISSUED', 'x')");
+      stmt.execute("SET REFERENTIAL_INTEGRITY TRUE");
+    }
+
+    DesktopBackupService.RestoreLossException refused =
+        assertThrows(
+            DesktopBackupService.RestoreLossException.class,
+            () -> service.stageRestore(backup.name(), null, false));
+    assertEquals(1, refused.loss().issued(), "issued after the snapshot, before the name's time");
+  }
+
+  @Test
+  void aFileWithAnImpossibleDateInItsNameIsIgnored() throws Exception {
+    Path folder = Files.createDirectories(locations.defaultBackupDirectory());
+    Files.writeString(folder.resolve("billery-2026-99-99_99-99-99-manuell.zip"), "x");
+
+    BackupFile backup = service.backup(BackupNames.MANUAL);
+
+    assertEquals(
+        List.of(backup.name()), service.status().backups().stream().map(BackupFile::name).toList());
+    assertFalse(BackupNames.isBackup("billery-2026-99-99_99-99-99-manuell.zip"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> service.stageRestore("billery-2026-99-99_99-99-99-manuell.zip", null, true));
+  }
+
+  @Test
   void theBackupOnExitFollowsTheSettingAndSkipsAWaitingRestore() throws Exception {
     service.updateSettings("", 10, false, null);
     service.backupOnExit();
@@ -233,6 +277,10 @@ class DesktopBackupServiceTest {
     assertTrue(log.contains(backup.name()), log);
     assertTrue(log.contains(safetyCopy.getFileName().toString()), log);
     assertTrue(log.contains("1 ausgestellte Belege, 0 Zahlungen, 2 Änderungen"), log);
+    assertEquals(
+        log,
+        Files.readString(safetyCopy.resolveSibling("wiederherstellungen.log")),
+        "the same line next to the safety copy in the backup folder");
   }
 
   @Test

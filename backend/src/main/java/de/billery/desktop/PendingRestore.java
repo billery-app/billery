@@ -38,7 +38,8 @@ import java.util.zip.ZipOutputStream;
  *       backup password is set, in the chosen backup folder; safety copies are never deleted
  *       automatically, because they hold what was entered after the restored backup (GoBD);
  *   <li>the database file and the uploaded files are replaced by the unpacked ones;
- *   <li>the restore is appended to {@code wiederherstellungen.log} in the app-data folder.
+ *   <li>the restore is appended to {@code wiederherstellungen.log} in the app-data folder and in
+ *       the backup folder next to the safety copy.
  * </ol>
  *
  * The H2 migrations that follow bring a backup of an older version up to date. The staged and the
@@ -48,6 +49,9 @@ import java.util.zip.ZipOutputStream;
 public final class PendingRestore {
 
   private static final Logger LOGGER = Logger.getLogger(PendingRestore.class.getName());
+
+  /** The log of the restores, in the app-data folder and in the backup folder. */
+  static final String RESTORE_LOG = "wiederherstellungen.log";
 
   private PendingRestore() {}
 
@@ -197,7 +201,9 @@ public final class PendingRestore {
     try {
       try (ZipOutputStream zip = new ZipOutputStream(Files.newOutputStream(plain))) {
         zip.putNextEntry(new ZipEntry(BackupArchive.META));
-        zip.write(BackupNames.meta(BackupNames.BEFORE_RESTORE).getBytes(StandardCharsets.UTF_8));
+        zip.write(
+            BackupNames.meta(BackupNames.BEFORE_RESTORE, LocalDateTime.now())
+                .getBytes(StandardCharsets.UTF_8));
         zip.closeEntry();
         if (Files.exists(locations.databaseFile())) {
           zip.putNextEntry(new ZipEntry(BackupArchive.DATABASE));
@@ -248,12 +254,12 @@ public final class PendingRestore {
             + info.getProperty("changes", "?")
             + " Änderungen an Dokumenten"
             + System.lineSeparator();
-    Files.writeString(
-        locations.restoreLog(),
-        line,
-        StandardCharsets.UTF_8,
-        StandardOpenOption.CREATE,
-        StandardOpenOption.APPEND);
+    // In the app-data folder, and next to the safety copy in the backup folder (an external drive
+    // or a cloud folder outlives the computer).
+    for (Path log : List.of(locations.restoreLog(), safetyCopy.resolveSibling(RESTORE_LOG))) {
+      Files.writeString(
+          log, line, StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+    }
   }
 
   /**

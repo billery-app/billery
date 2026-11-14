@@ -177,9 +177,11 @@ public class DesktopBackupService {
     try {
       Path h2Copy = work.resolve("h2.zip");
       // H2 copies the open database consistently; the path is a literal, quotes doubled.
+      // Taken before the copy starts: everything after it may be missing from the backup.
+      LocalDateTime snapshotAt = LocalDateTime.now();
       jdbc.sql("BACKUP TO '" + h2Copy.toString().replace("'", "''") + "'").update();
       Path plain = work.resolve("backup.zip");
-      writeZip(h2Copy, reason, plain);
+      writeZip(h2Copy, reason, snapshotAt, plain);
       Path partial = target.resolveSibling(target.getFileName() + ".part");
       if (encrypted) {
         BackupArchive.encrypt(plain, partial, password.toCharArray());
@@ -212,33 +214,29 @@ public class DesktopBackupService {
   }
 
   /**
-   * What a restore of a backup would take out of the program: documents issued (or cancelled),
-   * payments recorded and document changes after the backup was made. They stay in the safety copy
+   * What a restore would take out of the program: documents issued (or cancelled), payments
+   * recorded and document changes after the snapshot of the backup. They stay in the safety copy
    * the restore makes, but they are no longer in the running program.
    *
-   * @param fileName a backup in the backup folder
+   * @param snapshotAt when the backup's copy of the database was taken
    * @return the counts
    */
-  public RestoreLoss lossOf(String fileName) {
-    LocalDateTime made = BackupNames.time(fileName);
-    if (made == null) {
-      throw new IllegalArgumentException("Unbekannte Sicherung.");
-    }
+  RestoreLoss lossSince(LocalDateTime snapshotAt) {
     long issued =
         jdbc.sql(
                 "SELECT COUNT(*) FROM document_history WHERE action IN ('ISSUED', 'CANCELLED')"
-                    + " AND action_date > :made")
-            .param("made", made)
+                    + " AND action_date >= :since")
+            .param("since", snapshotAt)
             .query(Long.class)
             .single();
     long payments =
-        jdbc.sql("SELECT COUNT(*) FROM payment WHERE created_at > :made")
-            .param("made", made)
+        jdbc.sql("SELECT COUNT(*) FROM payment WHERE created_at >= :since")
+            .param("since", snapshotAt)
             .query(Long.class)
             .single();
     long changes =
-        jdbc.sql("SELECT COUNT(*) FROM document_history WHERE action_date > :made")
-            .param("made", made)
+        jdbc.sql("SELECT COUNT(*) FROM document_history WHERE action_date >= :since")
+            .param("since", snapshotAt)
             .query(Long.class)
             .single();
     return new RestoreLoss(issued, payments, changes);
@@ -268,10 +266,6 @@ public class DesktopBackupService {
     if (!Files.isRegularFile(source)) {
       throw new IllegalArgumentException("Die Sicherung gibt es nicht mehr.");
     }
-    RestoreLoss loss = lossOf(fileName);
-    if (loss.any() && !confirmLoss) {
-      throw new RestoreLossException(loss);
-    }
     Path staged = locations.pendingRestore();
     Path partial = staged.resolveSibling(staged.getFileName() + ".part");
     try {
@@ -293,6 +287,14 @@ public class DesktopBackupService {
         BackupArchive.validate(partial);
       } catch (IOException e) {
         throw new IllegalArgumentException("Die Datei ist keine gültige Billery-Sicherung.", e);
+      }
+      // The snapshot time inside the backup, not the (possibly later) time in its name. A backup
+      // without one counts everything as lost: better a warning too many than one too few.
+      LocalDateTime snapshotAt = BackupNames.snapshotAt(BackupArchive.readMeta(partial));
+      RestoreLoss loss =
+          lossSince(snapshotAt != null ? snapshotAt : LocalDateTime.of(1970, 1, 1, 0, 0));
+      if (loss.any() && !confirmLoss) {
+        throw new RestoreLossException(loss);
       }
       Properties info = new Properties();
       info.setProperty("backup", fileName);
@@ -356,11 +358,12 @@ public class DesktopBackupService {
   }
 
   /** The backup ZIP: description, the database from H2's copy, the uploaded files. */
-  private void writeZip(Path h2Copy, String reason, Path target) throws IOException {
+  private void writeZip(Path h2Copy, String reason, LocalDateTime snapshotAt, Path target)
+      throws IOException {
     try (ZipOutputStream zip = new ZipOutputStream(Files.newOutputStream(target));
         ZipFile h2 = new ZipFile(h2Copy.toFile())) {
       zip.putNextEntry(new ZipEntry(BackupArchive.META));
-      zip.write(BackupNames.meta(reason).getBytes(StandardCharsets.UTF_8));
+      zip.write(BackupNames.meta(reason, snapshotAt).getBytes(StandardCharsets.UTF_8));
       zip.closeEntry();
       ZipEntry database =
           h2.stream()

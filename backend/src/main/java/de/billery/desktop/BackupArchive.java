@@ -164,6 +164,24 @@ public final class BackupArchive {
     readEntries(plainZip, target);
   }
 
+  /**
+   * The {@value #META} document of a plain backup ZIP (at most 64 KiB read).
+   *
+   * @param plainZip the ZIP
+   * @return the document, or an empty string if there is none
+   * @throws IOException if the ZIP cannot be read
+   */
+  public static String readMeta(Path plainZip) throws IOException {
+    try (ZipInputStream zip = new ZipInputStream(Files.newInputStream(plainZip))) {
+      for (ZipEntry entry = zip.getNextEntry(); entry != null; entry = zip.getNextEntry()) {
+        if (META.equals(entry.getName())) {
+          return new String(zip.readNBytes(64 * 1024), StandardCharsets.UTF_8);
+        }
+      }
+    }
+    return "";
+  }
+
   /** Reads every entry; with a target, writes it there. */
   private static void readEntries(Path plainZip, Path target) throws IOException {
     boolean database = false;

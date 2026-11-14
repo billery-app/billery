@@ -156,7 +156,9 @@ The desktop app keeps everything in its app-data folder (`database.mv.db`,
   how many and needs an explicit "Trotzdem wiederherstellen". At the start the backup is unpacked
   completely first (limits: 10 000 entries, 4 GiB), then the state before is saved as
   `billery-…-vor-wiederherstellung.zip[.enc]` in the backup folder (encrypted like the backups),
-  then the files are swapped, and a line is appended to `<app-data>/wiederherstellungen.log`.
+  then the files are swapped, and a line is appended to `wiederherstellungen.log` in the app-data
+  folder and next to the safety copy. What a restore loses is counted from the snapshot time
+  stored in the backup (`backup.json`), not from the time in the file name.
   Safety copies are **never** deleted automatically (they hold the later records; GoBD,
   `verfahrensdokumentation.md` §8). A backup of an older version is brought up to date by the
   migrations of that start. "Wiederherstellung abbrechen" withdraws it before the restart.
@@ -164,7 +166,8 @@ The desktop app keeps everything in its app-data folder (`database.mv.db`,
   Tauri shell via the URL fragment); other programs on the computer cannot use them. The rest of
   the desktop API has no authentication (it binds to 127.0.0.1 only).
 - A backup that was cut short (the computer shut down) leaves a `.part` file or a working folder
-  in the app-data folder; the next start removes them.
+  in the app-data folder; the next start removes them. A file named like a backup but with an
+  impossible date is ignored.
 
 ## Logging
 

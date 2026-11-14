@@ -2,6 +2,7 @@ package de.billery.desktop;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -27,6 +28,8 @@ public final class BackupNames {
       Pattern.compile(
           "^billery-(\\d{4}-\\d{2}-\\d{2}_\\d{2}-\\d{2}-\\d{2})-([a-z-]+)\\.zip(\\.enc)?$");
 
+  private static final Pattern SNAPSHOT = Pattern.compile("\"snapshotAt\"\\s*:\\s*\"([^\"]+)\"");
+
   private BackupNames() {}
 
   /**
@@ -48,7 +51,7 @@ public final class BackupNames {
    * @return {@code true} for a backup name
    */
   public static boolean isBackup(String fileName) {
-    return FILE_NAME_PATTERN.matcher(fileName).matches();
+    return time(fileName) != null;
   }
 
   /**
@@ -59,7 +62,14 @@ public final class BackupNames {
    */
   public static LocalDateTime time(String fileName) {
     Matcher matcher = FILE_NAME_PATTERN.matcher(fileName);
-    return matcher.matches() ? LocalDateTime.parse(matcher.group(1), STAMP) : null;
+    if (!matcher.matches()) {
+      return null;
+    }
+    try {
+      return LocalDateTime.parse(matcher.group(1), STAMP);
+    } catch (DateTimeParseException e) {
+      return null; // "2026-99-99_…": not one of ours, never breaks the list
+    }
   }
 
   /**
@@ -77,13 +87,29 @@ public final class BackupNames {
    * The {@link BackupArchive#META} content.
    *
    * @param reason why the backup was made
+   * @param snapshotAt when the copy of the database was taken (before the copy started); the time
+   *     in the file name may be later (names only grow), so this one decides what a restore loses
    * @return a small JSON document
    */
-  public static String meta(String reason) {
-    return "{\"format\":1,\"createdAt\":\""
-        + LocalDateTime.now()
-        + "\",\"reason\":\""
-        + reason
-        + "\"}";
+  public static String meta(String reason, LocalDateTime snapshotAt) {
+    return "{\"format\":1,\"snapshotAt\":\"" + snapshotAt + "\",\"reason\":\"" + reason + "\"}";
+  }
+
+  /**
+   * The snapshot time of a {@link BackupArchive#META} document.
+   *
+   * @param meta the document
+   * @return the time, or {@code null} if it has none or it cannot be read
+   */
+  public static LocalDateTime snapshotAt(String meta) {
+    Matcher matcher = SNAPSHOT.matcher(meta == null ? "" : meta);
+    if (!matcher.find()) {
+      return null;
+    }
+    try {
+      return LocalDateTime.parse(matcher.group(1));
+    } catch (DateTimeParseException e) {
+      return null;
+    }
   }
 }

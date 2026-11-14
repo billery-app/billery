@@ -155,10 +155,15 @@ Damit dabei keine aufbewahrungspflichtigen Daten verloren gehen:
   automatisch; sie enthalten die nach der Sicherung erfassten Belege und sind wie
   diese aufzubewahren;
 - protokolliert es jede Wiederherstellung fortlaufend in
-  `wiederherstellungen.log` im Anwendungsdatenverzeichnis (Zeitpunkt,
+  `wiederherstellungen.log` im Anwendungsdatenverzeichnis und im Sicherungsordner
+  neben der Sicherheitskopie (Zeitpunkt,
   wiederhergestellte Sicherung, Ablageort der Sicherheitskopie, Zahl der
   betroffenen Belege, Zahlungen und Änderungen). Das Programm schreibt nur Zeilen
-  hinzu.
+  hinzu. Gezählt wird ab dem Zeitpunkt, zu dem die Sicherung gezogen wurde (er steht
+  in der Sicherung selbst).
+
+Gegen das Löschen dieser Dateien auf dem eigenen Rechner kann das Programm nichts
+tun; sie sind wie die Belege aufzubewahren (Teil 2).
 
 Eine Wiederherstellung ist für den Verlust oder die Beschädigung der Daten
 gedacht, nicht zum Rückgängigmachen ausgestellter Rechnungen; dafür ist die

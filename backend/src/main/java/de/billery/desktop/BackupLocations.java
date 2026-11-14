@@ -100,6 +100,6 @@ public record BackupLocations(Path databaseBase, Path filesDirectory) {
    * @return {@code <app-data>/wiederherstellungen.log}
    */
   public Path restoreLog() {
-    return appData().resolve("wiederherstellungen.log");
+    return appData().resolve(PendingRestore.RESTORE_LOG);
   }
 }
