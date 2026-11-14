@@ -140,8 +140,52 @@ prompt, then update the runtime secret and recreate the backend; see
 password values in command arguments or logs.
 
 The desktop app keeps everything in its app-data folder (`database.mv.db`,
-`files/`, `app.log`, `backend-err.log`); back up the whole folder while the
-app is closed.
+`files/`, `app.log`, `backend-err.log`) and backs it up itself: Einstellungen → Datensicherung.
+
+- **When:** when the app is closed (on by default) and with "Jetzt sichern". The settings page
+  shows the last backup and warns when there is none or it is older than 7 days.
+- **Where:** `<app-data>/backups` unless another folder is chosen. Choose an external drive or a
+  cloud-sync folder: a backup in the app-data folder does not survive the loss of the computer.
+  The newest N backups are kept (10 by default); other files in the folder are never touched.
+- **Encryption:** optional, with a password (at least 8 characters). The password is **not
+  stored**: setting it creates an RSA key pair; the database keeps the public key and the private
+  key locked with the password (PBKDF2, AES-256-GCM). Each backup is encrypted with a random
+  AES-256 key wrapped with the public key, and carries the locked private key, so the backup on
+  exit needs no password and the password alone opens a backup on another computer. Whoever gets
+  the database file cannot open the backups. Without the password an encrypted backup cannot be
+  restored.
+- **Restore:** choose a backup in the list (from another computer: put the file into the backup
+  folder first); it is checked (and decrypted) at once, its database is opened read-only to make
+  sure H2 can read it, and restored at the **next start**. If
+  documents were issued, payments recorded or documents changed after the backup, the app says
+  how many and needs an explicit "Trotzdem wiederherstellen". At the start the backup is unpacked
+  completely first (limits: 10 000 entries, 4 GiB), then the state before is saved as
+  `billery-…-vor-wiederherstellung.zip[.enc]` in the backup folder (encrypted like the backups),
+  then the files are swapped, and a line is appended to `wiederherstellungen.log` in the app-data
+  folder and next to the safety copy. What a restore loses is counted from the snapshot time
+  stored in the backup (`backup.json`), not from the time in the file name.
+  Safety copies are **never** deleted automatically (they hold the later records; GoBD,
+  `verfahrensdokumentation.md` §8). A backup of an older version is brought up to date by the
+  migrations of that start. "Wiederherstellung abbrechen" withdraws it before the restart.
+  **Until the restart nothing is saved** (`RestorePendingFilter`: changing API requests answer 409;
+  choosing the restore waits for the saves already under way, so the confirmed count is final),
+  and the restart counts again what the restore takes out and logs those numbers next to the
+  confirmed ones. The number counters of the replaced database are carried over where higher, so
+  no document number is given twice; the numbers given after the backup remain a documented gap
+  (they are in the safety copy). The snapshot time in `backup.json` is signed, together with the SHA-256 of the
+  backed-up database, with the installation's key (`<app-data>/backup-signing.key`, HMAC; neither
+  in the database nor in any backup); an unsigned, foreign or changed one, or one after the backup's name or after now, is not trusted
+  and everything counts (a backup from a lost computer restored into a new, empty installation
+  has nothing to lose anyway).
+- **Access:** the backup endpoints need the window's per-launch token (`X-Desktop-Token`, from the
+  Tauri shell via the URL fragment); other programs on the computer cannot use them. The rest of
+  the desktop API has no authentication (it binds to 127.0.0.1 only).
+- While a backup copies the database and the uploaded files, saving pauses for that moment
+  (database and files are one state). A backup beyond 10 000 files or 4 GiB is refused when it
+  is made (it could not be restored).
+- A backup that was cut short (the computer shut down) leaves a `.part` file or a working folder
+  (`.billery-backup-work-*`) in the app-data folder; the next start removes them, and only them. A file named like a backup but with an
+  impossible date is ignored.
 
 ## Logging
 

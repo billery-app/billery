@@ -3,6 +3,10 @@ import { mount } from '@vue/test-utils'
 import { createRouter, createMemoryHistory } from 'vue-router'
 import SettingsView from './SettingsView.vue'
 
+vi.mock('../services/backupService.js', () => ({
+  default: { getStatus: vi.fn(() => new Promise(() => {})) }
+}))
+
 function mountWithRouter() {
   const router = createRouter({
     history: createMemoryHistory(),
@@ -92,10 +96,10 @@ describe('SettingsView', () => {
   })
 
   describe('Upcoming cards', () => {
-    it('renders exactly four placeholder cards', () => {
+    it('renders exactly three placeholder cards', () => {
       const wrapper = mountWithRouter()
       const disabledCards = wrapper.findAll('.settings-card.is-disabled')
-      expect(disabledCards).toHaveLength(4)
+      expect(disabledCards).toHaveLength(3)
     })
 
     it('marks placeholder cards as aria-disabled', () => {
@@ -136,10 +140,18 @@ describe('SettingsView', () => {
       expect(titles.some(t => t.includes('Benutzer & Profil'))).toBe(true)
     })
 
-    it('shows the Daten-Backup entry', () => {
-      const wrapper = mountWithRouter()
-      const titles = wrapper.findAll('.is-disabled .card-title').map(el => el.text())
-      expect(titles.some(t => t.includes('Daten-Backup'))).toBe(true)
+    it('shows the backup section only in the desktop app, not as a placeholder', async () => {
+      const { session } = await import('../services/session.js')
+      const titles = mountWithRouter().findAll('.is-disabled .card-title').map(el => el.text())
+      expect(titles.some(t => t.includes('Backup'))).toBe(false)
+      expect(mountWithRouter().findComponent({ name: 'BackupSettings' }).exists()).toBe(false)
+
+      session.desktop = true
+      try {
+        expect(mountWithRouter().findComponent({ name: 'BackupSettings' }).exists()).toBe(true)
+      } finally {
+        session.desktop = false
+      }
     })
 
     it('shows the Hilfe entry', () => {
@@ -158,10 +170,10 @@ describe('SettingsView', () => {
   })
 
   describe('Card structure', () => {
-    it('renders six cards total', () => {
+    it('renders five cards total', () => {
       const wrapper = mountWithRouter()
       const cards = wrapper.findAll('.settings-card')
-      expect(cards).toHaveLength(6)
+      expect(cards).toHaveLength(5)
     })
 
     it('each card has an icon, title and description', () => {

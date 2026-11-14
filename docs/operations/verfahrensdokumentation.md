@@ -134,6 +134,51 @@ Alle Daten liegen in einer relationalen Datenbank (PostgreSQL oder, in der
 Desktop-Version, eine H2-Datei im Anwendungsdatenverzeichnis). Kunden mit Belegen
 können nicht gelöscht werden; die Datenbank verhindert das zusätzlich.
 
+### 8. Datensicherung und Wiederherstellung (Desktop-Version)
+
+Die Desktop-Version sichert Datenbank und hochgeladene Dateien selbst
+(*Einstellungen → Datensicherung*): beim Beenden des Programms (abschaltbar) und
+auf Knopfdruck, in einen wählbaren Ordner, auf Wunsch mit Passwort verschlüsselt
+(AES-256-GCM; das Passwort selbst speichert das Programm nicht, es wird nur zum
+Wiederherstellen gebraucht). Aufbewahrt werden die neuesten Sicherungen bis zur eingestellten
+Anzahl; andere Dateien im Ordner bleiben unberührt.
+
+Eine **Wiederherstellung** setzt das Programm auf den Stand der Sicherung zurück.
+Damit dabei keine aufbewahrungspflichtigen Daten verloren gehen:
+
+- zählt das Programm vorher, wie viele Belege nach der Sicherung ausgestellt oder
+  storniert, wie viele Zahlungen erfasst und wie viele Änderungen an Dokumenten
+  gemacht wurden; ist es mindestens eins, muss die Wiederherstellung ausdrücklich
+  bestätigt werden;
+- nimmt es nach dem Vormerken bis zum Neustart keine Änderungen mehr an, damit
+  nichts unbemerkt verloren geht, und zählt beim Neustart erneut;
+- übernimmt es die Zählerstände der Nummernkreise aus dem ersetzten Bestand, wo sie
+  höher sind: eine Belegnummer wird nie doppelt vergeben. Die nach der Sicherung
+  vergebenen Nummern bilden eine Lücke, die durch Sicherheitskopie und Protokoll
+  belegt ist;
+- sichert es unmittelbar vor der Wiederherstellung den bisherigen Stand
+  (`billery-…-vor-wiederherstellung.zip`, verschlüsselt, wenn ein Passwort
+  eingestellt ist). Diese Sicherheitskopien löscht das Programm **nie**
+  automatisch; sie enthalten die nach der Sicherung erfassten Belege und sind wie
+  diese aufzubewahren;
+- protokolliert es jede Wiederherstellung fortlaufend in
+  `wiederherstellungen.log` im Anwendungsdatenverzeichnis und im Sicherungsordner
+  neben der Sicherheitskopie (Zeitpunkt,
+  wiederhergestellte Sicherung, Ablageort der Sicherheitskopie, Zahl der
+  betroffenen Belege, Zahlungen und Änderungen). Das Programm schreibt nur Zeilen
+  hinzu. Gezählt wird ab dem Zeitpunkt, zu dem die Sicherung gezogen wurde; er steht,
+  zusammen mit einer Prüfsumme der gesicherten Datenbank mit einem Schlüssel dieser
+  Installation signiert (der Schlüssel liegt weder in der Datenbank noch in einer
+  Sicherung), in der Sicherung selbst. Fehlt die
+  Signatur oder passt sie nicht, zählt das Programm alle vorhandenen Belege.
+
+Gegen das Löschen dieser Dateien auf dem eigenen Rechner kann das Programm nichts
+tun; sie sind wie die Belege aufzubewahren (Teil 2).
+
+Eine Wiederherstellung ist für den Verlust oder die Beschädigung der Daten
+gedacht, nicht zum Rückgängigmachen ausgestellter Rechnungen; dafür ist die
+Stornorechnung vorgesehen (Abschnitt 2).
+
 ## Teil 2 – Vom Unternehmen festzuhalten
 
 Diese Angaben hängen vom Betrieb ab und können nicht von der Software
@@ -141,9 +186,11 @@ vorgegeben werden. Bitte als Anhang zu dieser Dokumentation führen:
 
 - Wer das Programm bedient und wer Rechnungen ausstellen darf.
 - Installationsart (Desktop oder Server), Rechner bzw. Server, eingesetzte Version.
-- Datensicherung: Was wird wie oft wohin gesichert (bei der Desktop-Version die
-  Datenbankdatei im Anwendungsdatenverzeichnis), wie wird die Wiederherstellung
-  geprüft.
+- Datensicherung: Was wird wie oft wohin gesichert (bei der Desktop-Version der
+  gewählte Sicherungsordner, siehe Abschnitt 8), wo das Passwort einer
+  verschlüsselten Sicherung verwahrt wird, wie die Wiederherstellung geprüft wird,
+  und wo die Sicherheitskopien vor Wiederherstellungen und
+  `wiederherstellungen.log` aufbewahrt werden.
 - Zugriffsschutz: Wer hat Zugang zum Rechner bzw. Server und zur Datenbank.
   Direkte Änderungen an der Datenbank außerhalb des Programms sind nicht zulässig.
 - Aufbewahrung: Rechnungen 8 Jahre (§ 147 Abs. 3 AO), Aufbewahrungsort der

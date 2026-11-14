@@ -71,8 +71,41 @@ URL. The backend binds to `127.0.0.1` only (desktop mode has no auth). The port
 stays fixed because stored logo URLs contain it; `src/lib.rs` therefore refuses
 to start (error page) when something else already answers on 8080, and only
 trusts a `/api/health` response carrying its per-launch `DESKTOP_INSTANCE_ID`.
-On exit it calls `POST /api/desktop/shutdown` (token-protected) so H2 closes
-the database file cleanly, and kills the JVM only after a 10 s grace period.
+On exit it calls `POST /api/desktop/shutdown` (token-protected): the backend makes the backup
+on exit (if switched on) and stops so H2 closes the database file cleanly; the shell kills the JVM
+only after a 60 s grace period (`SHUTDOWN_GRACE`). **Backups** (`backend/.../desktop/`,
+Spring profile `desktop`): `DesktopBackupService` writes the H2 database (`BACKUP TO`, consistent
+while open) and the uploaded files as one ZIP into a chosen folder (`<app-data>/backups` by
+default), on exit and on "Jetzt sichern", optionally encrypted (`BackupArchive`: AES-256-GCM per
+backup, key wrapped with an RSA public key; the database stores only the public key and the
+private key locked with the password, never the password),
+the newest N kept (only files named `billery-<time>-<reason>.zip[.enc]` are ever deleted, and
+never the safety copies `…-vor-wiederherstellung`: GoBD). A restore needs an explicit confirmation
+when documents, payments or changes came after the backup (`RestoreLoss`, 409), is staged as
+`<app-data>/restore-pending.zip` and applied by `PendingRestore` in `MainApp.prepareDatabase()`
+before H2 opens the file: unpack completely (limits, `BackupArchive.inside` against Zip Slip),
+safety copy of the state before (encrypted with the stored public key), swap, append to
+`wiederherstellungen.log` (app data and backup folder, with the numbers recounted at that moment);
+the H2 migrations then upgrade an older backup; `cleanLeftovers` removes interrupted work at every
+start (only the `.billery-backup-work-*` and `restore-*` folders, never a folder the user made).
+While a backup copies database and uploads, new writes pause (`WriteGate.beginExclusive`); a
+backup beyond the restore limits (10 000 entries, 4 GiB) is refused when it is made. While a
+restore waits, `RestorePendingFilter` refuses every changing API request (409).
+What a restore loses is counted from the snapshot time in `backup.json`, trusted only when
+signed with this installation's key (`<app-data>/backup-signing.key`, `ManifestKey`: HMAC over
+time, reason and the SHA-256 of the database file; the key is in neither the database nor any
+backup), the database in the backup matches the signed digest, and the time is plausible
+(`BackupNames.trustedSnapshot`); otherwise everything counts. Before staging, the backup's
+database is opened read-only in a scratch folder (`restore-check`), so a file H2 cannot open is
+refused before the current state is touched. The restore is staged before the
+count and waits for the writes already under way (`WriteGate`, entered by `RestorePendingFilter`
+before it checks), so the count is final. At the restore the number counters
+(`document_number_series`) of the replaced database are carried over where higher: a document
+number is never given twice (GoBD). The backup endpoints need the window's per-launch
+`DESKTOP_UI_TOKEN` (`X-Desktop-Token`; the shell opens the window at `/#desktop-token=…`, the SPA
+keeps it in `sessionStorage`, `services/desktopToken.js`). The settings live in `user_settings`
+(`backup_*`); the SPA shows the section when `GET /api/config`
+says `desktop: true` (profile `desktop`, H2 file, token configured).
 There is no Rust toolchain requirement for the backend build, but `cargo check`
 must pass for `src/lib.rs` changes. The bundled `app.jar` (Spring Boot fat JAR) and `resources/runtime/`
 (jlink'd JRE) are produced by `scripts/build-desktop.sh` / `build-desktop.ps1`,

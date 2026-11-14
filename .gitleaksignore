@@ -1,0 +1,9 @@
+# False positives in commits of PR #11 that are already pushed and fixed in later commits.
+# The name of a settings key ("backup_password"), not a password (marked gitleaks:allow since):
+46289cd458c5f38435b8e5031b7f364f25392047:backend/src/main/java/de/billery/desktop/DesktopBackupService.java:hashicorp-tf-password:45
+9e890e900ec353f8509bfffa999aa50337d70893:backend/src/main/java/de/billery/desktop/DesktopBackupService.java:hashicorp-tf-password:45
+# A made-up desktop window token in a unit test (the test builds it at run time since):
+61d446df038592f5542554c249785d62c6a7007b:frontend/src/services/desktopToken.spec.js:generic-api-key:11
+61d446df038592f5542554c249785d62c6a7007b:frontend/src/services/desktopToken.spec.js:generic-api-key:16
+a6618cc6ab0cf526173e7964e732314a57e843f3:frontend/src/services/desktopToken.spec.js:generic-api-key:11
+a6618cc6ab0cf526173e7964e732314a57e843f3:frontend/src/services/desktopToken.spec.js:generic-api-key:16
