@@ -35,4 +35,28 @@ class WriteGateTest {
     assertTrue(gate.awaitIdle(Duration.ofSeconds(5)), "returns once the write has left");
     writer.join();
   }
+
+  @Test
+  void aBackupPausesNewWritesAndWaitsForThoseUnderWay() throws Exception {
+    WriteGate gate = new WriteGate();
+    gate.enter(); // a write under way
+    assertFalse(gate.beginExclusive(Duration.ofMillis(50)), "waits for it, then gives up");
+    gate.leave();
+
+    assertTrue(gate.beginExclusive(Duration.ofSeconds(1)));
+    boolean[] entered = {false};
+    Thread write =
+        new Thread(
+            () -> {
+              gate.enter(); // paused while the backup copies
+              entered[0] = true;
+              gate.leave();
+            });
+    write.start();
+    Thread.sleep(150);
+    assertFalse(entered[0], "a new write waits for the backup");
+    gate.endExclusive();
+    write.join(5000);
+    assertTrue(entered[0], "and continues afterwards");
+  }
 }

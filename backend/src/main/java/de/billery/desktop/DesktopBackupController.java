@@ -130,6 +130,8 @@ public class DesktopBackupController {
     try {
       BackupFile file = backups.backup(BackupNames.MANUAL);
       return ResponseEntity.status(HttpStatus.CREATED).body(file);
+    } catch (DesktopBackupService.BackupTooLargeException e) {
+      return ResponseEntity.unprocessableEntity().body(Map.of("message", e.getMessage()));
     } catch (IOException | RuntimeException e) {
       LOGGER.log(Level.WARNING, "Manual backup failed", e);
       return ResponseEntity.internalServerError()

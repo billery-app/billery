@@ -54,6 +54,13 @@ public final class PendingRestore {
 
   private static final Logger LOGGER = Logger.getLogger(PendingRestore.class.getName());
 
+  /**
+   * The prefix of the working folders of a backup in the app-data folder. Only folders with this
+   * prefix (and the fixed restore folders) are removed at the start, so a backup folder the user
+   * created there, whatever its name, is never touched.
+   */
+  static final String WORK_PREFIX = ".billery-backup-work-";
+
   /** The log of the restores, in the app-data folder and in the backup folder. */
   static final String RESTORE_LOG = "wiederherstellungen.log";
 
@@ -73,7 +80,7 @@ public final class PendingRestore {
       for (Path entry : entries.toList()) {
         String name = entry.getFileName().toString();
         if (Files.isDirectory(entry)
-            && (name.startsWith("backup-")
+            && (name.startsWith(WORK_PREFIX)
                 || "restore-work".equals(name)
                 || "restore-check".equals(name))) {
           deleteTree(entry);

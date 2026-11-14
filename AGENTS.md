@@ -87,7 +87,10 @@ before H2 opens the file: unpack completely (limits, `BackupArchive.inside` agai
 safety copy of the state before (encrypted with the stored public key), swap, append to
 `wiederherstellungen.log` (app data and backup folder, with the numbers recounted at that moment);
 the H2 migrations then upgrade an older backup; `cleanLeftovers` removes interrupted work at every
-start. While a restore waits, `RestorePendingFilter` refuses every changing API request (409).
+start (only the `.billery-backup-work-*` and `restore-*` folders, never a folder the user made).
+While a backup copies database and uploads, new writes pause (`WriteGate.beginExclusive`); a
+backup beyond the restore limits (10 000 entries, 4 GiB) is refused when it is made. While a
+restore waits, `RestorePendingFilter` refuses every changing API request (409).
 What a restore loses is counted from the snapshot time in `backup.json`, trusted only when
 signed with this installation's key (`<app-data>/backup-signing.key`, `ManifestKey`: HMAC over
 time, reason and the SHA-256 of the database file; the key is in neither the database nor any

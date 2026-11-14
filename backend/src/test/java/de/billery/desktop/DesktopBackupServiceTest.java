@@ -302,6 +302,21 @@ class DesktopBackupServiceTest {
   }
 
   @Test
+  void dataBeyondTheRestoreLimitsIsRefusedInsteadOfWrittenAsAnUnrestorableBackup()
+      throws Exception {
+    for (int i = 0; i < BackupArchive.MAX_ENTRIES - 1; i++) {
+      Files.writeString(files.resolve("f" + i + ".png"), "");
+    }
+
+    DesktopBackupService.BackupTooLargeException refused =
+        assertThrows(
+            DesktopBackupService.BackupTooLargeException.class,
+            () -> service.backup(BackupNames.MANUAL));
+    assertTrue(refused.getMessage().contains("zu groß"));
+    assertTrue(service.status().backups().isEmpty());
+  }
+
+  @Test
   void aFileWithAnImpossibleDateInItsNameIsIgnored() throws Exception {
     Path folder = Files.createDirectories(locations.defaultBackupDirectory());
     Files.writeString(folder.resolve("billery-2026-99-99_99-99-99-manuell.zip"), "x");
@@ -446,7 +461,10 @@ class DesktopBackupServiceTest {
 
   @Test
   void whatAnInterruptedBackupLeftIsRemovedAtTheNextStart() throws Exception {
-    Files.createDirectories(appData.resolve("backup-123").resolve("x"));
+    Files.createDirectories(appData.resolve(PendingRestore.WORK_PREFIX + "123").resolve("x"));
+    Path userFolder = Files.createDirectories(appData.resolve("backup-extern"));
+    Path userBackup =
+        Files.writeString(userFolder.resolve("billery-2026-01-01_10-00-00-manuell.zip"), "x");
     Files.createDirectories(locations.restoreWork());
     Path backups = Files.createDirectories(locations.defaultBackupDirectory());
     Path part =
@@ -455,7 +473,8 @@ class DesktopBackupServiceTest {
 
     PendingRestore.cleanLeftovers(locations);
 
-    assertFalse(Files.exists(appData.resolve("backup-123")));
+    assertFalse(Files.exists(appData.resolve(PendingRestore.WORK_PREFIX + "123")));
+    assertTrue(Files.exists(userBackup), "a backup folder the user made here is never touched");
     assertFalse(Files.exists(locations.restoreWork()));
     assertFalse(Files.exists(part));
     assertTrue(Files.exists(foreign), "files that are not ours stay");

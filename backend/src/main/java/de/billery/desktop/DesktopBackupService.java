@@ -186,15 +186,21 @@ public class DesktopBackupService {
       }
     }
     Path target = directory.resolve(BackupNames.name(time, reason, encrypted));
-    Path work = Files.createTempDirectory(locations.appData(), "backup-");
+    Path work = Files.createTempDirectory(locations.appData(), PendingRestore.WORK_PREFIX);
     try {
       Path h2Copy = work.resolve("h2.zip");
-      // H2 copies the open database consistently; the path is a literal, quotes doubled.
-      // Taken before the copy starts: everything after it may be missing from the backup.
-      LocalDateTime snapshotAt = LocalDateTime.now();
-      jdbc.sql("BACKUP TO '" + h2Copy.toString().replace("'", "''") + "'").update();
       Path plain = work.resolve("backup.zip");
-      writeZip(h2Copy, reason, snapshotAt, plain);
+      // Database and uploaded files as one state: new writes pause, those under way finish first.
+      pauseWrites();
+      try {
+        // H2 copies the open database consistently; the path is a literal, quotes doubled.
+        // Taken before the copy starts: everything after it may be missing from the backup.
+        LocalDateTime snapshotAt = LocalDateTime.now();
+        jdbc.sql("BACKUP TO '" + h2Copy.toString().replace("'", "''") + "'").update();
+        writeZip(h2Copy, reason, snapshotAt, plain);
+      } finally {
+        gate.endExclusive();
+      }
       Path partial = target.resolveSibling(target.getFileName() + ".part");
       if (encrypted) {
         BackupArchive.encrypt(plain, partial, keys.get());
@@ -389,13 +395,22 @@ public class DesktopBackupService {
               .filter(e -> e.getName().endsWith(".mv.db"))
               .findFirst()
               .orElseThrow(() -> new IOException("H2 backup without database file"));
+      List<Path> files = PendingRestore.regularFiles(locations.filesDirectory());
+      long size = database.getSize() < 0 ? 0 : database.getSize();
+      for (Path file : files) {
+        size += Files.size(file);
+      }
+      // The same limits a restore enforces: a backup that could not be restored is no backup.
+      if (files.size() + 2 > BackupArchive.MAX_ENTRIES || size > BackupArchive.MAX_TOTAL_BYTES) {
+        throw new BackupTooLargeException();
+      }
       zip.putNextEntry(new ZipEntry(BackupArchive.DATABASE));
       String digest;
       try (InputStream in = h2.getInputStream(database)) {
         digest = BackupArchive.sha256(new TeeInputStream(in, zip));
       }
       zip.closeEntry();
-      for (Path file : PendingRestore.regularFiles(locations.filesDirectory())) {
+      for (Path file : files) {
         zip.putNextEntry(new ZipEntry(BackupArchive.FILES_PREFIX + file.getFileName()));
         Files.copy(file, zip);
         zip.closeEntry();
@@ -488,6 +503,18 @@ public class DesktopBackupService {
     }
   }
 
+  /** Pauses new writes and waits for those under way (see {@link WriteGate#beginExclusive}). */
+  private void pauseWrites() throws IOException {
+    try {
+      if (gate.beginExclusive(java.time.Duration.ofSeconds(30))) {
+        return;
+      }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
+    throw new IOException("Writes in progress did not finish; no backup taken");
+  }
+
   /** Waits until the writes that started before the restore was staged have finished. */
   private void awaitWritesInProgress(Path staged) throws IOException {
     try {
@@ -570,6 +597,18 @@ public class DesktopBackupService {
      */
     public boolean any() {
       return issued > 0 || payments > 0 || changes > 0;
+    }
+  }
+
+  /** The data is larger than a backup may be (the limits of {@link BackupArchive}). */
+  public static final class BackupTooLargeException extends IOException {
+    private static final long serialVersionUID = 1L;
+
+    BackupTooLargeException() {
+      super(
+          "Die Daten sind zu groß für eine Sicherung (höchstens "
+              + BackupArchive.MAX_ENTRIES
+              + " Dateien und 4 GB). Bitte nicht mehr benötigte Logos und Anhänge entfernen.");
     }
   }
 

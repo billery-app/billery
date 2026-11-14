@@ -180,8 +180,11 @@ The desktop app keeps everything in its app-data folder (`database.mv.db`,
 - **Access:** the backup endpoints need the window's per-launch token (`X-Desktop-Token`, from the
   Tauri shell via the URL fragment); other programs on the computer cannot use them. The rest of
   the desktop API has no authentication (it binds to 127.0.0.1 only).
+- While a backup copies the database and the uploaded files, saving pauses for that moment
+  (database and files are one state). A backup beyond 10 000 files or 4 GiB is refused when it
+  is made (it could not be restored).
 - A backup that was cut short (the computer shut down) leaves a `.part` file or a working folder
-  in the app-data folder; the next start removes them. A file named like a backup but with an
+  (`.billery-backup-work-*`) in the app-data folder; the next start removes them, and only them. A file named like a backup but with an
   impossible date is ignored.
 
 ## Logging
