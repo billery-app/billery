@@ -29,7 +29,6 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import javax.crypto.AEADBadTagException;
 import javax.crypto.Cipher;
-import javax.crypto.CipherInputStream;
 import javax.crypto.CipherOutputStream;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.GCMParameterSpec;
@@ -221,15 +220,27 @@ public final class BackupArchive {
       } catch (GeneralSecurityException e) {
         throw new IOException("Encrypted backup is damaged", e);
       }
-      try (OutputStream out = Files.newOutputStream(target);
-          CipherInputStream plain = new CipherInputStream(in, content)) {
-        plain.transferTo(out);
-      } catch (IOException e) {
-        // CipherInputStream reports the failed GCM tag as an IOException with this cause.
-        if (e.getCause() instanceof AEADBadTagException) {
-          throw new WrongPasswordException(e);
+      // Explicit update/doFinal instead of CipherInputStream: the tag check of doFinal decides,
+      // whatever a JDK's stream does with a failed tag, and a failure leaves no plain file behind.
+      boolean complete = false;
+      try (OutputStream out = Files.newOutputStream(target)) {
+        byte[] buffer = new byte[64 * 1024];
+        for (int read = in.read(buffer); read != -1; read = in.read(buffer)) {
+          byte[] part = content.update(buffer, 0, read);
+          if (part != null) {
+            out.write(part);
+          }
         }
-        throw e;
+        out.write(content.doFinal());
+        complete = true;
+      } catch (AEADBadTagException e) {
+        throw new WrongPasswordException(e);
+      } catch (GeneralSecurityException e) {
+        throw new IOException("Encrypted backup is damaged", e);
+      } finally {
+        if (!complete) {
+          Files.deleteIfExists(target);
+        }
       }
     }
   }

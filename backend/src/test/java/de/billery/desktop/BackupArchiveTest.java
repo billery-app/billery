@@ -125,6 +125,7 @@ class BackupArchiveTest {
     assertThrows(
         BackupArchive.WrongPasswordException.class,
         () -> BackupArchive.decrypt(encrypted, dir.resolve("out.zip"), "geheim123".toCharArray()));
+    assertFalse(Files.exists(dir.resolve("out.zip")), "no plain file is left behind");
   }
 
   @Test
