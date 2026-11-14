@@ -48,7 +48,10 @@ view that's open; the only global state is `services/session.js`. `session.deskt
 `GET /api/config`, `desktop: true` in the Tauri app) shows the backup section of the settings
 (`BackupSettings.vue`, `services/backupService.js` → `/api/desktop/backups`): last backup with a
 warning after 7 days, "Jetzt sichern", folder / number kept / backup on exit / encryption, and a
-restore of a listed backup at the next start.
+restore of a listed backup at the next start. Its calls carry the window's per-launch token (`services/desktopToken.js`:
+`main.js` moves `#desktop-token=…` from the address into `sessionStorage` before anything else
+reads the address); a restore that would take out later documents comes back as 409 with the
+counts and needs "Trotzdem wiederherstellen".
 
 `App.vue` is the shell:
 

@@ -58,7 +58,7 @@ class DesktopBackupServiceTest {
     settings.updateSetting("test_marker", "nachher");
     Files.delete(files.resolve("logo.png"));
     Files.writeString(files.resolve("neu.png"), "neues Logo");
-    service.stageRestore(backup.name(), null);
+    service.stageRestore(backup.name(), null, false);
     assertTrue(service.status().restorePending());
 
     shutdownDatabase(); // the app is closed
@@ -83,7 +83,7 @@ class DesktopBackupServiceTest {
       stmt.execute("ALTER TABLE owner DROP COLUMN url"); // as in an older desktop version
     }
     BackupFile old = service.backup(BackupNames.MANUAL);
-    service.stageRestore(old.name(), null);
+    service.stageRestore(old.name(), null, false);
 
     shutdownDatabase();
     PendingRestore.applyIfPending(locations);
@@ -104,15 +104,16 @@ class DesktopBackupServiceTest {
     assertTrue(service.status().encrypted());
     IllegalArgumentException missing =
         assertThrows(
-            IllegalArgumentException.class, () -> service.stageRestore(backup.name(), null));
+            IllegalArgumentException.class, () -> service.stageRestore(backup.name(), null, false));
     assertTrue(missing.getMessage().contains("verschlüsselt"));
     IllegalArgumentException wrong =
         assertThrows(
-            IllegalArgumentException.class, () -> service.stageRestore(backup.name(), "falsch123"));
+            IllegalArgumentException.class,
+            () -> service.stageRestore(backup.name(), "falsch123", false));
     assertTrue(wrong.getMessage().contains("Passwort ist falsch"));
     assertFalse(Files.exists(locations.pendingRestore()));
 
-    service.stageRestore(backup.name(), "geheim123");
+    service.stageRestore(backup.name(), "geheim123", false);
     assertTrue(Files.exists(locations.pendingRestore()));
   }
 
@@ -147,7 +148,7 @@ class DesktopBackupServiceTest {
     assertEquals(1, backups.size());
     assertEquals(BackupNames.ON_EXIT, backups.get(0).reason());
 
-    service.stageRestore(backups.get(0).name(), null);
+    service.stageRestore(backups.get(0).name(), null, false);
     service.backupOnExit();
     assertEquals(1, service.status().backups().size(), "the restore makes its own copy");
   }
@@ -176,10 +177,82 @@ class DesktopBackupServiceTest {
 
     assertThrows(
         IllegalArgumentException.class,
-        () -> service.stageRestore("billery-2026-01-01_10-00-00-manuell.zip", null));
+        () -> service.stageRestore("billery-2026-01-01_10-00-00-manuell.zip", null, false));
     assertThrows(
-        IllegalArgumentException.class, () -> service.stageRestore("../database.mv.db", null));
+        IllegalArgumentException.class,
+        () -> service.stageRestore("../database.mv.db", null, false));
     assertFalse(Files.exists(locations.pendingRestore()));
+  }
+
+  @Test
+  void aRestoreThatWouldTakeOutLaterRecordsNeedsAConfirmationAndIsLogged() throws Exception {
+    BackupFile backup = service.backup(BackupNames.MANUAL);
+    Thread.sleep(1100); // the backup name carries the second; later records come after it
+    try (var conn = Database.getConnection();
+        var stmt = conn.createStatement()) {
+      stmt.execute("SET REFERENTIAL_INTEGRITY FALSE");
+      stmt.execute(
+          "INSERT INTO document_history (invoice_id, action, notes) VALUES (1, 'ISSUED', 'x')");
+      stmt.execute(
+          "INSERT INTO document_history (invoice_id, action, notes) VALUES (1, 'UPDATED', 'y')");
+      stmt.execute("SET REFERENTIAL_INTEGRITY TRUE");
+    }
+
+    DesktopBackupService.RestoreLossException refused =
+        assertThrows(
+            DesktopBackupService.RestoreLossException.class,
+            () -> service.stageRestore(backup.name(), null, false));
+    assertEquals(new DesktopBackupService.RestoreLoss(1, 0, 2), refused.loss());
+    assertTrue(refused.getMessage().contains("Sicherheitskopie"));
+    assertFalse(Files.exists(locations.pendingRestore()), "nothing staged without confirmation");
+
+    service.stageRestore(backup.name(), null, true);
+    shutdownDatabase();
+    Path safetyCopy = PendingRestore.applyIfPending(locations);
+
+    String log = Files.readString(locations.restoreLog());
+    assertTrue(log.contains(backup.name()), log);
+    assertTrue(log.contains(safetyCopy.getFileName().toString()), log);
+    assertTrue(log.contains("1 ausgestellte Belege, 0 Zahlungen, 2 Änderungen"), log);
+  }
+
+  @Test
+  void theSafetyCopyIsEncryptedLikeTheBackupsAndNeverPruned() throws Exception {
+    service.updateSettings("", 1, true, "geheim123");
+    BackupFile backup = service.backup(BackupNames.MANUAL);
+    service.stageRestore(backup.name(), "geheim123", true);
+    shutdownDatabase();
+
+    Path safetyCopy = PendingRestore.applyIfPending(locations);
+    MainAppTestAccess.prepareDatabase();
+
+    assertTrue(safetyCopy.getFileName().toString().endsWith(".zip.enc"), safetyCopy.toString());
+    assertTrue(BackupArchive.isEncrypted(safetyCopy));
+    // keep = 1: two more backups, the safety copy stays
+    service.backup(BackupNames.MANUAL);
+    service.backup(BackupNames.MANUAL);
+    assertTrue(Files.exists(safetyCopy), "a safety copy is only deleted by the user");
+    assertEquals(
+        2,
+        service.status().backups().size(),
+        "the newest backup plus the safety copy: " + service.status().backups());
+  }
+
+  @Test
+  void whatAnInterruptedBackupLeftIsRemovedAtTheNextStart() throws Exception {
+    Files.createDirectories(appData.resolve("backup-123").resolve("x"));
+    Files.createDirectories(locations.restoreWork());
+    Path backups = Files.createDirectories(locations.defaultBackupDirectory());
+    Path part =
+        Files.writeString(backups.resolve("billery-2026-01-01_10-00-00-beenden.zip.part"), "x");
+    Path foreign = Files.writeString(backups.resolve("notiz.part"), "fremd");
+
+    PendingRestore.cleanLeftovers(locations);
+
+    assertFalse(Files.exists(appData.resolve("backup-123")));
+    assertFalse(Files.exists(locations.restoreWork()));
+    assertFalse(Files.exists(part));
+    assertTrue(Files.exists(foreign), "files that are not ours stay");
   }
 
   private void shutdownDatabase() {

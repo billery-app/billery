@@ -74,4 +74,32 @@ public record BackupLocations(Path databaseBase, Path filesDirectory) {
   public Path pendingRestore() {
     return appData().resolve("restore-pending.zip");
   }
+
+  /**
+   * What the user confirmed when choosing the restore (backup, what is lost), for the log.
+   *
+   * @return {@code <app-data>/restore-pending.properties}
+   */
+  public Path pendingRestoreInfo() {
+    return appData().resolve("restore-pending.properties");
+  }
+
+  /**
+   * Where a restore is unpacked before anything of the current state is touched.
+   *
+   * @return {@code <app-data>/restore-work}
+   */
+  public Path restoreWork() {
+    return appData().resolve("restore-work");
+  }
+
+  /**
+   * The append-only log of every restore (GoBD: a restore rolls documents back, so it is recorded
+   * outside the database it replaces).
+   *
+   * @return {@code <app-data>/wiederherstellungen.log}
+   */
+  public Path restoreLog() {
+    return appData().resolve("wiederherstellungen.log");
+  }
 }

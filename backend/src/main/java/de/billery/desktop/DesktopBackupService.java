@@ -5,6 +5,7 @@ import de.billery.data.Database;
 import de.billery.repository.UserSettingsRepository;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -14,6 +15,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
@@ -42,7 +44,8 @@ public class DesktopBackupService {
   static final String KEY_DIRECTORY = "backup_directory";
   static final String KEY_KEEP = "backup_keep";
   static final String KEY_ON_EXIT = "backup_on_exit";
-  static final String KEY_PASSWORD = "backup_password";
+  // The name of the setting, not a password.
+  static final String KEY_PASSWORD = "backup_password"; // gitleaks:allow
 
   /** Backups kept unless the user chose another number. */
   static final int DEFAULT_KEEP = 10;
@@ -153,10 +156,11 @@ public class DesktopBackupService {
    * @return the new backup
    * @throws IOException if it cannot be written
    */
-  public BackupFile backup(String reason) throws IOException {
+  public synchronized BackupFile backup(String reason) throws IOException {
     requireFileDatabase();
     Path directory = directory();
     Files.createDirectories(directory);
+    PendingRestore.deletePartFiles(directory); // left by an interrupted backup
     String password = password();
     boolean encrypted = !password.isEmpty();
     // The name carries the second; a second backup within the same second gets the next one, so
@@ -183,7 +187,7 @@ public class DesktopBackupService {
       }
       Files.move(partial, target, StandardCopyOption.ATOMIC_MOVE);
     } finally {
-      deleteTree(work);
+      PendingRestore.deleteTree(work);
     }
     prune(directory);
     LOGGER.info(() -> "Backup written: " + target);
@@ -206,16 +210,54 @@ public class DesktopBackupService {
   }
 
   /**
+   * What a restore of a backup would take out of the program: documents issued (or cancelled),
+   * payments recorded and document changes after the backup was made. They stay in the safety copy
+   * the restore makes, but they are no longer in the running program.
+   *
+   * @param fileName a backup in the backup folder
+   * @return the counts
+   */
+  public RestoreLoss lossOf(String fileName) {
+    LocalDateTime made = BackupNames.time(fileName);
+    if (made == null) {
+      throw new IllegalArgumentException("Unbekannte Sicherung.");
+    }
+    long issued =
+        jdbc.sql(
+                "SELECT COUNT(*) FROM document_history WHERE action IN ('ISSUED', 'CANCELLED')"
+                    + " AND action_date > :made")
+            .param("made", made)
+            .query(Long.class)
+            .single();
+    long payments =
+        jdbc.sql("SELECT COUNT(*) FROM payment WHERE created_at > :made")
+            .param("made", made)
+            .query(Long.class)
+            .single();
+    long changes =
+        jdbc.sql("SELECT COUNT(*) FROM document_history WHERE action_date > :made")
+            .param("made", made)
+            .query(Long.class)
+            .single();
+    return new RestoreLoss(issued, payments, changes);
+  }
+
+  /**
    * Chooses a backup for restoring: decrypts and checks it and stages it; the restore itself
-   * happens at the next start ({@link PendingRestore}).
+   * happens at the next start ({@link PendingRestore}). If documents were issued, payments recorded
+   * or documents changed after the backup, the user must have confirmed that ({@code confirmLoss}):
+   * a restore rolls the program back, the safety copy keeps the later state.
    *
    * @param fileName a backup in the backup folder
    * @param password the password of an encrypted backup ({@code null} for a plain one)
+   * @param confirmLoss whether the user confirmed what the restore takes out of the program
+   * @throws RestoreLossException if there is something to lose and it was not confirmed
    * @throws IllegalArgumentException with a German message for an unknown file, a missing or wrong
    *     password, or a file that is no backup
    * @throws IOException if a file cannot be read or written
    */
-  public void stageRestore(String fileName, String password) throws IOException {
+  public void stageRestore(String fileName, String password, boolean confirmLoss)
+      throws IOException {
     requireFileDatabase();
     if (fileName == null || !BackupNames.isBackup(fileName)) {
       throw new IllegalArgumentException("Unbekannte Sicherung.");
@@ -223,6 +265,10 @@ public class DesktopBackupService {
     Path source = directory().resolve(fileName);
     if (!Files.isRegularFile(source)) {
       throw new IllegalArgumentException("Die Sicherung gibt es nicht mehr.");
+    }
+    RestoreLoss loss = lossOf(fileName);
+    if (loss.any() && !confirmLoss) {
+      throw new RestoreLossException(loss);
     }
     Path staged = locations.pendingRestore();
     Path partial = staged.resolveSibling(staged.getFileName() + ".part");
@@ -244,7 +290,16 @@ public class DesktopBackupService {
       try {
         BackupArchive.validate(partial);
       } catch (IOException e) {
-        throw new IllegalArgumentException("Die Datei ist keine Billery-Sicherung.", e);
+        throw new IllegalArgumentException("Die Datei ist keine gültige Billery-Sicherung.", e);
+      }
+      Properties info = new Properties();
+      info.setProperty("backup", fileName);
+      info.setProperty("issued", Long.toString(loss.issued()));
+      info.setProperty("payments", Long.toString(loss.payments()));
+      info.setProperty("changes", Long.toString(loss.changes()));
+      try (Writer writer =
+          Files.newBufferedWriter(locations.pendingRestoreInfo(), StandardCharsets.UTF_8)) {
+        info.store(writer, "Restore chosen at " + LocalDateTime.now().withNano(0));
       }
       Files.move(
           partial, staged, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
@@ -261,6 +316,7 @@ public class DesktopBackupService {
   public void cancelRestore() throws IOException {
     requireFileDatabase();
     Files.deleteIfExists(locations.pendingRestore());
+    Files.deleteIfExists(locations.pendingRestoreInfo());
   }
 
   /** The backups in the backup folder, newest first. */
@@ -280,9 +336,14 @@ public class DesktopBackupService {
     return backups;
   }
 
-  /** Deletes the oldest of our backups beyond the number to keep; other files stay. */
+  /**
+   * Deletes the oldest of our backups beyond the number to keep. Other files stay, and so do the
+   * safety copies made before a restore: they hold what was entered after the restored backup and
+   * fall under the retention duty (GoBD), so only the user deletes them.
+   */
   private void prune(Path directory) throws IOException {
-    List<BackupFile> backups = list();
+    List<BackupFile> backups =
+        list().stream().filter(b -> !BackupNames.BEFORE_RESTORE.equals(b.reason())).toList();
     int keep = keep();
     for (BackupFile old : backups.subList(Math.min(keep, backups.size()), backups.size())) {
       Files.deleteIfExists(directory.resolve(old.name()));
@@ -345,16 +406,6 @@ public class DesktopBackupService {
     }
   }
 
-  private static void deleteTree(Path root) {
-    try (Stream<Path> paths = Files.walk(root)) {
-      for (Path path : paths.sorted(Comparator.reverseOrder()).toList()) {
-        Files.deleteIfExists(path);
-      }
-    } catch (IOException e) {
-      LOGGER.log(Level.WARNING, "Could not delete " + root, e);
-    }
-  }
-
   /**
    * One backup file.
    *
@@ -376,6 +427,54 @@ public class DesktopBackupService {
           BackupNames.reason(name),
           name.endsWith(".enc"),
           Files.size(file));
+    }
+  }
+
+  /**
+   * What a restore would take out of the running program.
+   *
+   * @param issued documents issued or cancelled after the backup
+   * @param payments payments (and reversals) recorded after the backup
+   * @param changes document history entries after the backup (all kinds)
+   */
+  public record RestoreLoss(long issued, long payments, long changes) {
+    /**
+     * Whether anything would be lost.
+     *
+     * @return {@code true} if any count is above zero
+     */
+    public boolean any() {
+      return issued > 0 || payments > 0 || changes > 0;
+    }
+  }
+
+  /** A restore would take documents out of the program and the user has not confirmed it. */
+  public static final class RestoreLossException extends RuntimeException {
+    private static final long serialVersionUID = 1L;
+
+    private final transient RestoreLoss counts;
+
+    RestoreLossException(RestoreLoss loss) {
+      super(
+          "Seit dieser Sicherung wurden "
+              + loss.issued()
+              + " Belege ausgestellt oder storniert, "
+              + loss.payments()
+              + " Zahlungen erfasst und "
+              + loss.changes()
+              + " Änderungen an Dokumenten gemacht. Sie fehlen nach der Wiederherstellung im"
+              + " Programm; erhalten bleiben sie in der Sicherheitskopie, die vorher angelegt und"
+              + " nicht automatisch gelöscht wird und wie alle Rechnungen aufzubewahren ist (§ 147 AO).");
+      this.counts = loss;
+    }
+
+    /**
+     * What would be lost.
+     *
+     * @return the counts
+     */
+    public RestoreLoss loss() {
+      return counts;
     }
   }
 

@@ -95,6 +95,7 @@ fn start_backend(
     log_file: &Path,
     instance_id: &str,
     shutdown_token: &str,
+    ui_token: &str,
 ) -> Result<Child, String> {
     let resource_dir = app.path().resource_dir().map_err(|e| e.to_string())?;
     let resource_dir = strip_extended_prefix(&resource_dir);
@@ -132,6 +133,8 @@ fn start_backend(
         .env("FILES_PATH", app_data_dir.join("files"))
         .env("DESKTOP_INSTANCE_ID", instance_id)
         .env("DESKTOP_SHUTDOWN_TOKEN", shutdown_token)
+        // The window's secret for the desktop-only endpoints (backups); see the window URL below.
+        .env("DESKTOP_UI_TOKEN", ui_token)
         .stdout(Stdio::null())
         .stderr(Stdio::from(stderr))
         .spawn()
@@ -193,6 +196,9 @@ pub fn run() {
 
             let instance_id = random_token();
             let shutdown_token = random_token();
+            // Given to the backend and to our own window only (URL fragment, never sent over
+            // HTTP): other programs on this computer reach 127.0.0.1 too, but not the backups.
+            let ui_token = random_token();
 
             // Something already answers on our port: a dev backend, another
             // instance, or a leftover process. Never talk to it as if it were ours.
@@ -207,7 +213,7 @@ pub fn run() {
                 return Ok(());
             }
 
-            let child = match start_backend(&handle, &log_file, &instance_id, &shutdown_token) {
+            let child = match start_backend(&handle, &log_file, &instance_id, &shutdown_token, &ui_token) {
                 Ok(child) => child,
                 Err(e) => {
                     log_to_file(&log_file, &format!("start_backend failed: {e}"));
@@ -226,7 +232,10 @@ pub fn run() {
                 log_to_file(&log_file, &format!("backend ready: {started}"));
                 if started {
                     if let Some(window) = handle.get_webview_window("main") {
-                        let _ = window.eval(&format!("window.location.replace('{BACKEND_URL}')"));
+                        // ui_token is hex (random_token), safe inside the JS string literal.
+                        let _ = window.eval(&format!(
+                            "window.location.replace('{BACKEND_URL}/#desktop-token={ui_token}')"
+                        ));
                     }
                 } else {
                     show_error_now(

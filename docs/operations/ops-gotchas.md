@@ -151,12 +151,20 @@ The desktop app keeps everything in its app-data folder (`database.mv.db`,
   PBKDF2). Without the password an encrypted backup cannot be restored; it is stored in the
   local database so the automatic backup can use it, and never shown again.
 - **Restore:** choose a backup in the list (from another computer: put the file into the backup
-  folder first); it is checked (and decrypted) at once and restored at the **next start**, after
-  the state before has been saved as `billery-…-vor-wiederherstellung.zip` in
-  `<app-data>/backups`. A backup of an older version is brought up to date by the migrations of
-  that start. "Wiederherstellung abbrechen" withdraws it before the restart.
-- A backup that was cut short (the computer shut down) leaves a `.part` file, never a broken
-  backup; such files can be deleted.
+  folder first); it is checked (and decrypted) at once and restored at the **next start**. If
+  documents were issued, payments recorded or documents changed after the backup, the app says
+  how many and needs an explicit "Trotzdem wiederherstellen". At the start the backup is unpacked
+  completely first (limits: 10 000 entries, 4 GiB), then the state before is saved as
+  `billery-…-vor-wiederherstellung.zip[.enc]` in the backup folder (encrypted like the backups),
+  then the files are swapped, and a line is appended to `<app-data>/wiederherstellungen.log`.
+  Safety copies are **never** deleted automatically (they hold the later records; GoBD,
+  `verfahrensdokumentation.md` §8). A backup of an older version is brought up to date by the
+  migrations of that start. "Wiederherstellung abbrechen" withdraws it before the restart.
+- **Access:** the backup endpoints need the window's per-launch token (`X-Desktop-Token`, from the
+  Tauri shell via the URL fragment); other programs on the computer cannot use them. The rest of
+  the desktop API has no authentication (it binds to 127.0.0.1 only).
+- A backup that was cut short (the computer shut down) leaves a `.part` file or a working folder
+  in the app-data folder; the next start removes them.
 
 ## Logging
 

@@ -72,8 +72,17 @@
         <h3 class="backup-heading">Vorhandene Sicherungen</h3>
         <p class="backup-hint">
           Eine Sicherung von einem anderen Rechner: die Datei in den Sicherungsordner legen, dann
-          erscheint sie hier.
+          erscheint sie hier. Vor jeder Wiederherstellung wird der jetzige Stand gesichert; diese
+          Sicherheitskopien werden nie automatisch gelöscht, denn sie enthalten, was nach der
+          wiederhergestellten Sicherung erfasst wurde (Aufbewahrungspflicht).
         </p>
+        <div v-if="loss" class="backup-notice backup-notice--warning backup-loss" role="alert" data-testid="backup-loss">
+          <p>{{ loss.message }}</p>
+          <div class="backup-loss-actions">
+            <button type="button" class="btn btn-small btn-danger" :disabled="busy" @click="restore(loss.backup, true)">Trotzdem wiederherstellen</button>
+            <button type="button" class="btn btn-small btn-secondary" @click="loss = null">Abbrechen</button>
+          </div>
+        </div>
         <div v-if="status.backups.length" class="table-scroll">
           <table class="data-table" aria-label="Sicherungen">
             <thead>
@@ -134,7 +143,9 @@ export default {
       error: '',
       notice: '',
       restoring: null,
-      restorePassword: ''
+      restorePassword: '',
+      // A restore the server refused because documents were entered after the backup: { backup, message }
+      loss: null
     }
   },
   computed: {
@@ -201,11 +212,30 @@ export default {
       this.restoring = backup.name
       this.restorePassword = ''
     },
-    restore(backup) {
-      return this.run(async () => {
-        await backupAPI.restore(backup.name, this.restorePassword)
+    /**
+     * Chooses a backup for the next start. If documents were issued, payments recorded or changed
+     * after the backup, the server answers 409 with what would be lost; the user confirms it
+     * explicitly ("Trotzdem wiederherstellen").
+     */
+    async restore(backup, confirmLoss = false) {
+      this.busy = true
+      this.error = ''
+      this.notice = ''
+      try {
+        await backupAPI.restore(backup.name, this.restorePassword, confirmLoss)
         this.restoring = null
-      }, 'Die Sicherung wird beim nächsten Start wiederhergestellt. Bitte Billery jetzt beenden und neu starten.')
+        this.loss = null
+        this.notice = 'Die Sicherung wird beim nächsten Start wiederhergestellt. Bitte Billery jetzt beenden und neu starten.'
+        await this.load()
+      } catch (error) {
+        if (error.response?.status === 409) {
+          this.loss = { backup, message: error.response.data.message }
+        } else {
+          this.error = error.response?.data?.message || 'Das hat nicht geklappt.'
+        }
+      } finally {
+        this.busy = false
+      }
     },
     cancelRestore() {
       return this.run(() => backupAPI.cancelRestore(), 'Die Wiederherstellung wurde abgebrochen.')
@@ -238,6 +268,8 @@ export default {
 .backup-notice--error { background: var(--color-danger-soft); color: var(--color-danger); }
 .backup-notice--ok { background: var(--color-success-soft); color: var(--color-success-hover); }
 .backup-notice--warning { background: var(--color-warning-soft); color: var(--color-text-strong); }
+.backup-loss p { margin: 0 0 var(--space-2); }
+.backup-loss-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .actions { display: flex; flex-wrap: wrap; gap: var(--space-2); justify-content: flex-end; }
 .badge { margin-left: var(--space-2); }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }

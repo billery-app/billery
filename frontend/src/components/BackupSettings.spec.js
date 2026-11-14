@@ -78,7 +78,23 @@ describe('BackupSettings', () => {
     await wrapper.find('input[type="password"][placeholder="Passwort"]').setValue('geheim123')
     await wrapper.findAll('button').find(b => b.text().startsWith('Beim nächsten Start')).trigger('click')
     await flushPromises()
-    expect(backupAPI.restore).toHaveBeenCalledWith('billery-x.zip.enc', 'geheim123')
+    expect(backupAPI.restore).toHaveBeenCalledWith('billery-x.zip.enc', 'geheim123', false)
     expect(wrapper.find('[role="status"]').text()).toContain('nächsten Start')
+  })
+
+  it('asks for an explicit confirmation when the restore would take out later documents', async () => {
+    backupAPI.restore
+      .mockRejectedValueOnce({ response: { status: 409, data: { message: 'Seit dieser Sicherung wurden 2 Belege ausgestellt …' } } })
+      .mockResolvedValueOnce({ data: { message: 'ok' } })
+    const wrapper = await mounted(status({ backups: [backup('billery-y.zip', new Date().toISOString())] }))
+    await wrapper.findAll('button').find(b => b.text().startsWith('Wiederherstellen')).trigger('click')
+    await wrapper.findAll('button').find(b => b.text().startsWith('Beim nächsten Start')).trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="backup-loss"]').text()).toContain('2 Belege')
+    await wrapper.findAll('button').find(b => b.text() === 'Trotzdem wiederherstellen').trigger('click')
+    await flushPromises()
+    expect(backupAPI.restore).toHaveBeenLastCalledWith('billery-y.zip', '', true)
+    expect(wrapper.find('[data-testid="backup-loss"]').exists()).toBe(false)
   })
 })

@@ -134,6 +134,36 @@ Alle Daten liegen in einer relationalen Datenbank (PostgreSQL oder, in der
 Desktop-Version, eine H2-Datei im Anwendungsdatenverzeichnis). Kunden mit Belegen
 können nicht gelöscht werden; die Datenbank verhindert das zusätzlich.
 
+### 8. Datensicherung und Wiederherstellung (Desktop-Version)
+
+Die Desktop-Version sichert Datenbank und hochgeladene Dateien selbst
+(*Einstellungen → Datensicherung*): beim Beenden des Programms (abschaltbar) und
+auf Knopfdruck, in einen wählbaren Ordner, auf Wunsch mit Passwort verschlüsselt
+(AES-256-GCM). Aufbewahrt werden die neuesten Sicherungen bis zur eingestellten
+Anzahl; andere Dateien im Ordner bleiben unberührt.
+
+Eine **Wiederherstellung** setzt das Programm auf den Stand der Sicherung zurück.
+Damit dabei keine aufbewahrungspflichtigen Daten verloren gehen:
+
+- zählt das Programm vorher, wie viele Belege nach der Sicherung ausgestellt oder
+  storniert, wie viele Zahlungen erfasst und wie viele Änderungen an Dokumenten
+  gemacht wurden; ist es mindestens eins, muss die Wiederherstellung ausdrücklich
+  bestätigt werden;
+- sichert es unmittelbar vor der Wiederherstellung den bisherigen Stand
+  (`billery-…-vor-wiederherstellung.zip`, verschlüsselt, wenn ein Passwort
+  eingestellt ist). Diese Sicherheitskopien löscht das Programm **nie**
+  automatisch; sie enthalten die nach der Sicherung erfassten Belege und sind wie
+  diese aufzubewahren;
+- protokolliert es jede Wiederherstellung fortlaufend in
+  `wiederherstellungen.log` im Anwendungsdatenverzeichnis (Zeitpunkt,
+  wiederhergestellte Sicherung, Ablageort der Sicherheitskopie, Zahl der
+  betroffenen Belege, Zahlungen und Änderungen). Das Programm schreibt nur Zeilen
+  hinzu.
+
+Eine Wiederherstellung ist für den Verlust oder die Beschädigung der Daten
+gedacht, nicht zum Rückgängigmachen ausgestellter Rechnungen; dafür ist die
+Stornorechnung vorgesehen (Abschnitt 2).
+
 ## Teil 2 – Vom Unternehmen festzuhalten
 
 Diese Angaben hängen vom Betrieb ab und können nicht von der Software
@@ -141,9 +171,11 @@ vorgegeben werden. Bitte als Anhang zu dieser Dokumentation führen:
 
 - Wer das Programm bedient und wer Rechnungen ausstellen darf.
 - Installationsart (Desktop oder Server), Rechner bzw. Server, eingesetzte Version.
-- Datensicherung: Was wird wie oft wohin gesichert (bei der Desktop-Version die
-  Datenbankdatei im Anwendungsdatenverzeichnis), wie wird die Wiederherstellung
-  geprüft.
+- Datensicherung: Was wird wie oft wohin gesichert (bei der Desktop-Version der
+  gewählte Sicherungsordner, siehe Abschnitt 8), wo das Passwort einer
+  verschlüsselten Sicherung verwahrt wird, wie die Wiederherstellung geprüft wird,
+  und wo die Sicherheitskopien vor Wiederherstellungen und
+  `wiederherstellungen.log` aufbewahrt werden.
 - Zugriffsschutz: Wer hat Zugang zum Rechner bzw. Server und zur Datenbank.
   Direkte Änderungen an der Datenbank außerhalb des Programms sind nicht zulässig.
 - Aufbewahrung: Rechnungen 8 Jahre (§ 147 Abs. 3 AO), Aufbewahrungsort der

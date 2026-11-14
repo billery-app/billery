@@ -31,13 +31,15 @@ public class ClientConfigController {
    *
    * @return {@code {"mode": "selfhost", "desktop": true|false}}; {@code desktop} tells the SPA to
    *     show the desktop-only settings (backups): the Spring profile {@code desktop} with an H2
-   *     file database (the end-to-end tests run the profile on an in-memory database)
+   *     file database (the end-to-end tests run the profile on an in-memory database) and the
+   *     window token of the Tauri shell ({@code DESKTOP_UI_TOKEN})
    */
   @GetMapping("/api/config")
   public Map<String, Object> config() {
     boolean desktopBackups =
         environment.matchesProfiles("desktop")
-            && BackupLocations.forDatabase(Database.getUrl(), AppConfig.FILES_PATH) != null;
+            && BackupLocations.forDatabase(Database.getUrl(), AppConfig.FILES_PATH) != null
+            && !environment.getProperty("DESKTOP_UI_TOKEN", "").isEmpty();
     return Map.of("mode", "selfhost", "desktop", desktopBackups);
   }
 }

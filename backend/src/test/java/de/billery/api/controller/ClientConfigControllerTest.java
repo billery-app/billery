@@ -21,13 +21,19 @@ class ClientConfigControllerTest {
   }
 
   @Test
-  void theDesktopAppWithItsFileDatabaseShowsTheBackups() {
-    MockEnvironment desktop = new MockEnvironment();
+  void theDesktopAppWithItsFileDatabaseAndWindowTokenShowsTheBackups() {
+    MockEnvironment desktop = new MockEnvironment().withProperty("DESKTOP_UI_TOKEN", "fenster");
     desktop.setActiveProfiles("desktop");
+    MockEnvironment withoutShell = new MockEnvironment();
+    withoutShell.setActiveProfiles("desktop");
     Database.setDbPath("jdbc:h2:file:" + appData.resolve("database") + ";MODE=MariaDB");
 
     assertEquals(
         Map.of("mode", "selfhost", "desktop", true), new ClientConfigController(desktop).config());
+    assertEquals(
+        Map.of("mode", "selfhost", "desktop", false),
+        new ClientConfigController(withoutShell).config(),
+        "the JAR without the Tauri shell has no window token");
   }
 
   @Test

@@ -1,25 +1,49 @@
 package de.billery.desktop;
 
+import de.billery.data.Database;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.time.LocalDateTime;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
 /**
  * Applies a restore that was chosen while the app ran. The database file can only be replaced while
  * nothing has it open, so the restore runs at the next start, before {@code MainApp} opens the
- * database: first the current state is saved as a backup of its own (the "safety copy"), then the
- * database file and the uploaded files are replaced by the backup's, then the staged file is
- * removed. The H2 migrations that follow bring a backup of an older version up to date.
+ * database:
+ *
+ * <ol>
+ *   <li>the staged backup is unpacked completely into a working folder (limits and path checks of
+ *       {@link BackupArchive#extract}); a failure here leaves the current state untouched;
+ *   <li>the current state is saved as a backup of its own, the "safety copy", encrypted when a
+ *       backup password is set, in the chosen backup folder; safety copies are never deleted
+ *       automatically, because they hold what was entered after the restored backup (GoBD);
+ *   <li>the database file and the uploaded files are replaced by the unpacked ones;
+ *   <li>the restore is appended to {@code wiederherstellungen.log} in the app-data folder.
+ * </ol>
+ *
+ * The H2 migrations that follow bring a backup of an older version up to date. The staged and the
+ * unpacked copies are plain files in the app-data folder, next to the (unencrypted) database file
+ * itself; {@link #cleanLeftovers} removes what an interrupted run left behind at every start.
  */
 public final class PendingRestore {
 
@@ -28,20 +52,70 @@ public final class PendingRestore {
   private PendingRestore() {}
 
   /**
+   * Removes what an interrupted backup or restore left: working folders in the app-data folder and
+   * {@code .part} files in the default backup folder. Runs at every start of the desktop app.
+   *
+   * @param locations the desktop data, or {@code null} (no H2 file database: nothing to do)
+   */
+  public static void cleanLeftovers(BackupLocations locations) {
+    if (locations == null || !Files.isDirectory(locations.appData())) {
+      return;
+    }
+    try (Stream<Path> entries = Files.list(locations.appData())) {
+      for (Path entry : entries.toList()) {
+        String name = entry.getFileName().toString();
+        if (Files.isDirectory(entry)
+            && (name.startsWith("backup-") || "restore-work".equals(name))) {
+          deleteTree(entry);
+        } else if (name.endsWith(".zip.part")) {
+          Files.deleteIfExists(entry);
+        }
+      }
+    } catch (IOException e) {
+      LOGGER.log(Level.WARNING, "Could not clean up after an interrupted backup", e);
+    }
+    deletePartFiles(locations.defaultBackupDirectory());
+  }
+
+  /**
+   * Deletes the {@code .part} files of interrupted backups in a backup folder.
+   *
+   * @param folder a backup folder
+   */
+  static void deletePartFiles(Path folder) {
+    if (!Files.isDirectory(folder)) {
+      return;
+    }
+    try (Stream<Path> files = Files.list(folder)) {
+      for (Path file : files.toList()) {
+        String name = file.getFileName().toString();
+        if (name.startsWith("billery-") && name.endsWith(".part")) {
+          Files.deleteIfExists(file);
+        }
+      }
+    } catch (IOException e) {
+      LOGGER.log(Level.WARNING, "Could not delete interrupted backups in " + folder, e);
+    }
+  }
+
+  /**
    * Restores the staged backup, if there is one.
    *
    * @param locations the desktop data, or {@code null} (no H2 file database: nothing to do)
    * @return the safety copy of the state before, or {@code null} if nothing was restored
-   * @throws IOException if the restore fails; the staged file and the safety copy stay
+   * @throws IOException if the restore fails; the staged file stays, the current state is either
+   *     untouched or kept in the safety copy
    */
   public static Path applyIfPending(BackupLocations locations) throws IOException {
     if (locations == null || !Files.exists(locations.pendingRestore())) {
       return null;
     }
     Path staged = locations.pendingRestore();
-    BackupArchive.validate(staged);
+    Path work = locations.restoreWork();
+    deleteTree(work);
+    BackupArchive.extract(staged, work);
 
-    Path safetyCopy = saveCurrentState(locations);
+    Path safetyCopy = saveCurrentState(locations, currentSettings());
     LOGGER.info(() -> "Restoring a backup; the state before is saved in " + safetyCopy);
 
     Files.deleteIfExists(locations.databaseFile());
@@ -49,68 +123,170 @@ public final class PendingRestore {
         locations
             .databaseBase()
             .resolveSibling(locations.databaseBase().getFileName() + ".trace.db"));
+    Files.move(work.resolve(BackupArchive.DATABASE), locations.databaseFile());
     Files.createDirectories(locations.filesDirectory());
-    try (Stream<Path> files = Files.list(locations.filesDirectory())) {
-      for (Path file : files.filter(Files::isRegularFile).toList()) {
-        Files.delete(file);
-      }
+    for (Path file : regularFiles(locations.filesDirectory())) {
+      Files.delete(file);
     }
-    try (ZipInputStream zip = new ZipInputStream(Files.newInputStream(staged))) {
-      for (ZipEntry entry = zip.getNextEntry(); entry != null; entry = zip.getNextEntry()) {
-        if (BackupArchive.DATABASE.equals(entry.getName())) {
-          Files.copy(zip, locations.databaseFile(), StandardCopyOption.REPLACE_EXISTING);
-        } else {
-          String name = BackupArchive.fileName(entry.getName());
-          if (name != null) {
-            Files.copy(
-                zip, locations.filesDirectory().resolve(name), StandardCopyOption.REPLACE_EXISTING);
-          }
-        }
-      }
+    for (Path file : regularFiles(work.resolve("files"))) {
+      Files.move(
+          file,
+          BackupArchive.inside(locations.filesDirectory(), file.getFileName().toString()),
+          StandardCopyOption.REPLACE_EXISTING);
     }
+    deleteTree(work);
+
+    appendToLog(locations, safetyCopy);
     Files.delete(staged);
+    Files.deleteIfExists(locations.pendingRestoreInfo());
     LOGGER.info("Backup restored.");
     return safetyCopy;
   }
 
   /**
-   * Writes the current database file and uploaded files as a backup into the default backup folder.
-   * The database is closed at this point, so a plain copy of the file is consistent.
+   * The backup settings of the database that is about to be replaced (password and folder for the
+   * safety copy). An unreadable or missing database has none.
    */
-  static Path saveCurrentState(BackupLocations locations) throws IOException {
-    Path directory = locations.defaultBackupDirectory();
-    Files.createDirectories(directory);
-    Path target =
-        directory.resolve(BackupNames.name(LocalDateTime.now(), BackupNames.BEFORE_RESTORE, false));
-    Path partial = target.resolveSibling(target.getFileName() + ".part");
-    try (ZipOutputStream zip = new ZipOutputStream(Files.newOutputStream(partial))) {
-      zip.putNextEntry(new ZipEntry(BackupArchive.META));
-      zip.write(BackupNames.meta(BackupNames.BEFORE_RESTORE).getBytes(StandardCharsets.UTF_8));
-      zip.closeEntry();
-      if (Files.exists(locations.databaseFile())) {
-        zip.putNextEntry(new ZipEntry(BackupArchive.DATABASE));
-        Files.copy(locations.databaseFile(), zip);
-        zip.closeEntry();
-      }
-      for (Path file : regularFiles(locations.filesDirectory())) {
-        zip.putNextEntry(new ZipEntry(BackupArchive.FILES_PREFIX + file.getFileName()));
-        try (InputStream in = Files.newInputStream(file)) {
-          in.transferTo(zip);
+  static Map<String, String> currentSettings() {
+    Map<String, String> settings = new HashMap<>();
+    try (Connection conn = Database.getConnection();
+        PreparedStatement query =
+            conn.prepareStatement(
+                "SELECT setting_key, setting_value FROM user_settings WHERE setting_key IN (?, ?)")) {
+      query.setString(1, DesktopBackupService.KEY_PASSWORD);
+      query.setString(2, DesktopBackupService.KEY_DIRECTORY);
+      try (ResultSet rows = query.executeQuery()) {
+        while (rows.next()) {
+          settings.put(rows.getString(1), rows.getString(2));
         }
-        zip.closeEntry();
       }
+    } catch (SQLException e) {
+      LOGGER.log(Level.WARNING, "Backup settings of the current database not readable", e);
     }
-    Files.move(partial, target, StandardCopyOption.ATOMIC_MOVE);
+    return settings;
+  }
+
+  /**
+   * Writes the current database file and uploaded files as a backup ({@link
+   * BackupNames#BEFORE_RESTORE}) into the chosen backup folder, or the default one, encrypted when
+   * a password is set. The database is closed at this point, so a plain copy of the file is
+   * consistent.
+   *
+   * @param locations the desktop data
+   * @param settings the backup settings of the current database
+   * @return the safety copy
+   * @throws IOException if it cannot be written
+   */
+  static Path saveCurrentState(BackupLocations locations, Map<String, String> settings)
+      throws IOException {
+    String password = settings.get(DesktopBackupService.KEY_PASSWORD);
+    boolean encrypted = password != null && !password.isEmpty();
+    Path directory = locations.defaultBackupDirectory();
+    String chosen = settings.get(DesktopBackupService.KEY_DIRECTORY);
+    if (chosen != null && !chosen.isBlank() && Files.isDirectory(Paths.get(chosen))) {
+      directory = Paths.get(chosen);
+    }
+    Files.createDirectories(directory);
+    LocalDateTime time = LocalDateTime.now().withNano(0);
+    Path target = directory.resolve(BackupNames.name(time, BackupNames.BEFORE_RESTORE, encrypted));
+    while (Files.exists(target)) {
+      time = time.plusSeconds(1);
+      target = directory.resolve(BackupNames.name(time, BackupNames.BEFORE_RESTORE, encrypted));
+    }
+    Path plain = locations.appData().resolve("restore-safety-copy.zip.part");
+    try {
+      try (ZipOutputStream zip = new ZipOutputStream(Files.newOutputStream(plain))) {
+        zip.putNextEntry(new ZipEntry(BackupArchive.META));
+        zip.write(BackupNames.meta(BackupNames.BEFORE_RESTORE).getBytes(StandardCharsets.UTF_8));
+        zip.closeEntry();
+        if (Files.exists(locations.databaseFile())) {
+          zip.putNextEntry(new ZipEntry(BackupArchive.DATABASE));
+          Files.copy(locations.databaseFile(), zip);
+          zip.closeEntry();
+        }
+        for (Path file : regularFiles(locations.filesDirectory())) {
+          zip.putNextEntry(new ZipEntry(BackupArchive.FILES_PREFIX + file.getFileName()));
+          try (InputStream in = Files.newInputStream(file)) {
+            in.transferTo(zip);
+          }
+          zip.closeEntry();
+        }
+      }
+      Path partial = target.resolveSibling(target.getFileName() + ".part");
+      if (encrypted) {
+        BackupArchive.encrypt(plain, partial, password.toCharArray());
+      } else {
+        Files.copy(plain, partial, StandardCopyOption.REPLACE_EXISTING);
+      }
+      Files.move(partial, target, StandardCopyOption.ATOMIC_MOVE);
+    } finally {
+      Files.deleteIfExists(plain);
+    }
     return target;
   }
 
-  /** The files directly in the upload directory (it is flat). */
+  /** One line per restore, never rewritten: time, backup, safety copy, what was entered since. */
+  private static void appendToLog(BackupLocations locations, Path safetyCopy) throws IOException {
+    Properties info = new Properties();
+    if (Files.exists(locations.pendingRestoreInfo())) {
+      try (Reader reader =
+          Files.newBufferedReader(locations.pendingRestoreInfo(), StandardCharsets.UTF_8)) {
+        info.load(reader);
+      }
+    }
+    String line =
+        LocalDateTime.now().withNano(0)
+            + " Wiederhergestellt: "
+            + info.getProperty("backup", "?")
+            + " | Stand davor gesichert in: "
+            + safetyCopy
+            + " | seit der Sicherung erfasst: "
+            + info.getProperty("issued", "?")
+            + " ausgestellte Belege, "
+            + info.getProperty("payments", "?")
+            + " Zahlungen, "
+            + info.getProperty("changes", "?")
+            + " Änderungen an Dokumenten"
+            + System.lineSeparator();
+    Files.writeString(
+        locations.restoreLog(),
+        line,
+        StandardCharsets.UTF_8,
+        StandardOpenOption.CREATE,
+        StandardOpenOption.APPEND);
+  }
+
+  /**
+   * The files directly in a folder (the upload directory is flat).
+   *
+   * @param directory the folder
+   * @return the regular files, sorted
+   * @throws IOException if the folder cannot be read
+   */
   static List<Path> regularFiles(Path directory) throws IOException {
     if (!Files.isDirectory(directory)) {
       return List.of();
     }
     try (Stream<Path> files = Files.list(directory)) {
       return files.filter(Files::isRegularFile).sorted().toList();
+    }
+  }
+
+  /**
+   * Deletes a folder with everything in it; failures are logged.
+   *
+   * @param root the folder
+   */
+  static void deleteTree(Path root) {
+    if (!Files.exists(root)) {
+      return;
+    }
+    try (Stream<Path> paths = Files.walk(root)) {
+      for (Path path : paths.sorted(Comparator.reverseOrder()).toList()) {
+        Files.deleteIfExists(path);
+      }
+    } catch (IOException e) {
+      LOGGER.log(Level.WARNING, "Could not delete " + root, e);
     }
   }
 }

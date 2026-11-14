@@ -77,12 +77,18 @@ only after a 60 s grace period (`SHUTDOWN_GRACE`). **Backups** (`backend/.../des
 Spring profile `desktop`): `DesktopBackupService` writes the H2 database (`BACKUP TO`, consistent
 while open) and the uploaded files as one ZIP into a chosen folder (`<app-data>/backups` by
 default), on exit and on "Jetzt sichern", optionally encrypted (AES-GCM, PBKDF2; `BackupArchive`),
-the newest N kept (only files named `billery-<time>-<reason>.zip[.enc]` are ever deleted). A
-restore is staged as `<app-data>/restore-pending.zip` and applied by `PendingRestore` in
-`MainApp.prepareDatabase()` before H2 opens the file, after a safety copy of the state before; the
-H2 migrations then upgrade an older backup. The settings live in `user_settings` (`backup_*`; no
-endpoint returns the password); the SPA shows the section when `GET /api/config` says
-`desktop: true`.
+the newest N kept (only files named `billery-<time>-<reason>.zip[.enc]` are ever deleted, and
+never the safety copies `…-vor-wiederherstellung`: GoBD). A restore needs an explicit confirmation
+when documents, payments or changes came after the backup (`RestoreLoss`, 409), is staged as
+`<app-data>/restore-pending.zip` and applied by `PendingRestore` in `MainApp.prepareDatabase()`
+before H2 opens the file: unpack completely (limits, `BackupArchive.inside` against Zip Slip),
+safety copy of the state before (encrypted if a password is set), swap, append to
+`wiederherstellungen.log`; the H2 migrations then upgrade an older backup; `cleanLeftovers`
+removes interrupted work at every start. The backup endpoints need the window's per-launch
+`DESKTOP_UI_TOKEN` (`X-Desktop-Token`; the shell opens the window at `/#desktop-token=…`, the SPA
+keeps it in `sessionStorage`, `services/desktopToken.js`). The settings live in `user_settings`
+(`backup_*`; no endpoint returns the password); the SPA shows the section when `GET /api/config`
+says `desktop: true` (profile `desktop`, H2 file, token configured).
 There is no Rust toolchain requirement for the backend build, but `cargo check`
 must pass for `src/lib.rs` changes. The bundled `app.jar` (Spring Boot fat JAR) and `resources/runtime/`
 (jlink'd JRE) are produced by `scripts/build-desktop.sh` / `build-desktop.ps1`,

@@ -55,8 +55,10 @@ public class MainApp {
     LOGGER.info("Preparing database.");
     if (Database.getUrl().startsWith("jdbc:h2:")) {
       // A restore chosen in the desktop app replaces the database file before anything opens it.
-      PendingRestore.applyIfPending(
-          BackupLocations.forDatabase(Database.getUrl(), AppConfig.FILES_PATH));
+      BackupLocations desktop =
+          BackupLocations.forDatabase(Database.getUrl(), AppConfig.FILES_PATH);
+      PendingRestore.cleanLeftovers(desktop);
+      PendingRestore.applyIfPending(desktop);
       if (!schemaExists()) {
         try (InputStream in = MainApp.class.getResourceAsStream("/scheme-h2.sql")) {
           if (in == null) {

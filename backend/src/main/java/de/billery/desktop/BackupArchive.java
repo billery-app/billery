@@ -11,6 +11,7 @@ import java.nio.file.Path;
 import java.security.GeneralSecurityException;
 import java.security.SecureRandom;
 import java.util.Arrays;
+import java.util.Optional;
 import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -43,6 +44,12 @@ public final class BackupArchive {
 
   /** The prefix of the uploaded files. */
   public static final String FILES_PREFIX = "files/";
+
+  /** Most entries a backup may have (the database, the description and the uploaded files). */
+  static final int MAX_ENTRIES = 10_000;
+
+  /** Most bytes a backup may have once unpacked (4 GiB). */
+  static final long MAX_TOTAL_BYTES = 4L * 1024 * 1024 * 1024;
 
   /** First bytes of an encrypted backup. */
   static final byte[] ENCRYPTED_MAGIC = "BILLERY-BACKUP-1\n".getBytes(StandardCharsets.US_ASCII);
@@ -132,30 +139,96 @@ public final class BackupArchive {
   }
 
   /**
-   * Checks that a plain ZIP is a backup: it has the database and the description, and every
-   * uploaded file is a plain name (no path that could leave the upload folder).
+   * Checks that a plain ZIP is a backup: it has the database and the description, every uploaded
+   * file is a plain name (no path that could leave the upload folder), and it stays within {@link
+   * #MAX_ENTRIES} entries and {@link #MAX_TOTAL_BYTES} bytes once unpacked (counted while reading,
+   * not taken from the headers).
    *
    * @param plainZip the ZIP
-   * @throws IOException if it is no backup or cannot be read
+   * @throws IOException if it is no backup, exceeds a limit or cannot be read
    */
   public static void validate(Path plainZip) throws IOException {
+    readEntries(plainZip, null);
+  }
+
+  /**
+   * Unpacks a backup into an empty working folder: {@value #DATABASE} and {@code files/<name>}.
+   * Checks the same as {@link #validate}; nothing outside {@code target} is written.
+   *
+   * @param plainZip the ZIP
+   * @param target an empty folder
+   * @throws IOException if it is no backup, exceeds a limit or cannot be written
+   */
+  public static void extract(Path plainZip, Path target) throws IOException {
+    Files.createDirectories(target.resolve("files"));
+    readEntries(plainZip, target);
+  }
+
+  /** Reads every entry; with a target, writes it there. */
+  private static void readEntries(Path plainZip, Path target) throws IOException {
     boolean database = false;
     boolean meta = false;
+    int entries = 0;
+    long total = 0;
+    byte[] buffer = new byte[64 * 1024];
     try (ZipInputStream zip = new ZipInputStream(Files.newInputStream(plainZip))) {
       for (ZipEntry entry = zip.getNextEntry(); entry != null; entry = zip.getNextEntry()) {
+        entries++;
+        if (entries > MAX_ENTRIES) {
+          throw new IOException("Backup has too many entries");
+        }
         String name = entry.getName();
-        if (DATABASE.equals(name)) {
-          database = true;
-        } else if (META.equals(name)) {
-          meta = true;
-        } else if (fileName(name) == null) {
-          throw new IOException("Unexpected entry in backup: " + name);
+        database |= DATABASE.equals(name);
+        meta |= META.equals(name);
+        Optional<Path> out = destination(target, name);
+        try (OutputStream sink =
+            out.isPresent() ? Files.newOutputStream(out.get()) : OutputStream.nullOutputStream()) {
+          for (int read = zip.read(buffer); read != -1; read = zip.read(buffer)) {
+            total += read;
+            if (total > MAX_TOTAL_BYTES) {
+              throw new IOException("Backup is larger than " + MAX_TOTAL_BYTES + " bytes unpacked");
+            }
+            sink.write(buffer, 0, read);
+          }
         }
       }
     }
     if (!database || !meta) {
       throw new IOException("Not a Billery backup");
     }
+  }
+
+  /**
+   * Where an entry is unpacked to: nowhere for the description or when only checking, the database
+   * file, or a file in {@code files/}.
+   *
+   * @throws IOException for an entry that is not part of the format
+   */
+  private static Optional<Path> destination(Path target, String name) throws IOException {
+    if (META.equals(name)) {
+      return Optional.empty();
+    }
+    if (DATABASE.equals(name)) {
+      return target == null ? Optional.empty() : Optional.of(target.resolve(DATABASE));
+    }
+    String file = fileName(name);
+    if (file == null) {
+      throw new IOException("Unexpected entry in backup: " + name);
+    }
+    return target == null ? Optional.empty() : Optional.of(inside(target.resolve("files"), file));
+  }
+
+  /**
+   * {@code folder/name}, refused if it would leave the folder (the name is already a plain name;
+   * this is the second line of defence against "Zip Slip").
+   */
+  static Path inside(Path folder, String name) throws IOException {
+    Path base = folder.toAbsolutePath().normalize();
+    Path resolved = base.resolve(name).normalize();
+    if (!resolved.startsWith(base) || resolved.equals(base)) {
+      throw new IOException("Entry leaves the target folder: " + name);
+    }
+    return resolved;
   }
 
   /**

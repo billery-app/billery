@@ -5,10 +5,12 @@ import './styles/components.css'
 import App from './App.vue'
 import { createAppRouter } from './router'
 import { initAuth } from './services/authService.js'
+import { captureDesktopToken } from './services/desktopToken.js'
 
 // Self-hosted installs mount at once. In SaaS mode the app first completes or starts the sign-in
 // (a redirect to the identity provider) and mounts once the user and their tenants are known.
 async function start() {
+  captureDesktopToken() // the desktop window's secret, before anything reads the address
   try {
     await initAuth()
   } catch (error) {
