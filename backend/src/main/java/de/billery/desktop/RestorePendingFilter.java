@@ -87,7 +87,14 @@ public class RestorePendingFilter extends OncePerRequestFilter {
       return;
     }
     // Enter before checking: a restore staged after this point waits for this request.
-    gate.enter();
+    try {
+      gate.enter();
+    } catch (InterruptedException e) {
+      // Not counted, so it must not write (and must not leave the gate).
+      Thread.currentThread().interrupt();
+      response.setStatus(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
+      return;
+    }
     try {
       if (Files.exists(locations.pendingRestore())) {
         refuse(response);

@@ -1,10 +1,13 @@
 package de.billery.desktop;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
+import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.mock.web.MockFilterChain;
@@ -81,5 +84,46 @@ class RestorePendingFilterTest {
 
     assertTrue(heldDuringTheWrite[0], "a restore chosen now would wait for this write");
     assertTrue(gate.awaitIdle(java.time.Duration.ZERO), "released afterwards");
+  }
+
+  @Test
+  void aWriteInterruptedWhileABackupWaitsDoesNotRunAndDoesNotReleaseAnotherWrite()
+      throws Exception {
+    BackupLocations locations =
+        new BackupLocations(appData.resolve("database"), appData.resolve("files"));
+    WriteGate gate = new WriteGate();
+    RestorePendingFilter filter = new RestorePendingFilter(locations, gate);
+    gate.enter(); // a write under way
+    CompletableFuture<Boolean> backup =
+        CompletableFuture.supplyAsync(
+            () -> {
+              try {
+                return gate.beginExclusive(Duration.ofSeconds(10));
+              } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return false;
+              }
+            });
+    Thread.sleep(200); // the backup now pauses new writes and waits for the one under way
+
+    boolean[] ran = {false};
+    MockHttpServletResponse response = new MockHttpServletResponse();
+    Thread.currentThread().interrupt(); // e.g. the request was cancelled while paused
+    try {
+      filter.doFilter(
+          new MockHttpServletRequest("POST", "/api/invoices"),
+          response,
+          (req, res) -> ran[0] = true);
+    } finally {
+      Thread.interrupted(); // clear the flag for the rest of the test
+    }
+
+    assertEquals(503, response.getStatus());
+    assertFalse(ran[0], "an uncounted write must not run");
+    Thread.sleep(200);
+    assertFalse(backup.isDone(), "the backup still waits for the write under way");
+    gate.leave();
+    assertTrue(backup.get(), "and starts once it has finished");
+    gate.endExclusive();
   }
 }

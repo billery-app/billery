@@ -48,7 +48,12 @@ class WriteGateTest {
     Thread write =
         new Thread(
             () -> {
-              gate.enter(); // paused while the backup copies
+              try {
+                gate.enter(); // paused while the backup copies
+              } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+              }
               entered[0] = true;
               gate.leave();
             });

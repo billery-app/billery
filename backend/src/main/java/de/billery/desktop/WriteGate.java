@@ -18,15 +18,17 @@ public class WriteGate {
   private int inProgress;
   private boolean exclusive;
 
-  /** A changing request starts; it waits while a backup takes its snapshot. */
-  public synchronized void enter() {
+  /**
+   * A changing request starts; it waits while a backup takes its snapshot. Only a request that
+   * entered (this method returned normally) calls {@link #leave()} afterwards.
+   *
+   * @throws InterruptedException if the thread is interrupted while waiting; the request is then
+   *     not counted and must not run (a write that ran uncounted could start a backup or a restore
+   *     count while another write is still under way)
+   */
+  public synchronized void enter() throws InterruptedException {
     while (exclusive) {
-      try {
-        wait();
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        return;
-      }
+      wait();
     }
     inProgress++;
   }
