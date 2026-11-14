@@ -54,6 +54,8 @@
 
     <TeamSettings v-if="showTeam" />
 
+    <BackupSettings v-if="showBackup" />
+
     <section class="settings-section">
       <h2 class="section-title">Weitere Einstellungen</h2>
       <div class="settings-grid">
@@ -81,11 +83,12 @@
 import exportAPI from '../services/exportService.js'
 import AccountSettings from '../components/AccountSettings.vue'
 import TeamSettings from '../components/TeamSettings.vue'
-import { activeRole, isSaas } from '../services/session.js'
+import BackupSettings from '../components/BackupSettings.vue'
+import { activeRole, isSaas, session } from '../services/session.js'
 
 export default {
   name: 'SettingsView',
-  components: { AccountSettings, TeamSettings },
+  components: { AccountSettings, TeamSettings, BackupSettings },
   data() {
     const today = new Date()
     return {
@@ -124,12 +127,6 @@ export default {
           description: 'Persönliche Einstellungen und Profil'
         },
         {
-          id: 'backup',
-          icon: '💾',
-          title: 'Daten-Backup',
-          description: 'Datenbank exportieren und wiederherstellen'
-        },
-        {
           id: 'help',
           icon: '❓',
           title: 'Hilfe',
@@ -146,6 +143,10 @@ export default {
     /** The team section is for the owners and admins of a SaaS tenant. */
     showTeam() {
       return isSaas() && ['OWNER', 'ADMIN'].includes(activeRole())
+    },
+    /** Backups of the H2 file database: the desktop app only (a server uses pg_dump). */
+    showBackup() {
+      return session.desktop
     }
   },
   methods: {

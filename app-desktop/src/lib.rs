@@ -13,6 +13,8 @@ use tauri::Manager;
 
 /// The backend listens on 127.0.0.1 only (see application-desktop.properties).
 /// The port is fixed because stored logo URLs contain it.
+/// How long the backend may take to stop (incl. the backup on exit) before it is killed.
+const SHUTDOWN_GRACE: Duration = Duration::from_secs(60);
 const BACKEND_URL: &str = "http://127.0.0.1:8080";
 
 /// The running backend plus the secrets it was started with.
@@ -93,6 +95,7 @@ fn start_backend(
     log_file: &Path,
     instance_id: &str,
     shutdown_token: &str,
+    ui_token: &str,
 ) -> Result<Child, String> {
     let resource_dir = app.path().resource_dir().map_err(|e| e.to_string())?;
     let resource_dir = strip_extended_prefix(&resource_dir);
@@ -130,6 +133,8 @@ fn start_backend(
         .env("FILES_PATH", app_data_dir.join("files"))
         .env("DESKTOP_INSTANCE_ID", instance_id)
         .env("DESKTOP_SHUTDOWN_TOKEN", shutdown_token)
+        // The window's secret for the desktop-only endpoints (backups); see the window URL below.
+        .env("DESKTOP_UI_TOKEN", ui_token)
         .stdout(Stdio::null())
         .stderr(Stdio::from(stderr))
         .spawn()
@@ -137,7 +142,9 @@ fn start_backend(
 }
 
 /// Asks the backend to shut down (so H2 closes the database file cleanly), and
-/// kills it only if it is still running after a grace period.
+/// kills it only if it is still running after a grace period. The backend makes
+/// the backup on exit first (if switched on in the settings), so the grace period
+/// is generous; a backup cut short leaves only a `.part` file, never a broken backup.
 fn stop_backend(backend: &Backend) {
     let Ok(mut guard) = backend.child.lock() else { return };
     let Some(mut child) = guard.take() else { return };
@@ -145,7 +152,7 @@ fn stop_backend(backend: &Backend) {
         .post(format!("{BACKEND_URL}/api/desktop/shutdown"))
         .header("X-Shutdown-Token", &backend.shutdown_token)
         .send();
-    let deadline = Instant::now() + Duration::from_secs(10);
+    let deadline = Instant::now() + SHUTDOWN_GRACE;
     while Instant::now() < deadline {
         if let Ok(Some(_)) = child.try_wait() {
             return;
@@ -189,6 +196,9 @@ pub fn run() {
 
             let instance_id = random_token();
             let shutdown_token = random_token();
+            // Given to the backend and to our own window only (URL fragment, never sent over
+            // HTTP): other programs on this computer reach 127.0.0.1 too, but not the backups.
+            let ui_token = random_token();
 
             // Something already answers on our port: a dev backend, another
             // instance, or a leftover process. Never talk to it as if it were ours.
@@ -203,7 +213,7 @@ pub fn run() {
                 return Ok(());
             }
 
-            let child = match start_backend(&handle, &log_file, &instance_id, &shutdown_token) {
+            let child = match start_backend(&handle, &log_file, &instance_id, &shutdown_token, &ui_token) {
                 Ok(child) => child,
                 Err(e) => {
                     log_to_file(&log_file, &format!("start_backend failed: {e}"));
@@ -222,7 +232,10 @@ pub fn run() {
                 log_to_file(&log_file, &format!("backend ready: {started}"));
                 if started {
                     if let Some(window) = handle.get_webview_window("main") {
-                        let _ = window.eval(&format!("window.location.replace('{BACKEND_URL}')"));
+                        // ui_token is hex (random_token), safe inside the JS string literal.
+                        let _ = window.eval(&format!(
+                            "window.location.replace('{BACKEND_URL}/#desktop-token={ui_token}')"
+                        ));
                     }
                 } else {
                     show_error_now(

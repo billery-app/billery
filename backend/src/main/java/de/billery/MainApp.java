@@ -1,11 +1,14 @@
 package de.billery;
 
+import de.billery.config.AppConfig;
 import de.billery.data.AppProfiles;
 import de.billery.data.Database;
 import de.billery.data.DatabaseException;
 import de.billery.data.DatabaseInitializer;
 import de.billery.data.DatabaseMigration;
 import de.billery.data.SchemaMigrator;
+import de.billery.desktop.BackupLocations;
+import de.billery.desktop.PendingRestore;
 import java.io.IOException;
 import java.io.InputStream;
 import java.sql.Connection;
@@ -38,10 +41,11 @@ public class MainApp {
   }
 
   /**
-   * Brings the schema up to date, loads demo data when {@code LOAD_DEMO_DATA=true}, and runs the
-   * legacy migrations. PostgreSQL is migrated by Flyway ({@link SchemaMigrator}, which also creates
-   * the schema on an empty database); H2 (desktop) gets {@code scheme-h2.sql} on an empty database
-   * and the idempotent {@link DatabaseMigration}s on every start.
+   * Applies a desktop restore chosen before the last exit ({@link PendingRestore}), brings the
+   * schema up to date, loads demo data when {@code LOAD_DEMO_DATA=true}, and runs the legacy
+   * migrations. PostgreSQL is migrated by Flyway ({@link SchemaMigrator}, which also creates the
+   * schema on an empty database); H2 (desktop) gets {@code scheme-h2.sql} on an empty database and
+   * the idempotent {@link DatabaseMigration}s on every start.
    *
    * @throws IOException if the schema resource cannot be read
    * @throws DatabaseException if the database is unreachable or a step fails
@@ -50,6 +54,11 @@ public class MainApp {
     Database.validateConfiguration();
     LOGGER.info("Preparing database.");
     if (Database.getUrl().startsWith("jdbc:h2:")) {
+      // A restore chosen in the desktop app replaces the database file before anything opens it.
+      BackupLocations desktop =
+          BackupLocations.forDatabase(Database.getUrl(), AppConfig.FILES_PATH);
+      PendingRestore.cleanLeftovers(desktop);
+      PendingRestore.applyIfPending(desktop);
       if (!schemaExists()) {
         try (InputStream in = MainApp.class.getResourceAsStream("/scheme-h2.sql")) {
           if (in == null) {

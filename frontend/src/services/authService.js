@@ -108,6 +108,7 @@ async function signIn() {
 export async function initAuth({ http = axios } = {}) {
   const { data: config } = await http.get(`${apiBaseUrl()}/config`)
   session.mode = config.mode === 'saas' ? 'saas' : 'selfhost'
+  session.desktop = config.desktop === true
   if (!isSaas()) {
     session.status = 'ready'
     return session

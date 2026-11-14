@@ -48,7 +48,7 @@ class ApiEndpointsTest {
   void desktopShutdownIsRefusedWithoutTheLaunchToken() {
     // No DESKTOP_SHUTDOWN_TOKEN in the test environment: every request must be refused,
     // including one that sends an empty token.
-    DesktopController controller = new DesktopController(null);
+    DesktopController controller = new DesktopController(null, null);
 
     assertEquals(HttpStatus.FORBIDDEN, controller.shutdown(null).getStatusCode());
     assertEquals(HttpStatus.FORBIDDEN, controller.shutdown("").getStatusCode());
