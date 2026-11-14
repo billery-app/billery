@@ -19,6 +19,7 @@ import de.billery.service.EInvoiceService;
 import de.billery.service.ExportBusyException;
 import de.billery.service.ExportLimitException;
 import de.billery.service.GobdExportService;
+import de.billery.tenant.DefaultCurrentTenant;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.OutputStream;
@@ -242,7 +243,7 @@ class GobdExportTest {
   private static GobdExportService serviceWithLimits(
       int maxDocuments, int maxWithFiles, long maxBytes, int maxDays, int maxConcurrent) {
     GobdExportService service = TestWiring.gobdExportService();
-    service.configureLimits(maxDocuments, maxWithFiles, maxBytes, maxDays, maxConcurrent);
+    service.configureLimits(maxDocuments, maxWithFiles, maxBytes, maxDays, maxConcurrent, 30);
     return service;
   }
 
@@ -309,7 +310,7 @@ class GobdExportTest {
     assertThrows(ExportLimitException.class, () -> run(tooSmall, JAN_1, DEC_31, false));
     assertThrows(ExportLimitException.class, () -> run(tooSmall, JAN_1, DEC_31, false));
 
-    tooSmall.configureLimits(10, 10, BIG, 3_660, 1);
+    tooSmall.configureLimits(10, 10, BIG, 3_660, 1, 30);
     assertDoesNotThrow(() -> run(tooSmall, JAN_1, DEC_31, false));
   }
 
@@ -322,8 +323,9 @@ class GobdExportTest {
             TestWiring.historyRepository(),
             TestWiring.customerRepository(),
             eInvoices,
-            pdfs);
-    service.configureLimits(10_000, 10_000, BIG, 3_660, 1);
+            pdfs,
+            new DefaultCurrentTenant());
+    service.configureLimits(10_000, 10_000, BIG, 3_660, 1, 30);
     return service;
   }
 
@@ -426,6 +428,53 @@ class GobdExportTest {
   }
 
   @Test
+  void anExportThatTakesTooLongBreaksOffAndFreesItsSlot() throws Exception {
+    issue(LocalDate.of(2026, 3, 1), "A", 1, 1);
+    GobdExportService service = TestWiring.gobdExportService();
+    service.configureLimits(10, 10, BIG, 3_660, 1, 0); // no time at all
+
+    try (GobdExportService.PreparedExport prepared = service.prepare(JAN_1, DEC_31, false)) {
+      ExportLimitException e =
+          assertThrows(
+              ExportLimitException.class, () -> prepared.writeTo(new ByteArrayOutputStream()));
+      assertTrue(e.getMessage().contains("zu lange"), e.getMessage());
+    }
+    service.configureLimits(10, 10, BIG, 3_660, 1, 30);
+    assertDoesNotThrow(() -> run(service, JAN_1, DEC_31, false));
+  }
+
+  @Test
+  void eachTenantHasOneExportAtATimeSoNoTenantTakesEverySlot() throws Exception {
+    int[] tenant = {1};
+    GobdExportService service =
+        new GobdExportService(
+            TestWiring.invoiceRepository(),
+            TestWiring.paymentRepository(),
+            TestWiring.historyRepository(),
+            TestWiring.customerRepository(),
+            TestWiring.eInvoiceService(),
+            TestWiring.documentPdfService(),
+            () -> tenant[0]);
+    service.configureLimits(10, 10, BIG, 3_660, 2, 30);
+
+    GobdExportService.PreparedExport first = service.prepare(JAN_1, DEC_31, false);
+    assertThrows(
+        ExportBusyException.class,
+        () -> service.prepare(JAN_1, DEC_31, false),
+        "the same tenant waits for its own export");
+    tenant[0] = 2;
+    try (var second = service.prepare(JAN_1, DEC_31, false)) {
+      tenant[0] = 3;
+      assertThrows(
+          ExportBusyException.class,
+          () -> service.prepare(JAN_1, DEC_31, false),
+          "all slots of the instance are taken");
+      first.close();
+      assertDoesNotThrow(() -> service.prepare(JAN_1, DEC_31, false).close());
+    }
+  }
+
+  @Test
   void theSlotIsHeldUntilTheExportIsClosed() throws Exception {
     GobdExportService service = serviceWithLimits(10, 10, BIG, 3_660, 1);
     GobdExportService.PreparedExport first = service.prepare(JAN_1, DEC_31, false);
@@ -436,11 +485,6 @@ class GobdExportTest {
     first.close();
     first.close(); // twice releases once
     assertDoesNotThrow(() -> run(service, JAN_1, DEC_31, false));
-    service.configureLimits(10, 10, BIG, 3_660, 2);
-    try (var a = service.prepare(JAN_1, DEC_31, false);
-        var b = service.prepare(JAN_1, DEC_31, false)) {
-      assertThrows(ExportBusyException.class, () -> service.prepare(JAN_1, DEC_31, false));
-    }
   }
 
   @Test

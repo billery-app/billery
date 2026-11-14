@@ -54,7 +54,7 @@ counts for its user. A refused request gets 429 with `Retry-After` and a message
 |----------|---------|---------|
 | `BILLERY_LIMITS_REQUESTS_PER_SECOND` | `20` | API requests per second and tenant, refilled continuously. `0` switches the rate limit off. |
 | `BILLERY_LIMITS_BURST` | `200` | The most requests a tenant may make at once (a page that loads several lists, a quick series of clicks). |
-| `BILLERY_LIMITS_HEAVY_PER_TENANT` | `2` | Concurrent PDF, preview, XRechnung, export and import requests per tenant. `0` switches it off. The GoBD export also keeps its own instance-wide limit (`EXPORT_MAX_CONCURRENT`). |
+| `BILLERY_LIMITS_HEAVY_PER_TENANT` | `2` | Concurrent PDF, preview, XRechnung, export and import requests per tenant. `0` switches it off. The GoBD export also keeps its own limits (`EXPORT_MAX_CONCURRENT` per instance, one export per tenant at a time). |
 
 With several instances each one counts for itself, so the effective limit grows with them.
 The limiter's memory is bounded, however many tenants there are: idle tenants take none (a full
@@ -131,7 +131,8 @@ minutes.
 | `EXPORT_MAX_DOCUMENTS` | `10000` | Most documents (issued invoices and credit notes) in one export. |
 | `EXPORT_MAX_DOCUMENTS_WITH_FILES` | `5000` | Most documents when the PDF and XRechnung of each are rendered too (`documents=true`); rendering is the expensive part. |
 | `EXPORT_MAX_OUTPUT_BYTES` | `2147483648` (2 GiB) | Largest ZIP one export may send (bandwidth, not heap: nothing holds the whole ZIP); checked while streaming, the export breaks off beyond it. Logos are embedded in every PDF, so large logos make large exports. |
-| `EXPORT_MAX_CONCURRENT` | `1` | Exports allowed to run at the same time per instance. |
+| `EXPORT_MAX_CONCURRENT` | `2` | Exports allowed to run at the same time per instance. Each tenant (company) has at most one of them, so one tenant cannot take every slot; a running export holds its slot until the download has finished. |
+| `EXPORT_MAX_DURATION_MINUTES` | `30` | Longest time one export may take, transfer included; beyond it the export breaks off (unreadable) and frees its slot, so a slow client cannot hold a slot longer. A client that stops reading is cut off earlier by the server's write timeout. |
 
 ## Files and startup
 
