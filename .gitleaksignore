@@ -1,0 +1,4 @@
+# Test fixtures, not secrets: a made-up desktop window token in a unit test (commit 61d446d of
+# PR #11). The test now builds the token at run time; these entries only cover that commit.
+61d446df038592f5542554c249785d62c6a7007b:frontend/src/services/desktopToken.spec.js:generic-api-key:11
+61d446df038592f5542554c249785d62c6a7007b:frontend/src/services/desktopToken.spec.js:generic-api-key:16
