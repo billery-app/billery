@@ -28,6 +28,9 @@ public final class BackupNames {
       Pattern.compile(
           "^billery-(\\d{4}-\\d{2}-\\d{2}_\\d{2}-\\d{2}-\\d{2})-([a-z-]+)\\.zip(\\.enc)?$");
 
+  /** Counting from here takes every record into account. */
+  static final LocalDateTime EVERYTHING = LocalDateTime.of(1970, 1, 1, 0, 0);
+
   private static final Pattern SNAPSHOT = Pattern.compile("\"snapshotAt\"\\s*:\\s*\"([^\"]+)\"");
 
   private BackupNames() {}
@@ -93,6 +96,30 @@ public final class BackupNames {
    */
   public static String meta(String reason, LocalDateTime snapshotAt) {
     return "{\"format\":1,\"snapshotAt\":\"" + snapshotAt + "\",\"reason\":\"" + reason + "\"}";
+  }
+
+  /**
+   * From when a restore counts what it takes out of the program: the snapshot time inside the
+   * backup, not the (possibly later) time in its name. A backup without a readable one, or with one
+   * after the time in its name (plus a minute for the copy itself) or after now, cannot be trusted
+   * and counts everything: better a warning too many than one too few. This is a safety net for
+   * mistakes, not a defence against someone who can place prepared files in the backup folder.
+   *
+   * @param meta the {@link BackupArchive#META} document
+   * @param fileName the backup's file name
+   * @param now the current time
+   * @return the time to count from
+   */
+  public static LocalDateTime trustedSnapshot(String meta, String fileName, LocalDateTime now) {
+    LocalDateTime snapshot = snapshotAt(meta);
+    LocalDateTime named = time(fileName);
+    if (snapshot == null
+        || named == null
+        || snapshot.isAfter(named.plusMinutes(1))
+        || snapshot.isAfter(now)) {
+      return EVERYTHING;
+    }
+    return snapshot;
   }
 
   /**

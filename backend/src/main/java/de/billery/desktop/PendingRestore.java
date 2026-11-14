@@ -19,6 +19,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -34,9 +35,10 @@ import java.util.zip.ZipOutputStream;
  * <ol>
  *   <li>the staged backup is unpacked completely into a working folder (limits and path checks of
  *       {@link BackupArchive#extract}); a failure here leaves the current state untouched;
- *   <li>the current state is saved as a backup of its own, the "safety copy", encrypted when a
- *       backup password is set, in the chosen backup folder; safety copies are never deleted
- *       automatically, because they hold what was entered after the restored backup (GoBD);
+ *   <li>the current state is saved as a backup of its own, the "safety copy", encrypted when
+ *       encryption is on (with the stored public key; no password needed), in the chosen backup
+ *       folder; safety copies are never deleted automatically, because they hold what was entered
+ *       after the restored backup (GoBD);
  *   <li>the database file and the uploaded files are replaced by the unpacked ones;
  *   <li>the restore is appended to {@code wiederherstellungen.log} in the app-data folder and in
  *       the backup folder next to the safety copy.
@@ -119,6 +121,14 @@ public final class PendingRestore {
     deleteTree(work);
     BackupArchive.extract(staged, work);
 
+    // What the restore really takes out, counted now from the backup's own snapshot time (writes
+    // were refused since it was chosen, so this is what the user confirmed, unless that refusal
+    // was bypassed); written to the log next to the confirmed numbers.
+    String backupName = readInfo(locations).getProperty("backup", "");
+    String actual =
+        countSince(
+            BackupNames.trustedSnapshot(
+                BackupArchive.readMeta(staged), backupName, LocalDateTime.now()));
     Path safetyCopy = saveCurrentState(locations, currentSettings());
     LOGGER.info(() -> "Restoring a backup; the state before is saved in " + safetyCopy);
 
@@ -140,7 +150,7 @@ public final class PendingRestore {
     }
     deleteTree(work);
 
-    appendToLog(locations, safetyCopy);
+    appendToLog(locations, safetyCopy, actual);
     Files.delete(staged);
     Files.deleteIfExists(locations.pendingRestoreInfo());
     LOGGER.info("Backup restored.");
@@ -148,7 +158,7 @@ public final class PendingRestore {
   }
 
   /**
-   * The backup settings of the database that is about to be replaced (password and folder for the
+   * The backup settings of the database that is about to be replaced (keys and folder for the
    * safety copy). An unreadable or missing database has none.
    */
   static Map<String, String> currentSettings() {
@@ -156,9 +166,11 @@ public final class PendingRestore {
     try (Connection conn = Database.getConnection();
         PreparedStatement query =
             conn.prepareStatement(
-                "SELECT setting_key, setting_value FROM user_settings WHERE setting_key IN (?, ?)")) {
-      query.setString(1, DesktopBackupService.KEY_PASSWORD);
-      query.setString(2, DesktopBackupService.KEY_DIRECTORY);
+                "SELECT setting_key, setting_value FROM user_settings"
+                    + " WHERE setting_key IN (?, ?, ?)")) {
+      query.setString(1, DesktopBackupService.KEY_PUBLIC_KEY);
+      query.setString(2, DesktopBackupService.KEY_LOCKED_KEY);
+      query.setString(3, DesktopBackupService.KEY_DIRECTORY);
       try (ResultSet rows = query.executeQuery()) {
         while (rows.next()) {
           settings.put(rows.getString(1), rows.getString(2));
@@ -183,8 +195,11 @@ public final class PendingRestore {
    */
   static Path saveCurrentState(BackupLocations locations, Map<String, String> settings)
       throws IOException {
-    String password = settings.get(DesktopBackupService.KEY_PASSWORD);
-    boolean encrypted = password != null && !password.isEmpty();
+    Optional<BackupArchive.BackupKeys> keys =
+        DesktopBackupService.keysOf(
+            settings.get(DesktopBackupService.KEY_PUBLIC_KEY),
+            settings.get(DesktopBackupService.KEY_LOCKED_KEY));
+    boolean encrypted = keys.isPresent();
     Path directory = locations.defaultBackupDirectory();
     String chosen = settings.get(DesktopBackupService.KEY_DIRECTORY);
     if (chosen != null && !chosen.isBlank() && Files.isDirectory(Paths.get(chosen))) {
@@ -220,7 +235,7 @@ public final class PendingRestore {
       }
       Path partial = target.resolveSibling(target.getFileName() + ".part");
       if (encrypted) {
-        BackupArchive.encrypt(plain, partial, password.toCharArray());
+        BackupArchive.encrypt(plain, partial, keys.get());
       } else {
         Files.copy(plain, partial, StandardCopyOption.REPLACE_EXISTING);
       }
@@ -231,8 +246,8 @@ public final class PendingRestore {
     return target;
   }
 
-  /** One line per restore, never rewritten: time, backup, safety copy, what was entered since. */
-  private static void appendToLog(BackupLocations locations, Path safetyCopy) throws IOException {
+  /** What the user confirmed when choosing the restore. */
+  private static Properties readInfo(BackupLocations locations) throws IOException {
     Properties info = new Properties();
     if (Files.exists(locations.pendingRestoreInfo())) {
       try (Reader reader =
@@ -240,6 +255,49 @@ public final class PendingRestore {
         info.load(reader);
       }
     }
+    return info;
+  }
+
+  /**
+   * Counts in the current database what was recorded from {@code since} on, as text for the log. An
+   * unreadable database gives "unbekannt".
+   */
+  static String countSince(LocalDateTime since) {
+    try (Connection conn = Database.getConnection()) {
+      long issued =
+          count(
+              conn,
+              "SELECT COUNT(*) FROM document_history WHERE action IN ('ISSUED', 'CANCELLED')"
+                  + " AND action_date >= ?",
+              since);
+      long payments = count(conn, "SELECT COUNT(*) FROM payment WHERE created_at >= ?", since);
+      long changes =
+          count(conn, "SELECT COUNT(*) FROM document_history WHERE action_date >= ?", since);
+      return issued
+          + " ausgestellte Belege, "
+          + payments
+          + " Zahlungen, "
+          + changes
+          + " Änderungen an Dokumenten";
+    } catch (SQLException e) {
+      LOGGER.log(Level.WARNING, "Could not count what the restore takes out", e);
+      return "unbekannt";
+    }
+  }
+
+  private static long count(Connection conn, String sql, LocalDateTime since) throws SQLException {
+    try (PreparedStatement query = conn.prepareStatement(sql)) {
+      query.setObject(1, since);
+      try (ResultSet rows = query.executeQuery()) {
+        return rows.next() ? rows.getLong(1) : 0;
+      }
+    }
+  }
+
+  /** One line per restore, never rewritten: time, backup, safety copy, what was entered since. */
+  private static void appendToLog(BackupLocations locations, Path safetyCopy, String actual)
+      throws IOException {
+    Properties info = readInfo(locations);
     String line =
         LocalDateTime.now().withNano(0)
             + " Wiederhergestellt: "
@@ -247,6 +305,8 @@ public final class PendingRestore {
             + " | Stand davor gesichert in: "
             + safetyCopy
             + " | seit der Sicherung erfasst: "
+            + actual
+            + " | beim Vormerken bestätigt: "
             + info.getProperty("issued", "?")
             + " ausgestellte Belege, "
             + info.getProperty("payments", "?")

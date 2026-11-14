@@ -76,18 +76,23 @@ on exit (if switched on) and stops so H2 closes the database file cleanly; the s
 only after a 60 s grace period (`SHUTDOWN_GRACE`). **Backups** (`backend/.../desktop/`,
 Spring profile `desktop`): `DesktopBackupService` writes the H2 database (`BACKUP TO`, consistent
 while open) and the uploaded files as one ZIP into a chosen folder (`<app-data>/backups` by
-default), on exit and on "Jetzt sichern", optionally encrypted (AES-GCM, PBKDF2; `BackupArchive`),
+default), on exit and on "Jetzt sichern", optionally encrypted (`BackupArchive`: AES-256-GCM per
+backup, key wrapped with an RSA public key; the database stores only the public key and the
+private key locked with the password, never the password),
 the newest N kept (only files named `billery-<time>-<reason>.zip[.enc]` are ever deleted, and
 never the safety copies `…-vor-wiederherstellung`: GoBD). A restore needs an explicit confirmation
 when documents, payments or changes came after the backup (`RestoreLoss`, 409), is staged as
 `<app-data>/restore-pending.zip` and applied by `PendingRestore` in `MainApp.prepareDatabase()`
 before H2 opens the file: unpack completely (limits, `BackupArchive.inside` against Zip Slip),
-safety copy of the state before (encrypted if a password is set), swap, append to
-`wiederherstellungen.log`; the H2 migrations then upgrade an older backup; `cleanLeftovers`
-removes interrupted work at every start. The backup endpoints need the window's per-launch
+safety copy of the state before (encrypted with the stored public key), swap, append to
+`wiederherstellungen.log` (app data and backup folder, with the numbers recounted at that moment);
+the H2 migrations then upgrade an older backup; `cleanLeftovers` removes interrupted work at every
+start. While a restore waits, `RestorePendingFilter` refuses every changing API request (409).
+What a restore loses is counted from the snapshot time in `backup.json`
+(`BackupNames.trustedSnapshot`). The backup endpoints need the window's per-launch
 `DESKTOP_UI_TOKEN` (`X-Desktop-Token`; the shell opens the window at `/#desktop-token=…`, the SPA
 keeps it in `sessionStorage`, `services/desktopToken.js`). The settings live in `user_settings`
-(`backup_*`; no endpoint returns the password); the SPA shows the section when `GET /api/config`
+(`backup_*`); the SPA shows the section when `GET /api/config`
 says `desktop: true` (profile `desktop`, H2 file, token configured).
 There is no Rust toolchain requirement for the backend build, but `cargo check`
 must pass for `src/lib.rs` changes. The bundled `app.jar` (Spring Boot fat JAR) and `resources/runtime/`

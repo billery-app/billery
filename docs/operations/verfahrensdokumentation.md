@@ -139,7 +139,8 @@ können nicht gelöscht werden; die Datenbank verhindert das zusätzlich.
 Die Desktop-Version sichert Datenbank und hochgeladene Dateien selbst
 (*Einstellungen → Datensicherung*): beim Beenden des Programms (abschaltbar) und
 auf Knopfdruck, in einen wählbaren Ordner, auf Wunsch mit Passwort verschlüsselt
-(AES-256-GCM). Aufbewahrt werden die neuesten Sicherungen bis zur eingestellten
+(AES-256-GCM; das Passwort selbst speichert das Programm nicht, es wird nur zum
+Wiederherstellen gebraucht). Aufbewahrt werden die neuesten Sicherungen bis zur eingestellten
 Anzahl; andere Dateien im Ordner bleiben unberührt.
 
 Eine **Wiederherstellung** setzt das Programm auf den Stand der Sicherung zurück.
@@ -149,6 +150,8 @@ Damit dabei keine aufbewahrungspflichtigen Daten verloren gehen:
   storniert, wie viele Zahlungen erfasst und wie viele Änderungen an Dokumenten
   gemacht wurden; ist es mindestens eins, muss die Wiederherstellung ausdrücklich
   bestätigt werden;
+- nimmt es nach dem Vormerken bis zum Neustart keine Änderungen mehr an, damit
+  nichts unbemerkt verloren geht, und zählt beim Neustart erneut;
 - sichert es unmittelbar vor der Wiederherstellung den bisherigen Stand
   (`billery-…-vor-wiederherstellung.zip`, verschlüsselt, wenn ein Passwort
   eingestellt ist). Diese Sicherheitskopien löscht das Programm **nie**

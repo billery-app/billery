@@ -9,7 +9,8 @@
       <template v-if="status">
         <p v-if="status.restorePending" class="backup-notice backup-notice--warning" role="status">
           Beim nächsten Start von Billery wird eine Sicherung wiederhergestellt. Der jetzige Stand
-          wird vorher gesichert.
+          wird vorher gesichert. Bis dahin wird nichts mehr gespeichert: bitte Billery jetzt
+          beenden und neu starten.
           <button type="button" class="btn btn-small btn-secondary" @click="cancelRestore">Wiederherstellung abbrechen</button>
         </p>
 
@@ -61,7 +62,8 @@
               <label for="backup-password">{{ status.encrypted ? 'Neues Passwort (leer lassen: unverändert)' : 'Passwort (mindestens 8 Zeichen)' }}</label>
               <input id="backup-password" v-model="form.password" class="form-control" type="password" autocomplete="new-password" />
               <small class="backup-warning">
-                Ohne dieses Passwort lässt sich eine verschlüsselte Sicherung nicht wiederherstellen.
+                Das Passwort wird nicht gespeichert; Billery braucht es nur zum Wiederherstellen.
+                Ohne das Passwort lässt sich eine verschlüsselte Sicherung nicht wiederherstellen.
                 Bitte getrennt aufbewahren.
               </small>
             </template>

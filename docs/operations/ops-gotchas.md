@@ -147,9 +147,13 @@ The desktop app keeps everything in its app-data folder (`database.mv.db`,
 - **Where:** `<app-data>/backups` unless another folder is chosen. Choose an external drive or a
   cloud-sync folder: a backup in the app-data folder does not survive the loss of the computer.
   The newest N backups are kept (10 by default); other files in the folder are never touched.
-- **Encryption:** optional, with a password (at least 8 characters; AES-256-GCM, key from
-  PBKDF2). Without the password an encrypted backup cannot be restored; it is stored in the
-  local database so the automatic backup can use it, and never shown again.
+- **Encryption:** optional, with a password (at least 8 characters). The password is **not
+  stored**: setting it creates an RSA key pair; the database keeps the public key and the private
+  key locked with the password (PBKDF2, AES-256-GCM). Each backup is encrypted with a random
+  AES-256 key wrapped with the public key, and carries the locked private key, so the backup on
+  exit needs no password and the password alone opens a backup on another computer. Whoever gets
+  the database file cannot open the backups. Without the password an encrypted backup cannot be
+  restored.
 - **Restore:** choose a backup in the list (from another computer: put the file into the backup
   folder first); it is checked (and decrypted) at once and restored at the **next start**. If
   documents were issued, payments recorded or documents changed after the backup, the app says
@@ -162,6 +166,10 @@ The desktop app keeps everything in its app-data folder (`database.mv.db`,
   Safety copies are **never** deleted automatically (they hold the later records; GoBD,
   `verfahrensdokumentation.md` §8). A backup of an older version is brought up to date by the
   migrations of that start. "Wiederherstellung abbrechen" withdraws it before the restart.
+  **Until the restart nothing is saved** (`RestorePendingFilter`: changing API requests answer 409),
+  and the restart counts again what the restore takes out and logs those numbers next to the
+  confirmed ones. A snapshot time after the backup's name or after now is not trusted (everything
+  counts).
 - **Access:** the backup endpoints need the window's per-launch token (`X-Desktop-Token`, from the
   Tauri shell via the URL fragment); other programs on the computer cannot use them. The rest of
   the desktop API has no authentication (it binds to 127.0.0.1 only).

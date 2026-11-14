@@ -200,6 +200,28 @@ class DesktopBackupServiceTest {
   }
 
   @Test
+  void thePasswordIsNotStoredAndTheBackupOnExitIsStillEncrypted() throws Exception {
+    service.updateSettings("", 10, true, "geheim123");
+
+    try (var conn = Database.getConnection();
+        var stmt = conn.createStatement();
+        var rows = stmt.executeQuery("SELECT setting_key, setting_value FROM user_settings")) {
+      while (rows.next()) {
+        String value = rows.getString(2);
+        assertFalse(value != null && value.contains("geheim123"), rows.getString(1));
+      }
+    }
+    service.backupOnExit(); // no password at hand, as when the app closes
+    BackupFile onExit = service.status().backups().get(0);
+    assertTrue(onExit.encrypted());
+    service.stageRestore(onExit.name(), "geheim123", true); // the password opens it
+
+    service.updateSettings("", 10, true, ""); // encryption off
+    assertFalse(service.status().encrypted());
+    assertFalse(service.backup(BackupNames.MANUAL).encrypted());
+  }
+
+  @Test
   void theBackupOnExitFollowsTheSettingAndSkipsAWaitingRestore() throws Exception {
     service.updateSettings("", 10, false, null);
     service.backupOnExit();

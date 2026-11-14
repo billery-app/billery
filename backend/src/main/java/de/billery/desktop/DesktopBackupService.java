@@ -15,6 +15,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -33,8 +34,10 @@ import org.springframework.stereotype.Service;
  * stages a chosen backup; {@link PendingRestore} applies it at the next start.
  *
  * <p>The settings live in {@code user_settings} ({@value #KEY_DIRECTORY}, {@value #KEY_KEEP},
- * {@value #KEY_ON_EXIT}, {@value #KEY_PASSWORD}); no endpoint returns the password. Only for the
- * Spring profile {@code desktop}: elsewhere the database is PostgreSQL, backed up with {@code
+ * {@value #KEY_ON_EXIT}, {@value #KEY_PUBLIC_KEY}, {@value #KEY_LOCKED_KEY}). The password of
+ * encrypted backups is never stored: only an RSA public key and the private key locked with the
+ * password ({@link BackupArchive#newKeys}), so the database file alone opens no backup. Only for
+ * the Spring profile {@code desktop}: elsewhere the database is PostgreSQL, backed up with {@code
  * pg_dump} (docs/operations/backup-restore.md).
  */
 @Service
@@ -44,8 +47,8 @@ public class DesktopBackupService {
   static final String KEY_DIRECTORY = "backup_directory";
   static final String KEY_KEEP = "backup_keep";
   static final String KEY_ON_EXIT = "backup_on_exit";
-  // The name of the setting, not a password.
-  static final String KEY_PASSWORD = "backup_password"; // gitleaks:allow
+  static final String KEY_PUBLIC_KEY = "backup_public_key";
+  static final String KEY_LOCKED_KEY = "backup_locked_private_key";
 
   /** Backups kept unless the user chose another number. */
   static final int DEFAULT_KEEP = 10;
@@ -100,7 +103,7 @@ public class DesktopBackupService {
         locations.defaultBackupDirectory().toString(),
         keep(),
         onExit(),
-        !password().isEmpty(),
+        keys().isPresent(),
         Files.exists(locations.pendingRestore()),
         list());
   }
@@ -145,7 +148,13 @@ public class DesktopBackupService {
     settings.updateSetting(KEY_KEEP, Integer.toString(keep));
     settings.updateSetting(KEY_ON_EXIT, Boolean.toString(onExit));
     if (password != null) {
-      settings.updateSetting(KEY_PASSWORD, password);
+      // The password itself is not stored: new keys, the private one locked with it.
+      BackupArchive.BackupKeys keys =
+          password.isEmpty()
+              ? new BackupArchive.BackupKeys("", "")
+              : BackupArchive.newKeys(password.toCharArray());
+      settings.updateSetting(KEY_PUBLIC_KEY, keys.publicKey());
+      settings.updateSetting(KEY_LOCKED_KEY, keys.lockedPrivateKey());
     }
   }
 
@@ -161,8 +170,8 @@ public class DesktopBackupService {
     Path directory = directory();
     Files.createDirectories(directory);
     PendingRestore.deletePartFiles(directory); // left by an interrupted backup
-    String password = password();
-    boolean encrypted = !password.isEmpty();
+    Optional<BackupArchive.BackupKeys> keys = keys();
+    boolean encrypted = keys.isPresent();
     // The name carries the second, and the names must only grow: pruning keeps the newest by the
     // time in the name. A backup within the same second as (or, after a clock change, before) the
     // newest one gets the second after it, so it never replaces or sorts below an older backup.
@@ -184,7 +193,7 @@ public class DesktopBackupService {
       writeZip(h2Copy, reason, snapshotAt, plain);
       Path partial = target.resolveSibling(target.getFileName() + ".part");
       if (encrypted) {
-        BackupArchive.encrypt(plain, partial, password.toCharArray());
+        BackupArchive.encrypt(plain, partial, keys.get());
       } else {
         Files.copy(plain, partial, StandardCopyOption.REPLACE_EXISTING);
       }
@@ -288,11 +297,10 @@ public class DesktopBackupService {
       } catch (IOException e) {
         throw new IllegalArgumentException("Die Datei ist keine gültige Billery-Sicherung.", e);
       }
-      // The snapshot time inside the backup, not the (possibly later) time in its name. A backup
-      // without one counts everything as lost: better a warning too many than one too few.
-      LocalDateTime snapshotAt = BackupNames.snapshotAt(BackupArchive.readMeta(partial));
-      RestoreLoss loss =
-          lossSince(snapshotAt != null ? snapshotAt : LocalDateTime.of(1970, 1, 1, 0, 0));
+      LocalDateTime snapshotAt =
+          BackupNames.trustedSnapshot(
+              BackupArchive.readMeta(partial), fileName, LocalDateTime.now());
+      RestoreLoss loss = lossSince(snapshotAt);
       if (loss.any() && !confirmLoss) {
         throw new RestoreLossException(loss);
       }
@@ -403,9 +411,26 @@ public class DesktopBackupService {
     return Boolean.parseBoolean(settings.getSetting(KEY_ON_EXIT, "true"));
   }
 
-  private String password() {
-    String password = settings.getSetting(KEY_PASSWORD, "");
-    return password == null ? "" : password;
+  /** The keys of encrypted backups, if encryption is switched on. */
+  private Optional<BackupArchive.BackupKeys> keys() {
+    return keysOf(settings.getSetting(KEY_PUBLIC_KEY, ""), settings.getSetting(KEY_LOCKED_KEY, ""));
+  }
+
+  /**
+   * The keys from the two stored settings.
+   *
+   * @param publicKey the stored public key
+   * @param lockedPrivateKey the stored locked private key
+   * @return the keys, or empty when encryption is off
+   */
+  static Optional<BackupArchive.BackupKeys> keysOf(String publicKey, String lockedPrivateKey) {
+    if (publicKey == null
+        || publicKey.isBlank()
+        || lockedPrivateKey == null
+        || lockedPrivateKey.isBlank()) {
+      return Optional.empty();
+    }
+    return Optional.of(new BackupArchive.BackupKeys(publicKey, lockedPrivateKey));
   }
 
   private void requireFileDatabase() {
@@ -493,7 +518,7 @@ public class DesktopBackupService {
    * @param defaultDirectory the folder used when none is chosen
    * @param keep how many backups are kept
    * @param onExit whether a backup is made when the app is closed
-   * @param encrypted whether new backups are encrypted (a password is set)
+   * @param encrypted whether new backups are encrypted (keys are set)
    * @param restorePending whether a restore waits for the next start
    * @param backups the backups, newest first
    */

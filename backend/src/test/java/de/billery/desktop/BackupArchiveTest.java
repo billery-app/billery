@@ -73,7 +73,7 @@ class BackupArchiveTest {
   void encryptionNeedsTheRightPassword() throws Exception {
     Path zip = zip("plain.zip", "backup.json", "database.mv.db");
     Path encrypted = dir.resolve("x.zip.enc");
-    BackupArchive.encrypt(zip, encrypted, "geheim123".toCharArray());
+    BackupArchive.encrypt(zip, encrypted, BackupArchive.newKeys("geheim123".toCharArray()));
 
     assertTrue(BackupArchive.isEncrypted(encrypted));
     assertThrows(
@@ -94,5 +94,39 @@ class BackupArchiveTest {
       }
     }
     return file;
+  }
+
+  @Test
+  void aChangedEncryptedFileIsRefusedNotRestored() throws Exception {
+    Path zip = zip("plain.zip", "backup.json", "database.mv.db");
+    Path encrypted = dir.resolve("x.zip.enc");
+    BackupArchive.encrypt(zip, encrypted, BackupArchive.newKeys("geheim123".toCharArray()));
+    byte[] bytes = Files.readAllBytes(encrypted);
+    bytes[bytes.length - 5] ^= 1; // one bit of the content
+    Files.write(encrypted, bytes);
+
+    assertThrows(
+        BackupArchive.WrongPasswordException.class,
+        () -> BackupArchive.decrypt(encrypted, dir.resolve("out.zip"), "geheim123".toCharArray()));
+  }
+
+  @Test
+  void theSnapshotTimeIsOnlyTrustedWhenItIsPlausible() {
+    java.time.LocalDateTime now = java.time.LocalDateTime.of(2026, 11, 14, 12, 0);
+    String name = BackupNames.name(now.minusHours(2), BackupNames.MANUAL, false);
+    java.time.LocalDateTime snapshot = now.minusHours(2).plusNanos(5_000_000);
+
+    assertEquals(
+        snapshot,
+        BackupNames.trustedSnapshot(BackupNames.meta(BackupNames.MANUAL, snapshot), name, now));
+    for (String meta :
+        new String[] {
+          BackupNames.meta(BackupNames.MANUAL, now.plusDays(1)), // in the future
+          BackupNames.meta(BackupNames.MANUAL, now.minusHours(1)), // long after the name
+          "{\"format\":1}", // none
+          "{\"snapshotAt\":\"gestern\"}" // unreadable
+        }) {
+      assertEquals(BackupNames.EVERYTHING, BackupNames.trustedSnapshot(meta, name, now), meta);
+    }
   }
 }
