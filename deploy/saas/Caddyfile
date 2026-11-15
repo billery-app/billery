@@ -2,6 +2,18 @@
 # BILLERY_DOMAIN in .env. Caddy obtains and renews the certificate and sets X-Forwarded-Proto and
 # X-Forwarded-Host, which the backend relies on for its same-origin checks, and X-Forwarded-For:
 # it drops what a client sent (no trusted_proxies), so the limits per source IP see the real one.
+{
+	servers {
+		# A response may take at most this long to reach the client, however slowly it reads.
+		# Without it a client that reads a trickle holds a backend thread for as long as it
+		# likes (Tomcat's write timeout restarts with every byte). Keep it above the backend's
+		# longest legitimate download, the GoBD export (EXPORT_MAX_DURATION_MINUTES, 30).
+		timeouts {
+			write 35m
+		}
+	}
+}
+
 {$BILLERY_DOMAIN} {
 	encode zstd gzip
 	reverse_proxy backend:8080

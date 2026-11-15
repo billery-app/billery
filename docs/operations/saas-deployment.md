@@ -21,7 +21,7 @@
 |------|------|------------------|
 | Application | the image `ghcr.io/billery-app/billery-saas` (SPA and API, one origin, profile `saas` built in) | `docker-compose.yml`, service `backend` |
 | Database | PostgreSQL 17, three roles (below) | service `postgres`, `postgres/init/10-roles.sh` |
-| TLS, proxy | Caddy with automatic certificates; skip it if a proxy on the host terminates TLS | service `caddy`, profile `proxy` |
+| TLS, proxy | Caddy with automatic certificates and a 35-minute write limit per response; skip it if a proxy on the host terminates TLS (then give that proxy a write limit too, see [`ops-gotchas.md`](./ops-gotchas.md#slow-clients-a-write-timeout-in-the-proxy)) | service `caddy`, profile `proxy` |
 | Identity provider | **any OpenID Connect provider, not part of the kit**: three settings in `.env` | `.env.example` |
 
 The application stores no passwords. It knows the provider through `BILLERY_SECURITY_ISSUERS`,

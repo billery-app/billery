@@ -32,6 +32,7 @@ import de.billery.service.GobdExportService;
 import de.billery.service.InvoiceLifecycleService;
 import de.billery.statistics.InvoiceStatisticsService;
 import de.billery.storage.LocalFileStorage;
+import de.billery.tenant.DefaultCurrentTenant;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -169,7 +170,9 @@ public final class TestWiring {
         historyRepository(),
         customerRepository(),
         eInvoiceService(),
-        documentPdfService());
+        documentPdfService(),
+        new DefaultCurrentTenant(),
+        transactions());
   }
 
   /** Returns a new {@link DocumentPdfService}. */

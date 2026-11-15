@@ -111,7 +111,7 @@ are turned into JSON errors by `api/ApiExceptionHandler`.
 | `DocumentController` | `/api/documents` | Template exchange with word processors: `POST /import` (DOCX/ODT → sections, nothing stored), `POST /export` (sections → DOCX/ODT). |
 | `FileUploadController` | `/api/upload` | Generic file upload (multipart, 2 MB cap). |
 | `HealthController` | `/api/health` | Liveness probe. |
-| `ExportController` | `/api/export` | `GET /gobd?from&to&documents` — GoBD data export as ZIP. |
+| `ExportController` | `/api/export` | `GET /gobd?from&to&documents` — GoBD data export as ZIP, streamed into the response. |
 | `InvoiceController` | `/api/invoices` | Document CRUD (drafts only for invoices), the paged and filtered document list `/page`, status changes, `/{id}/cancel`, `/{id}/payments` (+ `/{paymentId}/reverse`), `/{id}/history`, `/{id}/xrechnung` (+ `/check`), number preview, PDF download. |
 | `InvoiceTemplateController` | `/api/templates` | Template CRUD; the block JSON is stored in the `blocks` column. |
 | `OwnerController` | `/api/owners` | Company / owner data (single record). |

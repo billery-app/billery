@@ -8,6 +8,17 @@
 # Browser writes additionally require a same-origin Origin or Referer; any
 # cookie/session SSO integration must also provide and validate a CSRF token.
 # Generate the Basic Auth hash with `caddy hash-password`; never commit credentials.
+{
+	servers {
+		# A response may take at most this long to reach the client, however slowly it reads.
+		# Without it a client that reads a trickle holds a backend thread for as long as it
+		# likes (Tomcat's write timeout restarts with every byte). Keep it above the backend's
+		# longest legitimate download, the GoBD export (EXPORT_MAX_DURATION_MINUTES, 30).
+		timeouts {
+			write 35m
+		}
+	}
+}
 
 demo.example.com {
 	encode zstd gzip

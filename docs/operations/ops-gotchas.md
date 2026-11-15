@@ -93,6 +93,29 @@ would also get `http://` URLs.
 (comma-separated exact origins, no wildcard). The API has no
 credentials, so `CorsConfig` does not send `Allow-Credentials`.
 
+## Slow clients: a write timeout in the proxy
+
+Give the reverse proxy an **absolute** limit for sending one response.
+Tomcat's own write timeout starts again with every byte, so a client that
+reads a trickle keeps a backend thread busy for as long as it likes
+(downloads: PDF, XRechnung, document export, GoBD export). The GoBD export
+frees its database connection, lock and slot at its own time limit, but
+not the thread. The proxy closes such a connection at its limit, and the
+backend request ends with it.
+
+- Caddy: both shipped Caddyfiles (`deploy/saas/Caddyfile`,
+  `deploy/Caddyfile.example`) set `servers { timeouts { write 35m } }`.
+- nginx: `send_timeout` only counts the time between two writes. Keep
+  `proxy_buffering on` (the default): nginx then takes the response from
+  the backend at full speed, into memory and temporary files up to
+  `proxy_max_temp_file_size` (default 1 GiB, the size limit of a GoBD
+  export), and a slow client only costs nginx a connection.
+- Traefik: `entryPoints.<name>.transport.respondingTimeouts.writeTimeout: 35m`.
+
+Keep the limit above `EXPORT_MAX_DURATION_MINUTES` (default 30): a large
+GoBD export may take that long, and a proxy that cuts it earlier breaks
+legitimate exports off.
+
 ## File uploads
 
 `spring.servlet.multipart.max-file-size` is 2 MB. The frontend
@@ -241,6 +264,13 @@ customers in error messages. Only the operator of the host reads them.
   `backend/Dockerfile`). Measured: about 220 MB idle and 350 MB after a full GoBD export of 1 400
   documents. Raise the limit if the backend is killed for memory (`docker inspect` shows
   `OOMKilled`).
+- **GoBD export and the database:** a running export reads in one read-only transaction (one
+  consistent state) and holds one pooled connection for up to `EXPORT_MAX_DURATION_MINUTES`
+  (default 30), at most `EXPORT_MAX_CONCURRENT` (default 2) per instance. Meanwhile PostgreSQL's
+  `VACUUM` cannot remove rows that changed after the export began. Do not set
+  `idle_in_transaction_session_timeout` or `statement_timeout` for the application's role below
+  that limit, or exports break off. One export per company runs at a time across all instances
+  (PostgreSQL advisory lock), so several instances need no extra coordination.
 - **Hardening:** the backend runs with a read-only root filesystem (writable: the `uploads` and
   `logs` volumes and a 256 MB tmpfs at `/tmp`), without any Linux capability and with
   `no-new-privileges`. PostgreSQL keeps only the capabilities it needs for its data directory

@@ -54,7 +54,7 @@ counts for its user. A refused request gets 429 with `Retry-After` and a message
 |----------|---------|---------|
 | `BILLERY_LIMITS_REQUESTS_PER_SECOND` | `20` | API requests per second and tenant, refilled continuously. `0` switches the rate limit off. |
 | `BILLERY_LIMITS_BURST` | `200` | The most requests a tenant may make at once (a page that loads several lists, a quick series of clicks). |
-| `BILLERY_LIMITS_HEAVY_PER_TENANT` | `2` | Concurrent PDF, preview, XRechnung, export and import requests per tenant. `0` switches it off. The GoBD export also keeps its own instance-wide limit (`EXPORT_MAX_CONCURRENT`). |
+| `BILLERY_LIMITS_HEAVY_PER_TENANT` | `2` | Concurrent PDF, preview, XRechnung, export and import requests per tenant. `0` switches it off. The GoBD export also keeps its own limits (`EXPORT_MAX_CONCURRENT` per instance, one export per tenant at a time). |
 
 With several instances each one counts for itself, so the effective limit grows with them.
 The limiter's memory is bounded, however many tenants there are: idle tenants take none (a full
@@ -115,18 +115,35 @@ startup; restart the backend after a change.
 ## GoBD export limits
 
 Read by `GobdExportService.configureLimits` from the `export.*` properties of `application.properties`.
-One export builds its whole ZIP in memory, so these bound heap and CPU per request. An export that
-would exceed a limit is refused with HTTP 413 and a message naming the limit (never truncated); a
-second export while all slots are taken gets HTTP 429 with `Retry-After`. Raise a limit only
-together with the JVM heap.
+The ZIP is streamed into the response while it is produced (only one document's files and one
+chunk of table rows are in memory), so the limits bound database load and run time, not the heap.
+They are checked before the first byte: an export that would exceed a limit is refused with HTTP
+413 and a message naming the limit (never truncated); a second export while all slots are taken
+gets HTTP 429 with `Retry-After`. Only the size of the ZIP is known first while it is sent: an
+export beyond `EXPORT_MAX_OUTPUT_BYTES` breaks off without its central directory (unreadable, the
+SPA does not save it). Rendering the PDF and XRechnung takes about 0.1 s per document
+(measured with the demo data), so 5 000 documents with files hold an export slot for roughly ten
+minutes.
+
+An export reads everything (documents, sums, payments, history, PDFs) from **one** read-only
+`REPEATABLE READ` transaction, so the tables agree with each other even while others keep
+working. That transaction holds one pooled database connection until the ZIP is produced, at most
+`EXPORT_MAX_DURATION_MINUTES` (it is also the transaction timeout: every query gets the remaining
+time as its query timeout). On PostgreSQL it holds back `VACUUM` for that long; a configured
+`idle_in_transaction_session_timeout` or `statement_timeout` shorter than the limit breaks exports
+off. The bytes go to the client from a separate sender thread through a buffer of at most 384 KiB,
+so a client that reads slowly or not at all never keeps the transaction, the connection or the slot
+beyond the limit (its thread is released by the proxy's write timeout, see
+[`ops-gotchas.md`](../operations/ops-gotchas.md#slow-clients-a-write-timeout-in-the-proxy)).
 
 | Variable | Default | Notes |
 |----------|---------|-------|
 | `EXPORT_MAX_PERIOD_DAYS` | `3660` | Longest allowed span between `from` and `to`, in days. |
 | `EXPORT_MAX_DOCUMENTS` | `10000` | Most documents (issued invoices and credit notes) in one export. |
-| `EXPORT_MAX_DOCUMENTS_WITH_FILES` | `2000` | Most documents when the PDF and XRechnung of each are rendered too (`documents=true`); rendering is the expensive part. |
-| `EXPORT_MAX_OUTPUT_BYTES` | `134217728` (128 MB) | Largest ZIP held in memory; the export aborts as soon as it grows beyond it. |
-| `EXPORT_MAX_CONCURRENT` | `1` | Exports allowed to run at the same time per instance. |
+| `EXPORT_MAX_DOCUMENTS_WITH_FILES` | `5000` | Most documents when the PDF and XRechnung of each are rendered too (`documents=true`); rendering is the expensive part. |
+| `EXPORT_MAX_OUTPUT_BYTES` | `1073741824` (1 GiB) | Largest ZIP one export may send; checked while streaming, the export breaks off beyond it. Not for the server's heap (nothing holds the whole ZIP) but for bandwidth and for the browser: the SPA receives the download as one blob before saving it. Logos are embedded in every PDF, so large logos make large exports. |
+| `EXPORT_MAX_CONCURRENT` | `2` | Exports allowed to run at the same time per instance (each holds a database connection while it reads; keep it well below the pool size of 10). A running export holds its slot until the download has finished or the time limit has passed. One export per tenant (company) at a time, **across all instances**: on PostgreSQL a transaction-level advisory lock per tenant, held while the export reads, enforces it on the shared database (H2 serves a single desktop instance and needs none), so one tenant can neither take every slot of an instance nor run exports on several instances at once. |
+| `EXPORT_MAX_DURATION_MINUTES` | `30` | Longest time one export may take from its checks on, transfer included; beyond it the export breaks off (unreadable) and frees its slot, its database transaction and the tenant's export lock, so a slow client cannot hold them longer. Database queries of the export carry the remaining time as query timeout. A client that stops reading holds only the request thread and the sender thread, never the slot or the connection: Tomcat's write timeout ends a write that makes no progress at all (the connection timeout, 60 s unless `server.tomcat.connection-timeout` is set), but restarts with every byte, so a client that reads a trickle is cut off only by the reverse proxy's write timeout (`docs/operations/ops-gotchas.md` > *Slow clients*). |
 
 ## Files and startup
 
