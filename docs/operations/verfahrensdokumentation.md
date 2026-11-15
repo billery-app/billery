@@ -122,11 +122,17 @@ Belegdatum im Zeitraum liegt.
 Ein Export ist durch Betriebsgrenzen beschränkt, damit er den Server nicht
 überlastet: standardmäßig höchstens 3 660 Tage, 10 000 Belege (5 000, wenn PDF und
 XRechnung mit erzeugt werden), 1 GiB Archivgröße, 30 Minuten Laufzeit einschließlich
-Übertragung und ein Export je Firma zur selben Zeit.
+Übertragung und ein Export je Firma zur selben Zeit (auch wenn das Programm auf
+mehreren Servern läuft).
+Alle Tabellen und Belegdateien eines Exports geben **einen** Datenstand wieder: den
+Stand zu Beginn des Exports. Was andere währenddessen erfassen (etwa eine Zahlung),
+fehlt in diesem Export vollständig und steht im nächsten; Belege, Summen und
+Zahlungen widersprechen sich also nie.
 Wird eine Grenze überschritten, lehnt das Programm den Export mit einer Meldung ab;
 es kürzt ihn **nie** stillschweigend. Bricht ein Export unterwegs ab (etwa bei
-einem Verbindungsabbruch, oder weil das Archiv größer als die Grenze wird oder die
-Laufzeit überschreitet; beides steht erst beim Schreiben fest), ist die angekommene Datei kein lesbares ZIP-Archiv,
+einem Verbindungsabbruch, weil das PDF eines Belegs nicht erzeugt werden kann, oder
+weil das Archiv größer als die Grenze wird oder die Laufzeit überschreitet; das steht
+erst beim Schreiben fest), ist die angekommene Datei kein lesbares ZIP-Archiv,
 und das Programm speichert sie nicht; der Export ist dann zu wiederholen. In dem Fall ist der Zeitraum auf mehrere
 Exporte aufzuteilen oder ohne PDF und XRechnung zu exportieren. Der Betreiber kann
 die Grenzen anpassen (Variablen `EXPORT_*`, siehe

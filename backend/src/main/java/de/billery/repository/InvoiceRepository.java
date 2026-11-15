@@ -4,6 +4,7 @@ import static de.billery.data.DatabaseUtils.emptyToNull;
 import static de.billery.data.DatabaseUtils.nullToEmpty;
 
 import de.billery.api.dto.SearchResult.SearchInvoice;
+import de.billery.data.Database;
 import de.billery.data.Invoice;
 import de.billery.data.InvoiceItem;
 import java.math.BigDecimal;
@@ -20,6 +21,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
  * Repository for documents ({@code invoice}: invoices, offers, cost calculations, credit notes, …)
@@ -34,6 +36,13 @@ public class InvoiceRepository extends BaseRepository {
 
   private static final String OPERATION = "operation";
   private static final int PAID_STATUS_ID = 6;
+
+  /**
+   * First key of the export lock (arbitrary, app-specific: "bill"); the second is the tenant. The
+   * two-key advisory locks are a key space of their own, apart from the single-key locks of {@code
+   * SchemaMigrator} and {@code DailyQuota}.
+   */
+  private static final int EXPORT_LOCK_KIND = 0x62696C6C;
 
   /** Columns and joins of {@link #search}. */
   private static final String SEARCH_SELECT =
@@ -216,6 +225,36 @@ public class InvoiceRepository extends BaseRepository {
                 .param("to", to)
                 .query(INVOICE_MAPPER)
                 .list());
+  }
+
+  /**
+   * Takes the lock "this tenant is exporting" for the rest of the current transaction, if no one
+   * else holds it. On PostgreSQL it is a transaction-level advisory lock, so it is shared by every
+   * instance on the same database and released automatically when the transaction ends (also when
+   * the connection breaks). H2 serves one desktop instance only; there it always succeeds and the
+   * caller's in-process slot is the lock.
+   *
+   * @param tenant whose export it is (the second key of the lock)
+   * @return whether the lock was taken; {@code false} if another export of the tenant holds it
+   * @throws IllegalStateException on PostgreSQL if no transaction is active (the lock would be
+   *     released at once)
+   */
+  public boolean tryLockForExport(int tenant) {
+    if (Database.getUrl().startsWith("jdbc:h2:")) {
+      return true;
+    }
+    if (!TransactionSynchronizationManager.isActualTransactionActive()) {
+      throw new IllegalStateException("The export lock needs a transaction");
+    }
+    return run(
+        "tryLockForExport",
+        () ->
+            Boolean.TRUE.equals(
+                jdbc.sql("SELECT pg_try_advisory_xact_lock(:kind, :tenant)")
+                    .param("kind", EXPORT_LOCK_KIND)
+                    .param("tenant", tenant)
+                    .query(Boolean.class)
+                    .single()));
   }
 
   /**

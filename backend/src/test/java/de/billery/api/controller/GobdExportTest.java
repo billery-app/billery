@@ -2,6 +2,7 @@ package de.billery.api.controller;
 
 import static de.billery.TestMoney.bd;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
 import de.billery.TestWiring;
 import de.billery.api.ApiExceptionHandler;
@@ -10,6 +11,7 @@ import de.billery.api.dto.InvoiceDto;
 import de.billery.api.dto.InvoiceItemDto;
 import de.billery.api.dto.PaymentRequest;
 import de.billery.api.dto.StatusChangeRequest;
+import de.billery.data.Database;
 import de.billery.data.Invoice;
 import de.billery.data.InvoiceTemplate;
 import de.billery.data.Owner;
@@ -22,6 +24,7 @@ import de.billery.service.GobdExportService;
 import de.billery.tenant.DefaultCurrentTenant;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.OutputStream;
 import java.io.StringReader;
 import java.math.BigDecimal;
@@ -29,11 +32,16 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.SecureRandom;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipException;
 import java.util.zip.ZipFile;
@@ -47,6 +55,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.transaction.TransactionTimedOutException;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
@@ -324,7 +333,8 @@ class GobdExportTest {
             TestWiring.customerRepository(),
             eInvoices,
             pdfs,
-            new DefaultCurrentTenant());
+            new DefaultCurrentTenant(),
+            TestWiring.transactions());
     service.configureLimits(10_000, 10_000, BIG, 3_660, 1, 30);
     return service;
   }
@@ -335,13 +345,16 @@ class GobdExportTest {
       issue(LocalDate.of(2026, 3, i), "Beleg " + i, 1, 1);
     }
     int megabyte = 1024 * 1024;
-    long[] sent = {0};
+    // At most this much is between the export and the client (ExportSender.IN_FLIGHT_BYTES: four
+    // queued chunks, the one being written, the one being filled), plus the deflater's buffer.
+    int inFlight = 7 * 64 * 1024;
+    AtomicLong sent = new AtomicLong(); // the client is written by the sender thread
     List<Long> sentWhenRendering = new ArrayList<>();
     DocumentPdfService bigPdfs =
         new DocumentPdfService(TestWiring.pdfGenerator(), TestWiring.eInvoiceService()) {
           @Override
           public byte[] pdf(Invoice invoice) {
-            sentWhenRendering.add(sent[0]);
+            sentWhenRendering.add(sent.get());
             byte[] pdf = new byte[megabyte];
             RANDOM.nextBytes(pdf); // does not compress
             return pdf;
@@ -351,12 +364,12 @@ class GobdExportTest {
         new OutputStream() {
           @Override
           public void write(int b) {
-            sent[0]++;
+            sent.incrementAndGet();
           }
 
           @Override
           public void write(byte[] b, int off, int len) {
-            sent[0] += len;
+            sent.addAndGet(len);
           }
         };
 
@@ -368,10 +381,10 @@ class GobdExportTest {
     assertEquals(5, sentWhenRendering.size());
     for (int k = 1; k < 5; k++) {
       assertTrue(
-          sentWhenRendering.get(k) >= (long) k * megabyte - 64 * 1024,
+          sentWhenRendering.get(k) >= (long) k * megabyte - inFlight,
           "the PDFs before document " + k + " already went out: " + sentWhenRendering);
     }
-    assertTrue(sent[0] >= 5L * megabyte);
+    assertTrue(sent.get() >= 5L * megabyte);
   }
 
   @Test
@@ -409,6 +422,64 @@ class GobdExportTest {
     }
     checks[0] = 10; // works again; the slot was released
     assertDoesNotThrow(() -> run(service, JAN_1, DEC_31, true));
+  }
+
+  @Test
+  void aDocumentWhosePdfFailsBreaksTheExportOffInsteadOfLeavingItOut() throws Exception {
+    issue(LocalDate.of(2026, 3, 1), "A", 1, 1);
+    issue(LocalDate.of(2026, 3, 2), "B", 1, 1);
+    int[] rendered = {0};
+    DocumentPdfService failingSecond =
+        new DocumentPdfService(TestWiring.pdfGenerator(), TestWiring.eInvoiceService()) {
+          @Override
+          public byte[] pdf(Invoice invoice) throws Exception {
+            if (++rendered[0] == 2) {
+              throw new java.io.IOException("template broken");
+            }
+            return super.pdf(invoice);
+          }
+        };
+    GobdExportService service = serviceWith(failingSecond, TestWiring.eInvoiceService());
+    ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+    try (GobdExportService.PreparedExport prepared = service.prepare(JAN_1, DEC_31, true)) {
+      IllegalStateException e =
+          assertThrows(IllegalStateException.class, () -> prepared.writeTo(out));
+      assertTrue(e.getMessage().contains("No PDF for"), e.getMessage());
+    }
+
+    assertTrue(out.size() > 0, "the first document had already gone out");
+    Path cutOff = Files.createTempFile("gobd", ".zip");
+    try {
+      Files.write(cutOff, out.toByteArray());
+      assertThrows(ZipException.class, () -> new ZipFile(cutOff.toFile()).close());
+    } finally {
+      Files.delete(cutOff);
+    }
+  }
+
+  @Test
+  void aQueryAfterTheDeadlineEndsTheExportLikeTheTimeLimit() throws Exception {
+    issue(LocalDate.of(2026, 3, 1), "A", 1, 1);
+    DocumentPdfService slowRendering =
+        new DocumentPdfService(TestWiring.pdfGenerator(), TestWiring.eInvoiceService()) {
+          @Override
+          public byte[] pdf(Invoice invoice) throws Exception {
+            Thread.sleep(1_200); // rendering outlasts the limit, then reads the database
+            TestWiring.invoiceRepository().findById(invoice.getId());
+            return super.pdf(invoice);
+          }
+        };
+    GobdExportService service = serviceWith(slowRendering, TestWiring.eInvoiceService());
+    service.limitDuration(Duration.ofSeconds(1));
+
+    try (GobdExportService.PreparedExport prepared = service.prepare(JAN_1, DEC_31, true)) {
+      ExportLimitException e =
+          assertThrows(
+              ExportLimitException.class, () -> prepared.writeTo(new ByteArrayOutputStream()));
+      assertTrue(e.getMessage().contains("zu lange"), e.getMessage());
+      assertInstanceOf(TransactionTimedOutException.class, e.getCause(), "the query was stopped");
+    }
   }
 
   @Test
@@ -456,7 +527,8 @@ class GobdExportTest {
             TestWiring.customerRepository(),
             TestWiring.eInvoiceService(),
             TestWiring.documentPdfService(),
-            () -> tenant[0]);
+            () -> tenant[0],
+            TestWiring.transactions());
     service.configureLimits(10, 10, BIG, 3_660, 2, 30);
 
     GobdExportService.PreparedExport first = service.prepare(JAN_1, DEC_31, false);
@@ -474,6 +546,153 @@ class GobdExportTest {
       first.close();
       assertDoesNotThrow(() -> service.prepare(JAN_1, DEC_31, false).close());
     }
+  }
+
+  @Test
+  void theExportReadsOneSnapshotWhileOthersKeepWorking() throws Exception {
+    int paid = issue(LocalDate.of(2026, 3, 1), "A", 1, 100);
+    GobdExportService service = serviceWithLimits(10, 10, BIG, 3_660, 1);
+    ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+    try (GobdExportService.PreparedExport prepared = service.prepare(JAN_1, DEC_31, false)) {
+      // A payment recorded by someone else after the export started (another thread, so it does
+      // not join the export's transaction).
+      Thread other =
+          new Thread(
+              () ->
+                  invoices.recordPayment(
+                      paid,
+                      new PaymentRequest(
+                          LocalDate.of(2026, 3, 10), new BigDecimal("50.00"), "Bar", "", "")));
+      other.start();
+      other.join();
+      prepared.writeTo(out);
+    }
+
+    Map<String, byte[]> zip = unzip(out.toByteArray());
+    assertEquals(1, lines(zip.get("zahlungen.csv")).size(), "only the header: not in the snapshot");
+    assertTrue(
+        lines(zip.get("belege.csv")).get(1).contains("\"0,00\";\"STANDARD\""), "nothing paid");
+    Map<String, byte[]> later = unzip(run(service, JAN_1, DEC_31, false));
+    assertEquals(2, lines(later.get("zahlungen.csv")).size(), "the next export has it");
+    assertTrue(lines(later.get("belege.csv")).get(1).contains("\"50,00\";\"STANDARD\""));
+  }
+
+  @Test
+  void aClientThatStopsReadingHoldsNeitherTheSnapshotNorTheSlotPastTheDeadline() throws Exception {
+    issue(LocalDate.of(2026, 3, 1), "A", 1, 1);
+    GobdExportService service = serviceWithLimits(10, 10, BIG, 3_660, 1);
+    service.limitDuration(Duration.ofSeconds(1));
+    CountDownLatch clientReads = new CountDownLatch(1);
+    CountDownLatch writing = new CountDownLatch(1);
+    OutputStream stalled =
+        new OutputStream() {
+          @Override
+          public void write(int b) throws IOException {
+            write(new byte[] {(byte) b}, 0, 1);
+          }
+
+          @Override
+          public void write(byte[] b, int off, int len) throws IOException {
+            writing.countDown();
+            try {
+              clientReads.await(); // a client that takes nothing (TCP window closed)
+            } catch (InterruptedException e) {
+              throw new IOException(e);
+            }
+          }
+        };
+    AtomicReference<Throwable> outcome = new AtomicReference<>();
+    Thread request =
+        new Thread(
+            () -> {
+              try (GobdExportService.PreparedExport prepared =
+                  service.prepare(JAN_1, DEC_31, false)) {
+                prepared.writeTo(stalled);
+              } catch (Throwable e) {
+                outcome.set(e);
+              }
+            });
+    request.start();
+    try {
+      assertTrue(writing.await(20, TimeUnit.SECONDS), "the export reached the client");
+      assertThrows(
+          ExportBusyException.class,
+          () -> service.prepare(JAN_1, DEC_31, false),
+          "the export still holds its slot within the deadline");
+      service.limitDuration(Duration.ofMinutes(30));
+      long giveUp = System.nanoTime() + Duration.ofSeconds(20).toNanos();
+      boolean slotFree = false;
+      while (!slotFree && System.nanoTime() < giveUp) {
+        try {
+          // another export of the same tenant: needs the slot and the export lock back
+          run(service, JAN_1, DEC_31, false);
+          slotFree = true;
+        } catch (ExportBusyException busy) {
+          Thread.sleep(100);
+        }
+      }
+      assertTrue(slotFree, "the slot came back after the deadline");
+      assertTrue(request.isAlive(), "while the stalled write still holds the request");
+    } finally {
+      clientReads.countDown();
+      request.join(20_000);
+    }
+    assertFalse(request.isAlive());
+    assertInstanceOf(ExportLimitException.class, outcome.get());
+    assertTrue(outcome.get().getMessage().contains("zu lange"), outcome.get().getMessage());
+  }
+
+  @Test
+  void everyQueryOfTheExportEndsAtTheDeadline() throws Exception {
+    int id = issue(LocalDate.of(2026, 3, 1), "A", 1, 1);
+    GobdExportService service = serviceWithLimits(10, 10, BIG, 3_660, 1);
+    service.limitDuration(Duration.ofSeconds(1));
+
+    try (GobdExportService.PreparedExport prepared = service.prepare(JAN_1, DEC_31, false)) {
+      assertNotNull(TestWiring.invoiceRepository().findById(id), "in time");
+      Thread.sleep(1_200);
+      // the snapshot's queries carry the remaining time; after the deadline none runs any more
+      assertThrows(
+          TransactionTimedOutException.class, () -> TestWiring.invoiceRepository().findById(id));
+    }
+    assertDoesNotThrow(() -> run(service, JAN_1, DEC_31, false));
+  }
+
+  @Test
+  void oneExportPerTenantAlsoAcrossInstances() throws Exception {
+    assumeFalse(
+        Database.getUrl().startsWith("jdbc:h2:"),
+        "H2 serves a single desktop instance; the shared lock is PostgreSQL's");
+    GobdExportService instanceA = serviceWithLimits(10, 10, BIG, 3_660, 2);
+    GobdExportService instanceB = serviceWithLimits(10, 10, BIG, 3_660, 2);
+    CountDownLatch prepared = new CountDownLatch(1);
+    CountDownLatch finish = new CountDownLatch(1);
+    AtomicReference<Throwable> failure = new AtomicReference<>();
+    Thread onA =
+        new Thread(
+            () -> {
+              try (var export = instanceA.prepare(JAN_1, DEC_31, false)) {
+                prepared.countDown();
+                finish.await();
+              } catch (Throwable e) {
+                failure.set(e);
+                prepared.countDown();
+              }
+            });
+    onA.start();
+    try {
+      prepared.await();
+      assertNull(failure.get());
+      ExportBusyException e =
+          assertThrows(ExportBusyException.class, () -> run(instanceB, JAN_1, DEC_31, false));
+      assertTrue(e.getMessage().contains("bereits ein Export"), e.getMessage());
+    } finally {
+      finish.countDown();
+      onA.join(10_000);
+    }
+    assertNull(failure.get());
+    assertDoesNotThrow(() -> run(instanceB, JAN_1, DEC_31, false), "free once A has ended");
   }
 
   @Test

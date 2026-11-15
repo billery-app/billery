@@ -125,14 +125,24 @@ SPA does not save it). Rendering the PDF and XRechnung takes about 0.1 s per doc
 (measured with the demo data), so 5 000 documents with files hold an export slot for roughly ten
 minutes.
 
+An export reads everything (documents, sums, payments, history, PDFs) from **one** read-only
+`REPEATABLE READ` transaction, so the tables agree with each other even while others keep
+working. That transaction holds one pooled database connection until the ZIP is produced, at most
+`EXPORT_MAX_DURATION_MINUTES` (it is also the transaction timeout: every query gets the remaining
+time as its query timeout). On PostgreSQL it holds back `VACUUM` for that long; a configured
+`idle_in_transaction_session_timeout` or `statement_timeout` shorter than the limit breaks exports
+off. The bytes go to the client from a separate sender thread through a buffer of at most 384 KiB,
+so a client that reads slowly or not at all never keeps the transaction, the connection or the slot
+beyond the limit.
+
 | Variable | Default | Notes |
 |----------|---------|-------|
 | `EXPORT_MAX_PERIOD_DAYS` | `3660` | Longest allowed span between `from` and `to`, in days. |
 | `EXPORT_MAX_DOCUMENTS` | `10000` | Most documents (issued invoices and credit notes) in one export. |
 | `EXPORT_MAX_DOCUMENTS_WITH_FILES` | `5000` | Most documents when the PDF and XRechnung of each are rendered too (`documents=true`); rendering is the expensive part. |
 | `EXPORT_MAX_OUTPUT_BYTES` | `1073741824` (1 GiB) | Largest ZIP one export may send; checked while streaming, the export breaks off beyond it. Not for the server's heap (nothing holds the whole ZIP) but for bandwidth and for the browser: the SPA receives the download as one blob before saving it. Logos are embedded in every PDF, so large logos make large exports. |
-| `EXPORT_MAX_CONCURRENT` | `2` | Exports allowed to run at the same time per instance. Each tenant (company) has at most one of them, so one tenant cannot take every slot; a running export holds its slot until the download has finished. |
-| `EXPORT_MAX_DURATION_MINUTES` | `30` | Longest time one export may take from its checks on, transfer included; beyond it the export breaks off (unreadable) and frees its slot, so a slow client cannot hold a slot longer. It is checked before every write; a write the client does not accept ends with Tomcat's write timeout (the connection timeout, 60 s unless `server.tomcat.connection-timeout` is set), so the slot is free at the latest that much later. |
+| `EXPORT_MAX_CONCURRENT` | `2` | Exports allowed to run at the same time per instance (each holds a database connection while it reads; keep it well below the pool size of 10). A running export holds its slot until the download has finished or the time limit has passed. One export per tenant (company) at a time, **across all instances**: on PostgreSQL a transaction-level advisory lock per tenant, held while the export reads, enforces it on the shared database (H2 serves a single desktop instance and needs none), so one tenant can neither take every slot of an instance nor run exports on several instances at once. |
+| `EXPORT_MAX_DURATION_MINUTES` | `30` | Longest time one export may take from its checks on, transfer included; beyond it the export breaks off (unreadable) and frees its slot, its database transaction and the tenant's export lock, so a slow client cannot hold them longer. Database queries of the export carry the remaining time as query timeout. A write the client never accepts holds only the request thread and the sender thread until Tomcat's write timeout ends it (the connection timeout, 60 s without progress unless `server.tomcat.connection-timeout` is set), never the slot or the connection. |
 
 ## Files and startup
 

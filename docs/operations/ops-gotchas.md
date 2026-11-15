@@ -241,6 +241,13 @@ customers in error messages. Only the operator of the host reads them.
   `backend/Dockerfile`). Measured: about 220 MB idle and 350 MB after a full GoBD export of 1 400
   documents. Raise the limit if the backend is killed for memory (`docker inspect` shows
   `OOMKilled`).
+- **GoBD export and the database:** a running export reads in one read-only transaction (one
+  consistent state) and holds one pooled connection for up to `EXPORT_MAX_DURATION_MINUTES`
+  (default 30), at most `EXPORT_MAX_CONCURRENT` (default 2) per instance. Meanwhile PostgreSQL's
+  `VACUUM` cannot remove rows that changed after the export began. Do not set
+  `idle_in_transaction_session_timeout` or `statement_timeout` for the application's role below
+  that limit, or exports break off. One export per company runs at a time across all instances
+  (PostgreSQL advisory lock), so several instances need no extra coordination.
 - **Hardening:** the backend runs with a read-only root filesystem (writable: the `uploads` and
   `logs` volumes and a 256 MB tmpfs at `/tmp`), without any Linux capability and with
   `no-new-privileges`. PostgreSQL keeps only the capabilities it needs for its data directory

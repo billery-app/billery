@@ -171,7 +171,8 @@ public final class TestWiring {
         customerRepository(),
         eInvoiceService(),
         documentPdfService(),
-        new DefaultCurrentTenant());
+        new DefaultCurrentTenant(),
+        transactions());
   }
 
   /** Returns a new {@link DocumentPdfService}. */

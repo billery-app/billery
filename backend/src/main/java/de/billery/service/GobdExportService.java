@@ -35,13 +35,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.TransactionTimedOutException;
+import org.springframework.transaction.support.DefaultTransactionDefinition;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * Data export for a tax audit (Datenzugriff nach §147 Abs. 6 AO, "Z3"): every issued invoice and
@@ -64,10 +68,12 @@ import org.springframework.stereotype.Service;
 @Service
 public class GobdExportService {
 
-  private static final Logger LOGGER = Logger.getLogger(GobdExportService.class.getName());
   private static final DateTimeFormatter GERMAN_DATE = DateTimeFormatter.ofPattern("dd.MM.yyyy");
   private static final String SEP = ";";
   private static final String EOL = "\r\n";
+
+  private static final String ALREADY_EXPORTING =
+      "Es läuft bereits ein Export. Bitte in einigen Minuten erneut versuchen.";
 
   /** Documents per batch query while the tables are written. */
   private static final int CHUNK = 500;
@@ -80,6 +86,7 @@ public class GobdExportService {
   private final EInvoiceService eInvoiceService;
   private final DocumentPdfService documentPdfService;
   private final CurrentTenant currentTenant;
+  private final PlatformTransactionManager transactionManager;
 
   /** The tenants with an export under way; guarded by {@code this}. */
   private final Set<Integer> exportingTenants = new HashSet<>();
@@ -101,6 +108,7 @@ public class GobdExportService {
    * @param eInvoiceService produces the XRechnung of each document
    * @param documentPdfService renders the PDF of each document (ZUGFeRD where possible)
    * @param currentTenant whose export it is (one at a time per tenant)
+   * @param transactions whose transaction manager holds one database snapshot per export
    */
   public GobdExportService(
       InvoiceRepository invoiceRepository,
@@ -109,7 +117,8 @@ public class GobdExportService {
       CustomerRepository customerRepository,
       EInvoiceService eInvoiceService,
       DocumentPdfService documentPdfService,
-      CurrentTenant currentTenant) {
+      CurrentTenant currentTenant,
+      TransactionTemplate transactions) {
     this.invoiceRepository = invoiceRepository;
     this.paymentRepository = paymentRepository;
     this.historyRepository = historyRepository;
@@ -117,6 +126,7 @@ public class GobdExportService {
     this.eInvoiceService = eInvoiceService;
     this.documentPdfService = documentPdfService;
     this.currentTenant = currentTenant;
+    this.transactionManager = transactions.getTransactionManager();
   }
 
   /**
@@ -133,8 +143,9 @@ public class GobdExportService {
    *     has at most one of them, so one tenant cannot take every slot (while streaming, a slow
    *     client holds its slot)
    * @param maxDurationMinutes longest time one export may take from {@link #prepare} on, transfer
-   *     included; checked before every write, so it breaks off at the latest one write timeout of
-   *     the server later (a write the client does not accept ends with that timeout)
+   *     included; also the timeout of its database transaction (every query gets the remaining
+   *     time). A client that stops reading keeps only the sender thread ({@link ExportSender}),
+   *     never the snapshot, the connection or the slot, beyond it
    */
   @Autowired
   public void configureLimits(
@@ -153,8 +164,23 @@ public class GobdExportService {
   }
 
   /**
+   * Sets the time limit of the next exports more finely than {@link #configureLimits} (whole
+   * minutes, as configured); used by tests that need a limit of seconds.
+   *
+   * @param maxDuration longest time one export may take from {@link #prepare} on, transfer included
+   */
+  public void limitDuration(Duration maxDuration) {
+    this.maxDuration = maxDuration;
+  }
+
+  /**
    * Checks the request and takes an export slot, before anything is sent: a refusal still answers
    * with a proper status (413 / 429). The returned export holds the slot until it is closed.
+   *
+   * <p>The export reads in one read-only {@code REPEATABLE READ} transaction from here until {@link
+   * PreparedExport#close()}, so documents, sums, payments, history and PDFs are one consistent
+   * state even while others keep working. Prepare, write and close on the same thread (the
+   * transaction is bound to it).
    *
    * @param from first document date (inclusive)
    * @param to last document date (inclusive)
@@ -170,21 +196,62 @@ public class GobdExportService {
     }
     int tenant = takeSlot();
     long deadline = System.nanoTime() + maxDuration.toNanos();
+    TransactionStatus snapshot;
     try {
-      List<Invoice> documents = documentsIn(from, to);
-      checkDocumentCount(documents.size(), includeDocuments);
-      return new PreparedExport(tenant, deadline, from, to, includeDocuments, documents);
+      snapshot = transactionManager.getTransaction(snapshotDefinition(maxDuration));
     } catch (RuntimeException e) {
       releaseSlot(tenant);
       throw e;
     }
+    try {
+      if (!invoiceRepository.tryLockForExport(tenant)) {
+        throw new ExportBusyException(ALREADY_EXPORTING);
+      }
+      List<Invoice> documents = documentsIn(from, to);
+      checkDocumentCount(documents.size(), includeDocuments);
+      return new PreparedExport(tenant, snapshot, deadline, from, to, includeDocuments, documents);
+    } catch (RuntimeException e) {
+      end(snapshot, tenant);
+      throw e;
+    }
+  }
+
+  /** Ends the export's snapshot (it only read; this also frees the export lock) and its slot. */
+  private void end(TransactionStatus snapshot, int tenant) {
+    try {
+      if (!snapshot.isCompleted()) {
+        transactionManager.rollback(snapshot);
+      }
+    } finally {
+      releaseSlot(tenant);
+    }
+  }
+
+  /**
+   * The export's transaction: read-only, {@code REPEATABLE READ} (one snapshot for every table and
+   * file) and with the export's time limit as timeout, so every query gets the remaining time as
+   * its query timeout and none can hold the snapshot past the deadline.
+   */
+  private static TransactionDefinition snapshotDefinition(Duration maxDuration) {
+    DefaultTransactionDefinition definition = new DefaultTransactionDefinition();
+    definition.setIsolationLevel(TransactionDefinition.ISOLATION_REPEATABLE_READ);
+    definition.setReadOnly(true);
+    definition.setTimeout((int) Math.max(1, Math.min(Integer.MAX_VALUE, maxDuration.toSeconds())));
+    definition.setName("GoBD export");
+    return definition;
+  }
+
+  /** The refusal when the export took longer than allowed. */
+  static ExportLimitException tooLong() {
+    return new ExportLimitException(
+        "Der Export hat zu lange gedauert und wurde abgebrochen. Bitte den Zeitraum"
+            + " verkleinern oder ohne Belegdateien exportieren.");
   }
 
   private synchronized int takeSlot() {
     int tenant = currentTenant.tenantId();
     if (exportingTenants.contains(tenant)) {
-      throw new ExportBusyException(
-          "Es läuft bereits ein Export. Bitte in einigen Minuten erneut versuchen.");
+      throw new ExportBusyException(ALREADY_EXPORTING);
     }
     if (exportingTenants.size() >= maxConcurrentExports) {
       throw new ExportBusyException(
@@ -204,21 +271,25 @@ public class GobdExportService {
    */
   public final class PreparedExport implements AutoCloseable {
     private final int tenant;
+    private final TransactionStatus snapshot;
     private final long deadline;
     private final LocalDate from;
     private final LocalDate to;
     private final boolean includeDocuments;
     private final List<Invoice> documents;
+    private ExportSender sender;
     private boolean closed;
 
     private PreparedExport(
         int tenant,
+        TransactionStatus snapshot,
         long deadline,
         LocalDate from,
         LocalDate to,
         boolean includeDocuments,
         List<Invoice> documents) {
       this.tenant = tenant;
+      this.snapshot = snapshot;
       this.deadline = deadline;
       this.from = from;
       this.to = to;
@@ -237,17 +308,24 @@ public class GobdExportService {
      *     allowed (it breaks off)
      */
     public void writeTo(OutputStream out) throws IOException {
-      CuttableStream guard = new CuttableStream(out, maxOutputBytes, deadline);
+      if (sender != null || closed) {
+        throw new IllegalStateException("An export is written once");
+      }
+      sender = new ExportSender(out, deadline);
+      CuttableStream guard = new CuttableStream(sender, maxOutputBytes, deadline);
       // Closing releases the deflater; it does not close out.
       try (ZipOutputStream zip = new ZipOutputStream(guard, StandardCharsets.UTF_8)) {
         boolean complete = false;
         try {
-          writeTables(zip, documents);
-          put(zip, "index.xml", GobdIndex.xml(from, to).getBytes(StandardCharsets.UTF_8));
-          if (includeDocuments) {
-            addDocuments(zip, documents);
-          }
-          zip.finish();
+          withinTimeLimit(
+              () -> {
+                writeTables(zip, documents);
+                put(zip, "index.xml", GobdIndex.xml(from, to).getBytes(StandardCharsets.UTF_8));
+                if (includeDocuments) {
+                  addDocuments(zip, documents);
+                }
+                zip.finish();
+              });
           complete = true;
         } finally {
           if (!complete) {
@@ -255,15 +333,28 @@ public class GobdExportService {
           }
         }
       }
-      guard.flush();
+      // Everything is read: give the snapshot and its connection back before the transfer ends.
+      transactionManager.rollback(snapshot);
+      sender.finish();
     }
 
-    /** Releases the export slot (once). */
+    /**
+     * Ends the snapshot, releases the export slot and the export lock, then waits until the sender
+     * is done with the client's stream (once). Call it on the thread that prepared the export.
+     */
     @Override
+    // The sender outlives writeTo on purpose: it is closed only after the snapshot and the slot.
+    @SuppressWarnings("PMD.UseTryWithResources")
     public void close() {
       if (!closed) {
         closed = true;
-        releaseSlot(tenant);
+        try {
+          end(snapshot, tenant);
+        } finally {
+          if (sender != null) {
+            sender.close();
+          }
+        }
       }
     }
   }
@@ -525,18 +616,18 @@ public class GobdExportService {
     return result;
   }
 
-  /** Adds the PDF snapshot and, if the master data suffices, the XRechnung of each document. */
+  /**
+   * Adds the PDF snapshot and, if the master data suffices, the XRechnung of each document. A PDF
+   * that cannot be produced breaks the export off (the ZIP stays unreadable): an archive that
+   * silently lacks a document's file would look complete, and the export must never be shortened
+   * without notice.
+   */
   private void addDocuments(ZipOutputStream zip, List<Invoice> documents) throws IOException {
     for (Invoice doc : documents) {
       String base = "dokumente/" + doc.getDocumentNumber().replaceAll("[^A-Za-z0-9._-]", "_");
-      try {
-        // The same file the download hands out: the issue-time snapshot as PDF/A-3, with the
-        // XRechnung attached when the data suffices.
-        byte[] content = documentPdfService.pdf(doc);
-        put(zip, base + ".pdf", content);
-      } catch (Exception e) {
-        LOGGER.log(Level.WARNING, "No PDF for " + doc.getDocumentNumber() + " in GoBD export", e);
-      }
+      // The same file the download hands out: the issue-time snapshot as PDF/A-3, with the
+      // XRechnung attached when the data suffices.
+      put(zip, base + ".pdf", pdfOf(doc));
       if (eInvoiceService.check(doc.getId()).isEmpty()) {
         put(
             zip,
@@ -544,6 +635,38 @@ public class GobdExportService {
             eInvoiceService.xrechnung(doc.getId()).getBytes(StandardCharsets.UTF_8));
       }
     }
+  }
+
+  /** The document's PDF; a rendering failure names the document. */
+  private byte[] pdfOf(Invoice doc) {
+    try {
+      return documentPdfService.pdf(doc);
+    } catch (RuntimeException e) {
+      throw e; // limits, the snapshot's timeout and database errors keep their meaning
+    } catch (Exception e) {
+      throw new IllegalStateException(
+          "No PDF for " + doc.getDocumentNumber() + " in the GoBD export", e);
+    }
+  }
+
+  /**
+   * Runs the export's work, presenting the end of its snapshot's time (a query after the deadline)
+   * like every other overrun of the time limit.
+   */
+  private static <T extends Exception> void withinTimeLimit(ThrowingRunnable<T> work) throws T {
+    try {
+      work.run();
+    } catch (TransactionTimedOutException e) {
+      ExportLimitException tooLong = tooLong();
+      tooLong.initCause(e);
+      throw tooLong;
+    }
+  }
+
+  /** A piece of work that may throw a checked exception. */
+  @FunctionalInterface
+  private interface ThrowingRunnable<T extends Exception> {
+    void run() throws T;
   }
 
   private static void addItems(
@@ -636,9 +759,7 @@ public class GobdExportService {
     private void count(long bytes) {
       if (System.nanoTime() - deadline > 0) {
         dropping = true;
-        throw new ExportLimitException(
-            "Der Export hat zu lange gedauert und wurde abgebrochen. Bitte den Zeitraum"
-                + " verkleinern oder ohne Belegdateien exportieren.");
+        throw tooLong();
       }
       sent += bytes;
       if (sent > limit) {
