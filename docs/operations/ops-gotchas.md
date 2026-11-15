@@ -93,6 +93,29 @@ would also get `http://` URLs.
 (comma-separated exact origins, no wildcard). The API has no
 credentials, so `CorsConfig` does not send `Allow-Credentials`.
 
+## Slow clients: a write timeout in the proxy
+
+Give the reverse proxy an **absolute** limit for sending one response.
+Tomcat's own write timeout starts again with every byte, so a client that
+reads a trickle keeps a backend thread busy for as long as it likes
+(downloads: PDF, XRechnung, document export, GoBD export). The GoBD export
+frees its database connection, lock and slot at its own time limit, but
+not the thread. The proxy closes such a connection at its limit, and the
+backend request ends with it.
+
+- Caddy: both shipped Caddyfiles (`deploy/saas/Caddyfile`,
+  `deploy/Caddyfile.example`) set `servers { timeouts { write 35m } }`.
+- nginx: `send_timeout` only counts the time between two writes. Keep
+  `proxy_buffering on` (the default): nginx then takes the response from
+  the backend at full speed, into memory and temporary files up to
+  `proxy_max_temp_file_size` (default 1 GiB, the size limit of a GoBD
+  export), and a slow client only costs nginx a connection.
+- Traefik: `entryPoints.<name>.transport.respondingTimeouts.writeTimeout: 35m`.
+
+Keep the limit above `EXPORT_MAX_DURATION_MINUTES` (default 30): a large
+GoBD export may take that long, and a proxy that cuts it earlier breaks
+legitimate exports off.
+
 ## File uploads
 
 `spring.servlet.multipart.max-file-size` is 2 MB. The frontend
