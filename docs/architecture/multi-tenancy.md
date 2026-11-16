@@ -102,7 +102,9 @@ policy, so a new table cannot be forgotten.
 - **Application role** (`NOSUPERUSER NOBYPASSRLS`, not the owner): the only role the
   backend connects with. If the application ran as the owner, RLS would be silently
   skipped. A test connects as the application role and proves tenant A cannot see
-  tenant B's rows with plain SQL.
+  tenant B's rows with plain SQL. At start `saas.db.AppRoleGuard` checks the role of the
+  application's connections (no superuser, no `BYPASSRLS`, member of `billery_app`, owner
+  of no table, also not through role membership) and refuses to start otherwise.
 
 ## Request flow (SaaS)
 

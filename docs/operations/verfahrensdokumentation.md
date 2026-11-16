@@ -122,8 +122,9 @@ Belegdatum im Zeitraum liegt.
 Ein Export ist durch Betriebsgrenzen beschränkt, damit er den Server nicht
 überlastet: standardmäßig höchstens 3 660 Tage, 10 000 Belege (5 000, wenn PDF und
 XRechnung mit erzeugt werden), 1 GiB Archivgröße, 30 Minuten Laufzeit einschließlich
-Übertragung und ein Export je Firma zur selben Zeit (auch wenn das Programm auf
-mehreren Servern läuft).
+Übertragung, und je Firma wird zur selben Zeit nur ein Export erzeugt (auch wenn das
+Programm auf mehreren Servern läuft; die Übertragung eines fertig erzeugten Exports
+kann noch laufen, während der nächste beginnt).
 Alle Tabellen und Belegdateien eines Exports geben **einen** Datenstand wieder: den
 Stand zu Beginn des Exports. Was andere währenddessen erfassen (etwa eine Zahlung),
 fehlt in diesem Export vollständig und steht im nächsten; Belege, Summen und

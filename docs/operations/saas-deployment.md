@@ -37,6 +37,11 @@ The application stores no passwords. It knows the provider through `BILLERY_SECU
 | `billery_owner` | Flyway at start (`DB_MIGRATION_USER`) | owns the tables, no superuser, `BYPASSRLS` (row-level security is forced even on the owner) |
 | `billery_login` | the running application (`DB_USER`) | member of `billery_app`, no superuser, **no** `BYPASSRLS`: row-level security binds it |
 
+The backend checks this at every start (`AppRoleGuard`): if `DB_USER` is a superuser, has
+`BYPASSRLS`, is not a member of `billery_app`, or owns (or may act as the owner of) a table, it
+refuses to start and names the reasons, because row-level security would otherwise be skipped
+without any error. Typical cause: `DB_USER` set to the migration account.
+
 ## What you need
 
 - A server with Docker and Docker Compose v2, and ports 80 and 443 reachable (for the optional Caddy).
