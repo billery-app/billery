@@ -108,6 +108,14 @@ if [[ "$docker_checks" == 1 ]]; then
   else
     warn "no successful backup in $backup_dir yet (./backup.sh)"
   fi
+  max_days="$(cfg RESTORE_TEST_MAX_AGE_DAYS)"
+  [[ -n "$max_days" ]] || max_days=35
+  if [[ -r "$backup_dir/.last-restore-test" ]]; then
+    days=$((($(date -u +%s) - $(cat "$backup_dir/.last-restore-test")) / 86400))
+    if [[ "$days" -le "$max_days" ]]; then ok "the last restore test succeeded $days days ago"; else warn "the last restore test succeeded $days days ago (limit $max_days): test a backup (./restore.sh <files>)"; fi
+  else
+    warn "no restore test recorded yet: a backup that was never restored is not a backup (./restore.sh <files>)"
+  fi
   if [[ -n "$(cfg BACKUP_AGE_RECIPIENT)" ]]; then ok "backups are encrypted"; else warn "backups are not encrypted (BACKUP_AGE_RECIPIENT)"; fi
   if [[ -n "$(cfg BACKUP_S3_BUCKET)" ]]; then ok "backups are copied off this server"; else warn "backups stay on this server (BACKUP_S3_BUCKET)"; fi
 fi
@@ -119,6 +127,28 @@ http_status() { # $1 path [extra curl args]: prints the status code, 000 if unre
   curl -sS -o /dev/null -m 15 -w '%{http_code}' "$@" "$url$path" 2> /dev/null || printf '000'
 }
 http_body() { curl -sS -m 15 "$@" 2> /dev/null; }
+min_free="$(cfg DISK_MIN_FREE_PERCENT)"
+[[ -n "$min_free" ]] || min_free=15
+disk_free() { # $1 label, then a df -P command for one path: ok / warn below min_free / FAIL below 5 %
+  local label="$1" line avail size percent
+  shift
+  # df -P: one line per file system, size in column 2 and available space in column 4 (1K blocks)
+  line=$("$@" 2> /dev/null | awk 'NR == 2 { print $4, $2 }')
+  avail="${line% *}"
+  size="${line#* }"
+  if [[ ! "$avail" =~ ^[0-9]+$ || ! "$size" =~ ^[0-9]+$ || "$size" -eq 0 ]]; then
+    warn "could not read the free space of $label"
+    return
+  fi
+  percent=$((avail * 100 / size))
+  if [[ "$percent" -lt 5 ]]; then
+    bad "$label: only $percent % free ($((avail / 1024)) MB)"
+  elif [[ "$percent" -lt "$min_free" ]]; then
+    warn "$label: $percent % free ($((avail / 1024)) MB), below $min_free %"
+  else
+    ok "$label: $percent % free ($((avail / 1024)) MB)"
+  fi
+}
 json_string() { # $1 json (one line), $2 key: the first string value of the key
   printf '%s' "$1" | sed -n "s/.*\"$2\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p" | head -1
 }
@@ -149,6 +179,16 @@ if [[ "$docker_checks" == 1 ]]; then
     if grep -q "^$metrics_port/" <<< "$published"; then bad "the metrics port $metrics_port is published on the host"; fi
   else
     warn "no metrics (BILLERY_METRICS_PORT): only an uptime check can alert"
+  fi
+
+  section "Disk space"
+  # A full disk stops the database, uploads and backups; the alerts in monitoring/ watch it too.
+  if [[ -d "$backup_dir" ]]; then disk_free "the backups ($backup_dir)" df -P "$backup_dir"; fi
+  for path in /app/uploads /app/logs; do
+    disk_free "$path in the backend" docker exec billery-saas-backend df -P "$path"
+  done
+  if docker inspect billery-saas-db > /dev/null 2>&1; then
+    disk_free "the database volume" docker exec billery-saas-db df -P /var/lib/postgresql/data
   fi
 
   section "Database roles and tenant isolation"
@@ -188,6 +228,19 @@ if [[ "$docker_checks" == 1 ]]; then
     ok "all $tenant_tables tables with a tenant_id have row-level security enabled and forced, and a policy"
   else
     bad "tables with a tenant_id but no enabled, forced row-level security and policy: $unprotected"
+  fi
+  # Closed companies are purged by hand after their export window (saas-data-lifecycle.md); this
+  # is the reminder. Only ids, no company data.
+  purge_days="$(cfg PURGE_AFTER_DAYS)"
+  [[ "$purge_days" =~ ^[0-9]+$ ]] || purge_days=90
+  overdue=$(sql "SELECT count(*) || '|' || coalesce(string_agg(id::text, ',' ORDER BY id), '')
+    FROM tenant WHERE status = 'CLOSED' AND closed_at < CURRENT_TIMESTAMP - make_interval(days => $purge_days)" || true)
+  if [[ -z "$overdue" ]]; then
+    warn "could not look for closed companies to purge"
+  elif [[ "${overdue%%|*}" == "0" ]]; then
+    ok "no closed company is past its export window of $purge_days days"
+  else
+    warn "${overdue%%|*} closed companies are past their export window of $purge_days days and not purged yet (ids ${overdue#*|}): docs/operations/saas-data-lifecycle.md"
   fi
   history=$(sql "SELECT has_table_privilege('billery_login', 'flyway_schema_history', 'SELECT')" || true)
   if [[ "$history" == "f" ]]; then ok "billery_login cannot read the Flyway history"; elif [[ -n "$history" ]]; then bad "billery_login can read the Flyway history"; fi
@@ -273,6 +326,29 @@ grep -qi '^content-security-policy:' <<< "$headers" && ok "the Content-Security-
 grep -qi '^x-content-type-options: *nosniff' <<< "$headers" && ok "X-Content-Type-Options: nosniff is sent" || bad "no X-Content-Type-Options header"
 if [[ "$url" == https://* ]]; then
   grep -qi '^strict-transport-security:' <<< "$headers" && ok "Strict-Transport-Security is sent over HTTPS" || warn "no Strict-Transport-Security header (does the proxy send X-Forwarded-Proto?)"
+  # The proxy renews the certificate itself; a failed renewal shows only at expiry otherwise.
+  if command -v openssl > /dev/null; then
+    authority="${url#https://}"
+    authority="${authority%%/*}"
+    tls_host="${authority%%:*}"
+    tls_port=443
+    [[ "$authority" == *:* ]] && tls_port="${authority##*:}"
+    certificate=$(openssl s_client -connect "$tls_host:$tls_port" -servername "$tls_host" < /dev/null 2> /dev/null | openssl x509 2> /dev/null)
+    if [[ -z "$certificate" ]]; then
+      warn "could not read the TLS certificate of $tls_host:$tls_port"
+    else
+      until=$(openssl x509 -noout -enddate <<< "$certificate" | cut -d= -f2)
+      if ! openssl x509 -noout -checkend 0 <<< "$certificate" > /dev/null; then
+        bad "the TLS certificate has expired ($until)"
+      elif ! openssl x509 -noout -checkend $((14 * 86400)) <<< "$certificate" > /dev/null; then
+        warn "the TLS certificate expires within 14 days ($until): is the proxy renewing it?"
+      else
+        ok "the TLS certificate is valid until $until"
+      fi
+    fi
+  else
+    warn "openssl is missing: the expiry of the TLS certificate is not checked"
+  fi
   plain="http://${url#https://}"
   code=$(curl -sS -o /dev/null -m 15 -w '%{http_code}' "$plain/" 2> /dev/null || printf '000')
   if [[ "$code" == "301" || "$code" == "302" || "$code" == "307" || "$code" == "308" ]]; then ok "plain HTTP redirects ($code)"; else warn "plain HTTP answers $code (expected a redirect to HTTPS)"; fi

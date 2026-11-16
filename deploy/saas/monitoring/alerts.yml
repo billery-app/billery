@@ -4,6 +4,17 @@
 groups:
   - name: billery
     rules:
+      - alert: BilleryWatchdog
+        # Always firing: the heartbeat of the alerting itself. Route it to a dead man's switch
+        # (alertmanager.example.yml): when it stops arriving, Prometheus or Alertmanager is down and
+        # no other alert would reach you either.
+        expr: vector(1)
+        labels:
+          severity: none
+        annotations:
+          summary: "The alerting works"
+          description: "Always firing on purpose. If the dead man's switch stops receiving it, Prometheus or Alertmanager is down."
+
       - alert: BilleryMetricsMissing
         expr: up{job="billery"} == 0
         for: 2m
@@ -78,3 +89,53 @@ groups:
         annotations:
           summary: "The Java heap is more than 90 % full"
           description: "Raise BACKEND_MEMORY_LIMIT, or look for a request that holds much memory."
+
+      - alert: BilleryDiskSpaceLow
+        # The volumes the backend writes to (working directory, logs, uploads; see
+        # management.metrics.system.diskspace.paths). A path that does not exist reports a total of 0.
+        expr: |
+          min by (path) (disk_free_bytes{application="billery"} / disk_total_bytes{application="billery"}) < 0.15
+          and min by (path) (disk_total_bytes{application="billery"}) > 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Less than 15 % free on {{ $labels.path }}"
+          description: "Uploads or logs will fail when it is full. Free space or grow the volume; check the backups next to it (check.sh)."
+
+      - alert: BilleryDiskSpaceCritical
+        expr: |
+          min by (path) (disk_free_bytes{application="billery"} / disk_total_bytes{application="billery"}) < 0.05
+          and min by (path) (disk_total_bytes{application="billery"}) > 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Less than 5 % free on {{ $labels.path }}"
+          description: "Uploads and logs fail soon. Free space now."
+
+      - alert: BilleryFileStoreErrors
+        # The store of the uploaded files (the uploads directory, or the bucket with
+        # BILLERY_FILES_STORE=s3) failed: uploads and PDFs with a logo fail, everything else works.
+        expr: |
+          sum by (operation) (increase(billery_files_store_errors_total{application="billery"}[10m])) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: "The file store fails ({{ $labels.operation }})"
+          description: "Uploads or logos cannot be stored or read. Check the bucket (credentials, reachability) or the uploads volume; the backend log has the cause."
+
+  - name: billery-host
+    # Needs node_exporter on the host (not part of the kit): the volumes the backend does not see,
+    # above all the database (when it runs on this server) and the local backups.
+    rules:
+      - alert: HostDiskSpaceLow
+        expr: |
+          node_filesystem_avail_bytes{fstype!~"tmpfs|overlay|squashfs|ramfs"}
+            / node_filesystem_size_bytes{fstype!~"tmpfs|overlay|squashfs|ramfs"} < 0.15
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Less than 15 % free on {{ $labels.mountpoint }}"
+          description: "The database stops writing and backups fail when it is full. Free space or grow the disk; delete old local backups only if copies exist off the server."

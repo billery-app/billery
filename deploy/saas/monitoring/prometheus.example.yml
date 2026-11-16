@@ -5,6 +5,12 @@ global:
   scrape_interval: 30s
 rule_files:
   - alerts.yml
+# Alertmanager sends the alerts on, including the always-firing BilleryWatchdog to a dead man's
+# switch (alertmanager.example.yml).
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]
 scrape_configs:
   - job_name: billery
     metrics_path: /prometheus

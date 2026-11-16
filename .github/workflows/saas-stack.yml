@@ -58,6 +58,17 @@ jobs:
         run: |
           docker run --rm -v "$PWD/deploy/saas/monitoring:/m:ro" -w /m --entrypoint promtool \
             prom/prometheus:v3.16.0 test rules alerts.test.yml
+          docker run --rm -v "$PWD/deploy/saas/monitoring:/m:ro" -w /m --entrypoint promtool \
+            prom/prometheus:v3.16.0 check config prometheus.example.yml
+          # The example routes the always-firing watchdog to the dead man's switch, the rest to the team.
+          docker run --rm -v "$PWD/deploy/saas/monitoring:/m:ro" -w /m --entrypoint amtool \
+            prom/alertmanager:v0.28.1 check-config alertmanager.example.yml
+          docker run --rm -v "$PWD/deploy/saas/monitoring:/m:ro" -w /m --entrypoint amtool \
+            prom/alertmanager:v0.28.1 config routes test --config.file=alertmanager.example.yml \
+            --verify.receivers=deadmansswitch alertname=BilleryWatchdog
+          docker run --rm -v "$PWD/deploy/saas/monitoring:/m:ro" -w /m --entrypoint amtool \
+            prom/alertmanager:v0.28.1 config routes test --config.file=alertmanager.example.yml \
+            --verify.receivers=team alertname=BilleryDiskSpaceLow
 
       # Syntax and interpolation of the compose files, with placeholder values (nothing is started).
       # First WITHOUT BILLERY_DOMAIN and without the proxy profile: a deployment with its own proxy

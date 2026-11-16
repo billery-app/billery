@@ -34,6 +34,8 @@ the uploaded files, and a copy at another provider also survives losing the acco
 | `KEEP` | backups kept on the machine, default 14. |
 | `BACKUP_S3_KEEP_DAYS` | copies older than this are deleted at the storage, default 30; `0` never deletes. |
 | `BACKUP_HEALTHCHECK_URL` | called after every run, with `/fail` appended when it failed. |
+| `RESTORE_TEST_HEALTHCHECK_URL` | called after every test of a backup (`restore.sh` without `--apply`), with `/fail` appended when it failed; give the check a period of about 35 days. |
+| `RESTORE_TEST_MAX_AGE_DAYS` | `check.sh` warns when the last successful restore test is older (default 35). |
 | `BACKUP_MAX_AGE_HOURS` | `check.sh` warns above this age of the last success, default 36. |
 
 Only Docker is needed on the host. Settings are read from the environment, then from the settings
@@ -79,6 +81,11 @@ throwaway PostgreSQL without network and reports the tables and row counts.
 
 The key is needed only for this moment. Bring it to the machine, and remove it afterwards. Decrypted
 copies are deleted when the script ends.
+
+A successful test writes the time to `<backup folder>/.last-restore-test`; `check.sh` warns when it
+is older than `RESTORE_TEST_MAX_AGE_DAYS` (35) or missing. With `RESTORE_TEST_HEALTHCHECK_URL` the
+test also reports to a dead man's switch (success, or `/fail`), so a test that failed or did not
+happen in a month is noticed without anyone running `check.sh`.
 
 ## Restoring
 
