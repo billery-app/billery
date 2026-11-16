@@ -250,7 +250,7 @@ class DocumentImportXmlAttackTest {
         javax.xml.parsers.DocumentBuilderFactory.newInstance();
     naive.setNamespaceAware(true);
     // Deliberately unprotected: the positive control must show the attack files work.
-    // nosemgrep: java.lang.security.audit.xxe.documentbuilderfactory-external-general-entities-true.documentbuilderfactory-external-general-entities-true
+    /* nosemgrep: java.lang.security.audit.xxe.documentbuilderfactory-external-general-entities-true.documentbuilderfactory-external-general-entities-true */
     naive.setFeature("http://xml.org/sax/features/external-general-entities", true);
     naive.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", true);
     String[] fileEntity = attacks().get(0);
