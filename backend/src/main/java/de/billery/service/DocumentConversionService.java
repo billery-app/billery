@@ -226,7 +226,7 @@ public class DocumentConversionService {
 
   /** The sections of a DOCX body, tables included (their cells in reading order). */
   private static List<DocumentSection> importDocx(byte[] archive) throws Exception {
-    checkXmlDepth(archive);
+    checkXmlParts(archive);
     try (InputStream inputStream = new ByteArrayInputStream(archive);
         XWPFDocument document = new XWPFDocument(inputStream)) {
       SectionCollector collector = new SectionCollector();
@@ -273,7 +273,7 @@ public class DocumentConversionService {
 
   /** The sections of an ODT. */
   private static List<DocumentSection> importOdt(byte[] archive) throws Exception {
-    checkXmlDepth(archive);
+    checkXmlParts(archive);
     try (InputStream inputStream = new ByteArrayInputStream(archive);
         OdfTextDocument odtDocument = OdfTextDocument.loadDocument(inputStream)) {
       return odtBodyToSections(odtDocument.getContentRoot());
@@ -388,25 +388,38 @@ public class DocumentConversionService {
   }
 
   /**
-   * Refuses a DOCX or ODT whose XML parts nest deeper than {@value #MAX_ODT_DEPTH} before the
-   * parsing library builds its DOM: both recurse over the nesting (odfdom in {@code
-   * OdfElement.isIgnoredElement}, POI in {@code XMLHelper.getDepthOfChildNodes}), so a deeply
-   * nested upload overflowed the stack inside the library and answered 500. The check streams every
-   * {@code .xml} and {@code .rels} entry with StAX (iterative, DTDs and external entities off); the
-   * archive's size limits were already checked by {@link FileSecurityService#validateArchive}.
+   * Checks every XML part of a DOCX or ODT before the parsing library reads it, with StAX
+   * (iterative, DTDs and external entities off; the archive's size limits were already checked by
+   * {@link FileSecurityService#validateArchive}):
+   *
+   * <ul>
+   *   <li><b>No DOCTYPE.</b> Neither OOXML nor ODF uses a DTD, so a part that declares one is
+   *       refused outright: that is where external entities, external DTDs, parameter entities and
+   *       entity expansion ("billion laughs") come from (threat model T20). The libraries refuse or
+   *       ignore them too (POI disallows DOCTYPE, odfdom resolves nothing); this check does not
+   *       depend on their versions or settings. {@code DocumentImportXmlAttackTest} proves both.
+   *   <li><b>Nesting at most {@value #MAX_ODT_DEPTH}.</b> Both libraries recurse over the nesting
+   *       (odfdom in {@code OdfElement.isIgnoredElement}, POI in {@code
+   *       XMLHelper.getDepthOfChildNodes}), so a deeply nested upload overflowed the stack inside
+   *       the library and answered 500.
+   * </ul>
+   *
+   * <p>Parts are recognised by their names ({@code .xml}, {@code .rels}): ODF names every XML part
+   * that way. An OOXML part may have another name (it is found through the relationships); POI
+   * reads those with DOCTYPE disallowed, which {@code DocumentImportXmlAttackTest} covers with a
+   * header part named {@code header1.bin}.
    *
    * @param archive the DOCX or ODT bytes
-   * @throws IllegalArgumentException if an XML part nests too deeply
+   * @throws IllegalArgumentException if an XML part has a DOCTYPE or nests too deeply
    * @throws Exception if an XML part cannot be read
    */
-  static void checkXmlDepth(byte[] archive) throws Exception {
+  static void checkXmlParts(byte[] archive) throws Exception {
     XMLInputFactory factory = XMLInputFactory.newFactory();
     factory.setProperty(XMLInputFactory.SUPPORT_DTD, false);
     factory.setProperty(XMLInputFactory.IS_SUPPORTING_EXTERNAL_ENTITIES, false);
     // This reader is iterative and stops at MAX_ODT_DEPTH itself. Lifting the JDK's limit here
-    // makes
-    // the refusal (and its message) the same on every Java version instead of an XMLStreamException
-    // from the parser on Java 25 and ours on 21.
+    // makes the refusal (and its message) the same on every Java version instead of an
+    // XMLStreamException from the parser on Java 25 and ours on 21.
     if (factory.isPropertySupported("jdk.xml.maxElementDepth")) {
       factory.setProperty("jdk.xml.maxElementDepth", 0);
     }
@@ -420,6 +433,12 @@ public class DocumentConversionService {
           int depth = 0;
           while (reader.hasNext()) {
             int event = reader.next();
+            if (event == XMLStreamConstants.DTD) {
+              throw new IllegalArgumentException(
+                  "XML part "
+                      + entry.getName()
+                      + " declares a DOCTYPE, which DOCX and ODT never do");
+            }
             if (event == XMLStreamConstants.START_ELEMENT) {
               depth++;
               checkDepth(depth);

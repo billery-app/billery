@@ -232,7 +232,7 @@ class DocumentConversionServiceTest {
         "<text:p>" + "<text:span>".repeat(spans) + "x" + "</text:span>".repeat(spans) + "</text:p>";
     byte[] odt = odtWithContent(odtContent(body), true);
 
-    DocumentConversionService.checkXmlDepth(odt);
+    DocumentConversionService.checkXmlParts(odt);
     assertDoesNotThrow(() -> importFile("grenze.odt", odt));
 
     String tooDeep =
@@ -244,7 +244,7 @@ class DocumentConversionServiceTest {
     byte[] odt2 = odtWithContent(odtContent(tooDeep), true);
     IllegalArgumentException e =
         assertThrows(
-            IllegalArgumentException.class, () -> DocumentConversionService.checkXmlDepth(odt2));
+            IllegalArgumentException.class, () -> DocumentConversionService.checkXmlParts(odt2));
     assertTrue(e.getMessage().contains("nested"), e.getMessage());
   }
 
@@ -301,6 +301,100 @@ class DocumentConversionServiceTest {
     assertEquals(
         List.of(new DocumentSection(null, List.of("tief"))),
         importFile("ok.odt", odt(body)).sections());
+  }
+
+  /**
+   * The archive limits against decompression bombs (threat model T17) must let a realistic template
+   * through, not only refuse bombs: many paragraphs, a table, and a logo that hardly compresses (a
+   * few hundred KB of image noise), written by the libraries the way an office program would.
+   */
+  @Test
+  void realisticTemplatesWithALogoAndATablePassTheArchiveLimits() throws Exception {
+    byte[] logo = noisePng(320, 320);
+    assertTrue(logo.length > 200_000, "a logo of realistic size: " + logo.length);
+
+    for (var entry :
+        java.util.Map.of("docx", realisticDocx(logo), "odt", realisticOdt(logo)).entrySet()) {
+      String name = "vorlage." + entry.getKey();
+      byte[] file = entry.getValue();
+      assertTrue(
+          new FileSecurityService().validateArchive(file, entry.getKey()).isValid(),
+          name + " passes the archive limits");
+
+      ExchangeDocument imported = importFile(name, file);
+      List<String> paragraphs =
+          imported.sections().stream().flatMap(section -> section.paragraphs().stream()).toList();
+      assertTrue(paragraphs.contains("Absatz 150: Zahlbar innerhalb von 14 Tagen."), name);
+      assertTrue(paragraphs.contains("Zelle 3/2"), name + ": the table is read");
+    }
+  }
+
+  /** A PNG of random pixels: compresses about as badly as a photo. */
+  private static byte[] noisePng(int width, int height) throws Exception {
+    java.awt.image.BufferedImage image =
+        new java.awt.image.BufferedImage(width, height, java.awt.image.BufferedImage.TYPE_INT_RGB);
+    java.util.Random random = new java.util.Random(42); // deterministic test data, not security
+    for (int y = 0; y < height; y++) {
+      for (int x = 0; x < width; x++) {
+        image.setRGB(x, y, random.nextInt(0x1000000));
+      }
+    }
+    ByteArrayOutputStream out = new ByteArrayOutputStream();
+    javax.imageio.ImageIO.write(image, "png", out);
+    return out.toByteArray();
+  }
+
+  private static byte[] realisticDocx(byte[] logo) throws Exception {
+    try (org.apache.poi.xwpf.usermodel.XWPFDocument docx =
+            new org.apache.poi.xwpf.usermodel.XWPFDocument();
+        ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+      docx.createParagraph()
+          .createRun()
+          .addPicture(
+              new ByteArrayInputStream(logo),
+              org.apache.poi.xwpf.usermodel.Document.PICTURE_TYPE_PNG,
+              "logo.png",
+              org.apache.poi.util.Units.toEMU(120),
+              org.apache.poi.util.Units.toEMU(120));
+      for (int i = 1; i <= 200; i++) {
+        docx.createParagraph()
+            .createRun()
+            .setText("Absatz " + i + ": Zahlbar innerhalb von 14 Tagen.");
+      }
+      org.apache.poi.xwpf.usermodel.XWPFTable table = docx.createTable(5, 4);
+      for (int row = 0; row < 5; row++) {
+        for (int col = 0; col < 4; col++) {
+          table.getRow(row).getCell(col).setText("Zelle " + row + "/" + col);
+        }
+      }
+      docx.write(out);
+      return out.toByteArray();
+    }
+  }
+
+  private static byte[] realisticOdt(byte[] logo) throws Exception {
+    java.nio.file.Path image = java.nio.file.Files.createTempFile("logo", ".png");
+    try (org.odftoolkit.odfdom.doc.OdfTextDocument odt =
+            org.odftoolkit.odfdom.doc.OdfTextDocument.newTextDocument();
+        ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+      java.nio.file.Files.write(image, logo);
+      odt.newImage(image.toUri());
+      for (int i = 1; i <= 200; i++) {
+        odt.addText("Absatz " + i + ": Zahlbar innerhalb von 14 Tagen.");
+        odt.newParagraph();
+      }
+      org.odftoolkit.odfdom.doc.table.OdfTable table =
+          org.odftoolkit.odfdom.doc.table.OdfTable.newTable(odt, 5, 4);
+      for (int row = 0; row < 5; row++) {
+        for (int col = 0; col < 4; col++) {
+          table.getCellByPosition(col, row).setStringValue("Zelle " + row + "/" + col);
+        }
+      }
+      odt.save(out);
+      return out.toByteArray();
+    } finally {
+      java.nio.file.Files.deleteIfExists(image);
+    }
   }
 
   private static Throwable rootCause(Throwable t) {
