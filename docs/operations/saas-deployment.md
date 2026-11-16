@@ -40,7 +40,8 @@ The application stores no passwords. It knows the provider through `BILLERY_SECU
 The backend checks this at every start (`AppRoleGuard`) and accepts **only** this shape: `DB_USER`
 has no attribute besides `LOGIN` (no `SUPERUSER`, `BYPASSRLS`, `REPLICATION`, `CREATEROLE`,
 `CREATEDB`), its only role membership, direct or indirect, is `billery_app` (no owner role, no
-privileged or predefined `pg_*` role it could `SET ROLE` to), it owns no table, and the connection
+privileged or predefined `pg_*` role it could `SET ROLE` to), neither it nor `billery_app` owns a
+table, and the connection
 acts as the role it signed in as (no `options=-c role=…` in `DB_URL`, no `ALTER ROLE … SET role`).
 Anything else stops the start with the reasons, because row-level security could otherwise be
 skipped without any error. Typical cause: `DB_USER` set to the migration account; a monitoring

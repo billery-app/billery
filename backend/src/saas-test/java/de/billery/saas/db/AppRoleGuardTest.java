@@ -107,7 +107,9 @@ class AppRoleGuardTest {
     admin("ALTER TABLE billery_guard_scratch OWNER TO " + LOGIN);
 
     assertEquals(
-        List.of("role " + LOGIN + " owns 1 table(s): billery_guard_scratch"), problemsOfLogin());
+        List.of(
+            "role " + LOGIN + " owns or may act as the owner of 1 table(s): billery_guard_scratch"),
+        problemsOfLogin());
   }
 
   @Test
@@ -126,7 +128,21 @@ class AppRoleGuardTest {
             "role "
                 + LOGIN
                 + " may also act as (membership, SET ROLE) billery_guard_tableowner;"
-                + " only billery_app is allowed"),
+                + " only billery_app is allowed",
+            "role " + LOGIN + " owns or may act as the owner of 1 table(s): billery_guard_scratch"),
+        problemsOfLogin());
+  }
+
+  @Test
+  void aTableOwnedByTheAppRoleItselfIsRefused() throws SQLException {
+    // the login may SET ROLE billery_app and, as the owner, switch the policies off
+    admin("CREATE ROLE " + LOGIN + " LOGIN PASSWORD 'g' IN ROLE billery_app");
+    admin("CREATE TABLE billery_guard_scratch (id INT)");
+    admin("ALTER TABLE billery_guard_scratch OWNER TO billery_app");
+
+    assertEquals(
+        List.of(
+            "role " + LOGIN + " owns or may act as the owner of 1 table(s): billery_guard_scratch"),
         problemsOfLogin());
   }
 

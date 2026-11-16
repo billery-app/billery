@@ -28,7 +28,8 @@ import org.springframework.stereotype.Component;
  *   <li>the only role it is a member of, directly or indirectly, is {@code billery_app}, and that
  *       role has no such attribute either (so it can act as no table owner and no privileged or
  *       predefined role);
- *   <li>it owns no table in {@code public};
+ *   <li>neither it nor a role it is a member of ({@code billery_app} included) owns a table in
+ *       {@code public};
  *   <li>the connection acts as the role it signed in as ({@code current_user = session_user}): a
  *       switched role ({@code SET ROLE}, {@code options=-c role=…} in {@code DB_URL}, {@code ALTER
  *       ROLE … SET role}) could switch back with {@code RESET ROLE}. Everything above is therefore
@@ -71,11 +72,15 @@ public class AppRoleGuard {
           + " FROM pg_roles WHERE rolname <> session_user"
           + " AND pg_has_role(session_user, oid, 'MEMBER') ORDER BY rolname";
 
-  /** The tables of schema public the signed-in role owns. */
+  /**
+   * The tables of schema public the signed-in role owns or may act as the owner of: owned by itself
+   * or by a role it is a member of, {@code billery_app} included (it could {@code SET ROLE} to the
+   * owner and switch the policies off).
+   */
   private static final String OWNED_TABLES =
       "SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace"
           + " WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p')"
-          + " AND c.relowner = (SELECT oid FROM pg_roles WHERE rolname = session_user)"
+          + " AND pg_has_role(session_user, c.relowner, 'MEMBER')"
           + " ORDER BY c.relname";
 
   private final DataSource dataSource;
@@ -188,7 +193,13 @@ public class AppRoleGuard {
         }
       }
       if (!owned.isEmpty()) {
-        problems.add("role " + role + " owns " + owned.size() + " table(s): " + shortList(owned));
+        problems.add(
+            "role "
+                + role
+                + " owns or may act as the owner of "
+                + owned.size()
+                + " table(s): "
+                + shortList(owned));
       }
     }
     return problems;

@@ -106,7 +106,7 @@ policy, so a new table cannot be forgotten.
   expected shape of the role the connections signed in as (`session_user`): no attribute
   besides `LOGIN` (no superuser, `BYPASSRLS`, `REPLICATION`, `CREATEROLE`, `CREATEDB`), no
   role membership except `billery_app` (which has none of these attributes either), no
-  table owned, and acting as itself (`current_user = session_user`, so `RESET ROLE` gains
+  table owned by it or by `billery_app`, and acting as itself (`current_user = session_user`, so `RESET ROLE` gains
   nothing). It is an allow-list on purpose: every further privilege that reaches past RLS
   is refused without being named. Otherwise the backend refuses to start.
 
