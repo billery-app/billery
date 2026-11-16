@@ -37,12 +37,14 @@ The application stores no passwords. It knows the provider through `BILLERY_SECU
 | `billery_owner` | Flyway at start (`DB_MIGRATION_USER`) | owns the tables, no superuser, `BYPASSRLS` (row-level security is forced even on the owner) |
 | `billery_login` | the running application (`DB_USER`) | member of `billery_app`, no superuser, **no** `BYPASSRLS`: row-level security binds it |
 
-The backend checks this at every start (`AppRoleGuard`): if `DB_USER` is a superuser, has
-`BYPASSRLS`, is not a member of `billery_app`, or owns (or may act as the owner of) a table, it
-refuses to start and names the reasons; the same holds if it may switch (`SET ROLE`, membership)
-to a superuser or `BYPASSRLS` role, or if the connection signs in as one role and acts as another
-(`options=-c role=…` in `DB_URL`, `ALTER ROLE … SET role`): connect directly as `billery_login`, because row-level security would otherwise be skipped
-without any error. Typical cause: `DB_USER` set to the migration account.
+The backend checks this at every start (`AppRoleGuard`) and accepts **only** this shape: `DB_USER`
+has no attribute besides `LOGIN` (no `SUPERUSER`, `BYPASSRLS`, `REPLICATION`, `CREATEROLE`,
+`CREATEDB`), its only role membership, direct or indirect, is `billery_app` (no owner role, no
+privileged or predefined `pg_*` role it could `SET ROLE` to), it owns no table, and the connection
+acts as the role it signed in as (no `options=-c role=…` in `DB_URL`, no `ALTER ROLE … SET role`).
+Anything else stops the start with the reasons, because row-level security could otherwise be
+skipped without any error. Typical cause: `DB_USER` set to the migration account; a monitoring
+role or other extra grant on `billery_login` is refused too (give it to a separate login).
 
 ## What you need
 
