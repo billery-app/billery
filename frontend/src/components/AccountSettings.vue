@@ -1,6 +1,5 @@
 <template>
   <section class="settings-section" data-testid="account-settings">
-    <h2 class="section-title">Konto</h2>
     <div class="card account-card">
       <dl class="account-facts">
         <dt>Angemeldet als</dt>

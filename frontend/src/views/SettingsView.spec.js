@@ -1,11 +1,8 @@
-import { describe, it, expect, vi } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { describe, it, expect, afterEach } from 'vitest'
+import { mount } from '@vue/test-utils'
 import { createRouter, createMemoryHistory } from 'vue-router'
 import SettingsView from './SettingsView.vue'
-
-vi.mock('../services/backupService.js', () => ({
-  default: { getStatus: vi.fn(() => new Promise(() => {})) }
-}))
+import { session } from '../services/session.js'
 
 function mountWithRouter() {
   const router = createRouter({
@@ -15,251 +12,116 @@ function mountWithRouter() {
       { path: '/settings', component: SettingsView }
     ]
   })
-  return mount(SettingsView, {
-    global: {
-      plugins: [router]
-    }
-  })
+  return mount(SettingsView, { global: { plugins: [router] } })
 }
 
-describe('SettingsView', () => {
-  describe('Header', () => {
-    it('renders the page title', () => {
-      const wrapper = mountWithRouter()
-      expect(wrapper.find('.view-header h1').text()).toBe('Einstellungen')
-    })
+const cardIds = wrapper =>
+  wrapper.findAll('.settings-card').map(card => card.attributes('data-testid').replace('settings-card-', ''))
 
-    it('does not render the removed page subtitle', () => {
-      const wrapper = mountWithRouter()
-      expect(wrapper.find('.view-subtitle').exists()).toBe(false)
-    })
-  })
+/** Signs in a SaaS user with the given role in company 1. */
+function saasAs(role) {
+  session.mode = 'saas'
+  session.user = { id: 'u', email: 'anna@example.com' }
+  session.memberships = [{ tenantId: 1, tenantName: 'Eins GmbH', role }]
+  session.activeTenantId = 1
+}
 
-  describe('Section headings', () => {
-    it('renders the active section title', () => {
-      const wrapper = mountWithRouter()
-      const titles = wrapper.findAll('.section-title').map(el => el.text())
-      expect(titles).toContain('Allgemein')
-    })
-
-    it('groups the GoBD export under Daten & Export', () => {
-      const wrapper = mountWithRouter()
-      expect(wrapper.find('[data-testid="gobd-export"] .section-title').text()).toBe('Daten & Export')
-    })
-
-    it('renders the upcoming section title', () => {
-      const wrapper = mountWithRouter()
-      const titles = wrapper.findAll('.section-title').map(el => el.text())
-      expect(titles).toContain('Weitere Einstellungen')
-    })
-  })
-
-  describe('Active cards', () => {
-    it('renders exactly two clickable cards', () => {
-      const wrapper = mountWithRouter()
-      const cards = wrapper.findAll('.settings-card')
-      const activeCards = wrapper.findAll('.settings-card:not(.is-disabled)')
-      expect(activeCards).toHaveLength(2)
-    })
-
-    it('links to /owners', () => {
-      const wrapper = mountWithRouter()
-      const ownersLink = wrapper.findAll('a').find(a => a.attributes('href') === '/owners')
-      expect(ownersLink).toBeTruthy()
-    })
-
-    it('links to /templates', () => {
-      const wrapper = mountWithRouter()
-      const templatesLink = wrapper.findAll('a').find(a => a.attributes('href') === '/templates')
-      expect(templatesLink).toBeTruthy()
-    })
-
-    it('shows the Inhaber title', () => {
-      const wrapper = mountWithRouter()
-      const ownersLink = wrapper.findAll('a').find(a => a.attributes('href') === '/owners')
-      expect(ownersLink.text()).toContain('Inhaber')
-    })
-
-    it('shows the Dokumentvorlagen title', () => {
-      const wrapper = mountWithRouter()
-      const templatesLink = wrapper.findAll('a').find(a => a.attributes('href') === '/templates')
-      expect(templatesLink.text()).toContain('Dokumentvorlagen')
-    })
-
-    it('shows a chevron on active cards', () => {
-      const wrapper = mountWithRouter()
-      const activeCards = wrapper.findAll('.settings-card:not(.is-disabled)')
-      activeCards.forEach(card => {
-        expect(card.find('.card-chevron').exists()).toBe(true)
-      })
-    })
-  })
-
-  describe('Upcoming cards', () => {
-    it('renders exactly three placeholder cards', () => {
-      const wrapper = mountWithRouter()
-      const disabledCards = wrapper.findAll('.settings-card.is-disabled')
-      expect(disabledCards).toHaveLength(3)
-    })
-
-    it('marks placeholder cards as aria-disabled', () => {
-      const wrapper = mountWithRouter()
-      const disabledCards = wrapper.findAll('.settings-card.is-disabled')
-      disabledCards.forEach(card => {
-        expect(card.attributes('aria-disabled')).toBe('true')
-      })
-    })
-
-    it('does not make placeholder cards into router-links', () => {
-      const wrapper = mountWithRouter()
-      const disabledCards = wrapper.findAll('.settings-card.is-disabled')
-      disabledCards.forEach(card => {
-        expect(card.element.tagName).not.toBe('A')
-      })
-    })
-
-    it('shows the Demnächst verfügbar badge on every placeholder', () => {
-      const wrapper = mountWithRouter()
-      const disabledCards = wrapper.findAll('.settings-card.is-disabled')
-      disabledCards.forEach(card => {
-        const badge = card.find('.coming-soon-badge')
-        expect(badge.exists()).toBe(true)
-        expect(badge.text()).toBe('Demnächst verfügbar')
-      })
-    })
-
-    it('shows the Mail-Einstellungen entry', () => {
-      const wrapper = mountWithRouter()
-      const titles = wrapper.findAll('.is-disabled .card-title').map(el => el.text())
-      expect(titles.some(t => t.includes('Mail-Einstellungen'))).toBe(true)
-    })
-
-    it('shows the Benutzer & Profil entry', () => {
-      const wrapper = mountWithRouter()
-      const titles = wrapper.findAll('.is-disabled .card-title').map(el => el.text())
-      expect(titles.some(t => t.includes('Benutzer & Profil'))).toBe(true)
-    })
-
-    it('shows the backup section only in the desktop app, not as a placeholder', async () => {
-      const { session } = await import('../services/session.js')
-      const titles = mountWithRouter().findAll('.is-disabled .card-title').map(el => el.text())
-      expect(titles.some(t => t.includes('Backup'))).toBe(false)
-      expect(mountWithRouter().findComponent({ name: 'BackupSettings' }).exists()).toBe(false)
-
-      session.desktop = true
-      try {
-        expect(mountWithRouter().findComponent({ name: 'BackupSettings' }).exists()).toBe(true)
-      } finally {
-        session.desktop = false
-      }
-    })
-
-    it('shows the Hilfe entry', () => {
-      const wrapper = mountWithRouter()
-      const titles = wrapper.findAll('.is-disabled .card-title').map(el => el.text())
-      expect(titles.some(t => t.includes('Hilfe'))).toBe(true)
-    })
-
-    it('does not show a chevron on placeholder cards', () => {
-      const wrapper = mountWithRouter()
-      const disabledCards = wrapper.findAll('.settings-card.is-disabled')
-      disabledCards.forEach(card => {
-        expect(card.find('.card-chevron').exists()).toBe(false)
-      })
-    })
-  })
-
-  describe('Card structure', () => {
-    it('renders five cards total', () => {
-      const wrapper = mountWithRouter()
-      const cards = wrapper.findAll('.settings-card')
-      expect(cards).toHaveLength(5)
-    })
-
-    it('each card has an icon, title and description', () => {
-      const wrapper = mountWithRouter()
-      const cards = wrapper.findAll('.settings-card')
-      cards.forEach(card => {
-        expect(card.find('.card-icon').exists()).toBe(true)
-        expect(card.find('.card-title').exists()).toBe(true)
-        expect(card.find('.card-description').exists()).toBe(true)
-      })
-    })
-  })
+afterEach(() => {
+  session.mode = 'selfhost'
+  session.user = null
+  session.memberships = []
+  session.activeTenantId = null
+  session.desktop = false
 })
 
-/** An empty but complete ZIP: just the end-of-central-directory record. */
-const EMPTY_ZIP = new Uint8Array([0x50, 0x4b, 0x05, 0x06, ...new Array(18).fill(0)])
-
-describe('SettingsView — GoBD export', () => {
-  it('offers a period and downloads the export for it', async () => {
-    const { default: exportAPI } = await import('../services/exportService.js')
-    const spy = vi.spyOn(exportAPI, 'gobdExport').mockResolvedValue({ data: new Blob([EMPTY_ZIP]) })
-    window.URL.createObjectURL = vi.fn(() => 'blob:x')
-    window.URL.revokeObjectURL = vi.fn()
+describe('SettingsView', () => {
+  it('renders the page title and no subtitle', () => {
     const wrapper = mountWithRouter()
-
-    await wrapper.find('[data-testid="export-from"]').setValue('2026-01-01')
-    await wrapper.find('[data-testid="export-to"]').setValue('2026-03-31')
-    await wrapper.find('[data-testid="export-button"]').trigger('click')
-    await flushPromises()
-
-    expect(spy).toHaveBeenCalledWith('2026-01-01', '2026-03-31', true)
-    expect(window.URL.createObjectURL).toHaveBeenCalled()
-    expect(wrapper.find('.export-error').exists()).toBe(false)
-    spy.mockRestore()
+    expect(wrapper.find('h1').text()).toBe('Einstellungen')
+    expect(wrapper.find('.view-header p').exists()).toBe(false)
   })
 
-  it('does not save an export that broke off on the way', async () => {
-    const { default: exportAPI } = await import('../services/exportService.js')
-    // local entries arrived, the central directory did not
-    const spy = vi.spyOn(exportAPI, 'gobdExport').mockResolvedValue({ data: new Blob(['PK\x03\x04 belege.csv ...']) })
-    window.URL.createObjectURL = vi.fn(() => 'blob:x')
+  it('shows every area as a card, nothing else: no settings panels on the overview', () => {
     const wrapper = mountWithRouter()
-
-    await wrapper.find('[data-testid="export-button"]').trigger('click')
-    await flushPromises()
-
-    expect(window.URL.createObjectURL).not.toHaveBeenCalled()
-    expect(wrapper.find('.export-error').text()).toContain('unvollständig')
-    spy.mockRestore()
+    expect(wrapper.find('[data-testid="gobd-export"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="team-settings"]').exists()).toBe(false)
+    expect(wrapper.findAll('.settings-section').every(s => s.find('.settings-grid').exists())).toBe(true)
   })
 
-  it('refuses an inverted period without calling the server', async () => {
-    const { default: exportAPI } = await import('../services/exportService.js')
-    const spy = vi.spyOn(exportAPI, 'gobdExport')
+  it('groups the self-hosted areas under Allgemein, Daten and Weitere Einstellungen', () => {
     const wrapper = mountWithRouter()
+    expect(wrapper.findAll('.section-title').map(el => el.text())).toEqual([
+      'Allgemein',
+      'Daten',
+      'Weitere Einstellungen'
+    ])
+    expect(cardIds(wrapper)).toEqual(['owners', 'templates', 'export', 'mail', 'profile', 'help'])
+  })
 
-    await wrapper.find('[data-testid="export-from"]').setValue('2026-05-01')
-    await wrapper.find('[data-testid="export-to"]').setValue('2026-01-01')
-    await wrapper.find('[data-testid="export-button"]').trigger('click')
+  it('links the cards to their pages', () => {
+    const wrapper = mountWithRouter()
+    const href = id => wrapper.get(`[data-testid="settings-card-${id}"]`).attributes('href')
+    expect(href('owners')).toBe('/owners')
+    expect(href('templates')).toBe('/templates')
+    expect(href('export')).toBe('/settings/export')
+  })
 
-    expect(spy).not.toHaveBeenCalled()
-    expect(wrapper.find('.export-error').text()).toContain('Startdatum')
-    spy.mockRestore()
+  it('keeps the names the documentation uses', () => {
+    const wrapper = mountWithRouter()
+    expect(wrapper.get('[data-testid="settings-card-export"] .card-title').text()).toBe('Daten & Export')
+  })
+
+  it('shows upcoming areas as disabled cards without link or chevron', () => {
+    const wrapper = mountWithRouter()
+    const upcoming = wrapper.findAll('.settings-card.is-disabled')
+    expect(upcoming.map(card => card.find('.card-title').text())).toEqual([
+      'Mail-Einstellungen Demnächst verfügbar',
+      'Benutzer & Profil Demnächst verfügbar',
+      'Hilfe Demnächst verfügbar'
+    ])
+    upcoming.forEach(card => {
+      expect(card.attributes('aria-disabled')).toBe('true')
+      expect(card.element.tagName).toBe('DIV')
+      expect(card.find('.card-chevron').exists()).toBe(false)
+    })
+  })
+
+  it('gives every card an icon, a title and a description; active cards a chevron', () => {
+    const wrapper = mountWithRouter()
+    wrapper.findAll('.settings-card').forEach(card => {
+      expect(card.find('.card-icon').exists()).toBe(true)
+      expect(card.find('.card-title').exists()).toBe(true)
+      expect(card.find('.card-description').exists()).toBe(true)
+    })
+    wrapper.findAll('a.settings-card').forEach(card => {
+      expect(card.find('.card-chevron').exists()).toBe(true)
+    })
+  })
+
+  it('shows the backup card only in the desktop app', () => {
+    expect(cardIds(mountWithRouter())).not.toContain('backup')
+    session.desktop = true
+    const wrapper = mountWithRouter()
+    expect(cardIds(wrapper)).toContain('backup')
+    expect(wrapper.get('[data-testid="settings-card-backup"]').attributes('href')).toBe('/settings/backup')
   })
 })
 
 describe('SettingsView in SaaS mode', () => {
-  it('shows the account section to every role, the team section only to owners and admins', async () => {
-    const { session } = await import('../services/session.js')
-    session.mode = 'saas'
-    session.user = { id: 'u', email: 'anna@example.com' }
-    session.memberships = [{ tenantId: 1, tenantName: 'Eins GmbH', role: 'READER' }]
-    session.activeTenantId = 1
-    try {
-      const reader = mountWithRouter()
-      expect(reader.find('[data-testid="account-settings"]').exists()).toBe(true)
-      expect(reader.get('[data-testid="account-company"]').text()).toBe('Eins GmbH')
-      expect(reader.find('[data-testid="team-settings"]').exists()).toBe(false)
-    } finally {
-      session.mode = 'selfhost'
-      session.memberships = []
-      session.user = null
-    }
+  it('shows the account card to every role, the team card only to owners and admins', () => {
+    saasAs('READER')
+    const reader = cardIds(mountWithRouter())
+    expect(reader).toContain('account')
+    expect(reader).not.toContain('team')
+
+    saasAs('ADMIN')
+    expect(cardIds(mountWithRouter())).toEqual(
+      expect.arrayContaining(['account', 'team'])
+    )
   })
 
-  it('shows no account section in a self-hosted install', () => {
-    expect(mountWithRouter().find('[data-testid="account-settings"]').exists()).toBe(false)
+  it('never shows the desktop backup in SaaS', () => {
+    saasAs('OWNER')
+    expect(cardIds(mountWithRouter())).not.toContain('backup')
   })
 })

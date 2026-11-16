@@ -1,6 +1,5 @@
 <template>
   <section class="settings-section" data-testid="backup-settings">
-    <h2 class="section-title">Datensicherung</h2>
 
     <div class="card backup-card">
       <p v-if="error" class="backup-notice backup-notice--error" role="alert">{{ error }}</p>

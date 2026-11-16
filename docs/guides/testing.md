@@ -145,6 +145,7 @@ frontend/src/
 │   ├── AccountMenu.spec.js            # tenant switcher, sign-out
 │   ├── NoTenantNotice.spec.js         # accept an invitation, create a company
 │   ├── TeamSettings.spec.js           # members, invitations, role limits, closing
+│   ├── GobdExportSettings.spec.js     # GoBD export: period, download, cut-off archive refused
 │   ├── DocumentModal.spec.js
 │   ├── DocumentViewModal.spec.js      # action bar per document type and status, lifecycle strip and its caption, "Mehr" menu, payment / duplicate form, history
 │   ├── editor/                        # editor sub-components

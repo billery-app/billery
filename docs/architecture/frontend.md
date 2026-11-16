@@ -45,8 +45,8 @@ created at import time navigated back to the callback URL, which has no route (a
 after every sign-in). Unknown paths redirect to the dashboard. No global component registration, no Pinia /
 Vuex — state is local to views and modals, and shared state is held by the parent
 view that's open; the only global state is `services/session.js`. `session.desktop` (from
-`GET /api/config`, `desktop: true` in the Tauri app) shows the backup section of the settings
-(`BackupSettings.vue`, `services/backupService.js` → `/api/desktop/backups`): last backup with a
+`GET /api/config`, `desktop: true` in the Tauri app) shows the "Datensicherung" card of the settings
+(`/settings/backup`, `BackupSettings.vue`, `services/backupService.js` → `/api/desktop/backups`): last backup with a
 warning after 7 days, "Jetzt sichern", folder / number kept / backup on exit / encryption, and a
 restore of a listed backup at the next start. Its calls carry the window's per-launch token (`services/desktopToken.js`:
 `main.js` moves `#desktop-token=…` from the address into `sessionStorage` before anything else
@@ -58,7 +58,7 @@ counts and needs "Trotzdem wiederherstellen".
 - A `<nav class="navbar">` with the app title, the search button (which
   opens `SpotlightSearch.vue`), and links to the main routes
   (`/customers`, `/invoices`, `/articles-services`).
-- An "Einstellungen" `router-link` to `/settings`. The settings view is the single entry point for owner management, templates, and any future settings surface; the navbar has no dropdown.
+- An "Einstellungen" `router-link` to `/settings`. The settings view is the single entry point for owner management, templates, and any future settings surface; the navbar has no dropdown. **The overview shows only cards**, grouped (Allgemein, Daten, Weitere Einstellungen); every area is one card. `utils/settingsAreas.js` describes the areas once (title, icon, description, target, `available()` for mode and role, `upcoming` for "Demnächst verfügbar"); the overview (`SettingsView`) and the router guard both use it, so an area that is hidden cannot be opened by its address either (`guardSettingsArea` leads back to `/settings`). A card opens its own view (`/owners`, `/templates`) or a sub-page `/settings/<id>` (`SettingsAreaView`: back link, visible title, the area's component: `account` → `AccountSettings`, `team` → `TeamSettings`, `export` → `GobdExportSettings`, `backup` → `BackupSettings`). A new area is an entry in `settingsAreas.js` plus, for a sub-page, a component in `SettingsAreaView` and its id in the router; the card titles are the names the documentation uses ("Einstellungen → Team & Zugriff").
 - An `AccountMenu` at the end of the navbar, only in SaaS mode, with actions only: the tenant
   switcher (more than one company), open invitations to accept, sign-out. Who is signed in, the
   active company and the role are shown in Settings → Konto (`AccountSettings`, every role),
@@ -158,10 +158,13 @@ development-only and are absent from production builds.
 | `/owners` | `OwnersView` |
 | `/templates` | `TemplatesView` |
 | `/search` | `SearchView` |
-| `/settings` | `SettingsView` |
+| `/settings` | `SettingsView` (cards only) |
+| `/settings/account`, `/settings/team`, `/settings/export`, `/settings/backup` | `SettingsAreaView` (`meta.area`; guard `guardSettingsArea`) |
 
-There are no route guards, no nested routes, no per-route meta. Adding a
-new top-level page is a one-line change plus a new view file.
+The settings sub-pages are the only nested routes: `/settings` has no component of its own, so
+the navbar's "Einstellungen" stays highlighted on every sub-page, and each sub-page has the
+guard that sends an area not available in this mode or role back to the overview. Adding a new
+top-level page is a one-line change plus a new view file.
 
 ## Sign-in (SaaS mode)
 

@@ -1,6 +1,5 @@
 <template>
   <section class="settings-section team" data-testid="team-settings">
-    <h2 class="section-title">Team &amp; Zugriff</h2>
 
     <div class="card team-card">
       <p v-if="error" class="notice notice-error" role="alert">{{ error }}</p>
