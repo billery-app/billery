@@ -22,6 +22,10 @@ import org.springframework.stereotype.Component;
  * nothing else would notice. The backend must connect as a login role that is a member of {@code
  * billery_app} and nothing more (see {@code docs/operations/saas-deployment.md}).
  *
+ * <p>Everything is checked for the role the connection signed in as ({@code session_user}), not
+ * only the role it currently acts as: a connection that switched roles can switch back with {@code
+ * RESET ROLE}, so such a connection is refused as well.
+ *
  * <p>The check runs once while the application context starts, before the server accepts requests.
  * It reads only the system catalogs, so it needs no tenant.
  */
@@ -36,11 +40,11 @@ public class AppRoleGuard {
   private static final String OWNED_TABLES =
       " JOIN pg_namespace n ON n.oid = c.relnamespace"
           + " WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p')"
-          + " AND pg_has_role(current_user, c.relowner, 'MEMBER')";
+          + " AND pg_has_role(session_user, c.relowner, 'MEMBER')";
 
   private static final String ROLE_FACTS =
-      "SELECT current_user, r.rolsuper, r.rolbypassrls,"
-          + " COALESCE((SELECT pg_has_role(current_user, a.oid, 'MEMBER')"
+      "SELECT session_user, r.rolsuper, r.rolbypassrls,"
+          + " COALESCE((SELECT pg_has_role(session_user, a.oid, 'MEMBER')"
           + " FROM pg_roles a WHERE a.rolname = '"
           + APP_ROLE
           + "'), false),"
@@ -53,9 +57,13 @@ public class AppRoleGuard {
           // roles it may switch to with SET ROLE that skip row-level security
           + " (SELECT string_agg(o.rolname || CASE WHEN o.rolsuper THEN ' (superuser)'"
           + " ELSE ' (BYPASSRLS)' END, ', ' ORDER BY o.rolname) FROM pg_roles o"
-          + " WHERE o.rolname <> current_user AND (o.rolsuper OR o.rolbypassrls)"
-          + " AND pg_has_role(current_user, o.oid, 'MEMBER'))"
-          + " FROM pg_roles r WHERE r.rolname = current_user";
+          + " WHERE o.rolname <> session_user AND (o.rolsuper OR o.rolbypassrls)"
+          + " AND pg_has_role(session_user, o.oid, 'MEMBER'))"
+          + ","
+          // a connection whose role was switched (SET ROLE, role in the URL's options, ALTER ROLE
+          // ... SET role) can switch back with RESET ROLE
+          + " current_user"
+          + " FROM pg_roles r WHERE r.rolname = session_user";
 
   private final DataSource dataSource;
 
@@ -130,6 +138,17 @@ public class AppRoleGuard {
       String privileged = rs.getString(7);
       if (privileged != null) {
         problems.add("role " + role + " may switch (SET ROLE) to " + privileged);
+      }
+      String activeRole = rs.getString(8);
+      if (!role.equals(activeRole)) {
+        problems.add(
+            "the connection signed in as "
+                + role
+                + " but acts as "
+                + activeRole
+                + " (SET ROLE, a role in the URL's options or ALTER ROLE ... SET role);"
+                + " RESET ROLE would return to "
+                + role);
       }
     }
     return problems;

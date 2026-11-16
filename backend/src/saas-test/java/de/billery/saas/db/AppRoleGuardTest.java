@@ -13,6 +13,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.List;
+import java.util.Properties;
 import javax.sql.DataSource;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
@@ -140,6 +141,28 @@ class AppRoleGuardTest {
                 + adminRole().replace("\"", "")
                 + " (superuser)"),
         problems::toString);
+  }
+
+  @Test
+  void aConnectionThatSignedInAsAdminAndSwitchedToTheAppRoleIsRefused() throws SQLException {
+    // the role set in the connection options, as an operator might put it into DB_URL
+    Properties options = new Properties();
+    options.setProperty("options", "-c role=" + SaasTestSupport.APP_LOGIN);
+    try (Connection connection = DriverManager.getConnection(ADMIN_URL, options)) {
+      List<String> problems = AppRoleGuard.problems(connection);
+      String admin = adminRole().replace("\"", "");
+      assertTrue(
+          problems.contains(
+              "the connection signed in as "
+                  + admin
+                  + " but acts as "
+                  + SaasTestSupport.APP_LOGIN
+                  + " (SET ROLE, a role in the URL's options or ALTER ROLE ... SET role);"
+                  + " RESET ROLE would return to "
+                  + admin),
+          problems::toString);
+      assertTrue(problems.contains("role " + admin + " is a superuser"), problems::toString);
+    }
   }
 
   private static List<String> problemsOf(String role) throws SQLException {
