@@ -248,7 +248,12 @@ the repo no longer holds a generated SVG for it. See
   an ODT with LibreOffice-style markup built in the test, change tracking,
   nesting depth, the empty document, export limits),
   `api/controller/DocumentControllerTest` (export → import, refusals, file
-  name), `FileSecurityServiceTest` (archive limits) and, for the mapping to
+  name), `FileSecurityServiceTest` (archive limits; a realistic template with
+  a logo passes them in `DocumentConversionServiceTest`),
+  `DocumentImportXmlAttackTest` (XXE, external DTDs, parameter entities and
+  billion laughs in every XML part: refused by the DOCTYPE check, and the
+  libraries alone resolve nothing either; a local HTTP server counts any
+  request) and, for the mapping to
   blocks, `utils/documentExchange.spec.js`, `TemplateStartModal.spec.js` and
   `TemplatesView.spec.js`. The fixtures are hand-made or written by the app,
   not by Word or LibreOffice.

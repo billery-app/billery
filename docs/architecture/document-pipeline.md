@@ -336,10 +336,18 @@ What `DocumentConversionService` reads (POI for DOCX, odfdom for ODT):
   `getTextContent()` for the `office:text` root. **Elements are matched by namespace URI and
   local name, never by prefix:** prefixes are free in XML, and odfdom keeps the first prefix it
   saw for a namespace for the whole process.
-- **Nesting depth is checked before parsing.** odfdom and POI both recurse over the XML nesting,
-  so a deeply nested upload overflowed the stack inside the library. `checkXmlDepth` streams every
-  `.xml` / `.rels` part with StAX (DTDs and external entities off) and refuses more than
-  `MAX_ODT_DEPTH` (100) levels; the archive limits come from `FileSecurityService`.
+- **Every XML part is checked before parsing** (`checkXmlParts`, StAX with DTDs and external
+  entities off, every `.xml` / `.rels` part):
+  - **No `DOCTYPE`.** OOXML and ODF never use a DTD, so a part that declares one is refused
+    before POI or odfdom reads the file: external entities (files, URLs), external DTDs,
+    parameter entities and entity expansion cannot reach a parser. POI (DOCTYPE disallowed, also
+    for parts with other names) and odfdom (resolves nothing) hold on their own as well;
+    `DocumentImportXmlAttackTest` proves both layers.
+  - **Nesting depth.** odfdom and POI both recurse over the XML nesting, so a deeply nested
+    upload overflowed the stack inside the library; more than `MAX_ODT_DEPTH` (100) levels are
+    refused.
+  The archive limits come from `FileSecurityService`; a realistic template with a logo and a
+  table passes them (`DocumentConversionServiceTest`).
 - **A file without any text** answers 400 with "Das Dokument enthält keinen Text; es wurde keine
   Vorlage angelegt." (`EmptyDocumentException`); any other unreadable file 400 with a German
   message naming the accepted formats.
