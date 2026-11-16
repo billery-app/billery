@@ -32,7 +32,13 @@ class AppRoleGuardTest {
 
   /** Roles a test creates; dropped after each test. */
   private static final List<String> ROLES =
-      List.of("billery_guard_bypass", "billery_guard_outsider", "billery_guard_owner");
+      List.of(
+          "billery_guard_bypass",
+          "billery_guard_outsider",
+          "billery_guard_owner",
+          "billery_guard_tableowner",
+          "billery_guard_switcher",
+          "billery_guard_privileged");
 
   @BeforeAll
   static void setup() throws SQLException {
@@ -46,6 +52,7 @@ class AppRoleGuardTest {
 
   @AfterEach
   void dropRoles() throws SQLException {
+    admin("DROP TABLE IF EXISTS billery_guard_scratch");
     for (String role : ROLES) {
       admin("DROP ROLE IF EXISTS " + role);
     }
@@ -90,17 +97,49 @@ class AppRoleGuardTest {
   }
 
   @Test
-  void aRoleThatMayActAsTheTableOwnerIsRefused() throws SQLException {
-    admin("CREATE ROLE billery_guard_owner LOGIN PASSWORD 'g' IN ROLE billery_app");
-    // Membership in the owner's role gives the owner's rights over the tables (SET ROLE).
-    admin("GRANT " + tableOwner() + " TO billery_guard_owner");
+  void aRoleThatMayActAsATableOwnerIsRefused() throws SQLException {
+    // an ordinary role (no superuser, no BYPASSRLS) that owns a table in public
+    admin("CREATE ROLE billery_guard_tableowner NOLOGIN");
+    admin("CREATE TABLE billery_guard_scratch (id INT)");
+    admin("ALTER TABLE billery_guard_scratch OWNER TO billery_guard_tableowner");
+    // membership in the owner's role gives the owner's rights over the table (SET ROLE)
+    admin(
+        "CREATE ROLE billery_guard_owner LOGIN PASSWORD 'g'"
+            + " IN ROLE billery_app, billery_guard_tableowner");
 
-    List<String> problems = problemsOf("billery_guard_owner");
-    assertEquals(1, problems.size(), problems::toString);
+    assertEquals(
+        List.of(
+            "role billery_guard_owner owns or may act as the owner of 1 table(s), e.g."
+                + " billery_guard_scratch"),
+        problemsOf("billery_guard_owner"));
+  }
+
+  @Test
+  void aRoleThatMaySwitchToARoleWithBypassRlsIsRefused() throws SQLException {
+    admin("CREATE ROLE billery_guard_privileged NOLOGIN BYPASSRLS");
+    admin(
+        "CREATE ROLE billery_guard_switcher LOGIN PASSWORD 'g'"
+            + " IN ROLE billery_app, billery_guard_privileged");
+
+    assertEquals(
+        List.of(
+            "role billery_guard_switcher may switch (SET ROLE) to billery_guard_privileged"
+                + " (BYPASSRLS)"),
+        problemsOf("billery_guard_switcher"));
+  }
+
+  @Test
+  void aRoleThatMaySwitchToASuperuserIsRefused() throws SQLException {
+    admin("CREATE ROLE billery_guard_switcher LOGIN PASSWORD 'g' IN ROLE billery_app");
+    admin("GRANT " + adminRole() + " TO billery_guard_switcher");
+
+    List<String> problems = problemsOf("billery_guard_switcher");
     assertTrue(
-        problems.get(0).startsWith("role billery_guard_owner owns or may act as the owner of "),
-        problems.get(0));
-    assertTrue(problems.get(0).contains("e.g. "), problems.get(0));
+        problems.contains(
+            "role billery_guard_switcher may switch (SET ROLE) to "
+                + adminRole().replace("\"", "")
+                + " (superuser)"),
+        problems::toString);
   }
 
   private static List<String> problemsOf(String role) throws SQLException {
@@ -112,11 +151,11 @@ class AppRoleGuardTest {
     }
   }
 
-  private static String tableOwner() throws SQLException {
+  /** The (superuser) role of the admin connection, quoted. */
+  private static String adminRole() throws SQLException {
     try (Connection admin = DriverManager.getConnection(ADMIN_URL);
         Statement stmt = admin.createStatement();
-        ResultSet rs =
-            stmt.executeQuery("SELECT tableowner FROM pg_tables WHERE tablename = 'invoice'")) {
+        ResultSet rs = stmt.executeQuery("SELECT current_user")) {
       rs.next();
       return "\"" + rs.getString(1) + "\"";
     }

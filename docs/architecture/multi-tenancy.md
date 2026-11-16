@@ -104,7 +104,8 @@ policy, so a new table cannot be forgotten.
   skipped. A test connects as the application role and proves tenant A cannot see
   tenant B's rows with plain SQL. At start `saas.db.AppRoleGuard` checks the role of the
   application's connections (no superuser, no `BYPASSRLS`, member of `billery_app`, owner
-  of no table, also not through role membership) and refuses to start otherwise.
+  of no table, and no membership that would let it switch to a table owner, a superuser or
+  a `BYPASSRLS` role) and refuses to start otherwise.
 
 ## Request flow (SaaS)
 

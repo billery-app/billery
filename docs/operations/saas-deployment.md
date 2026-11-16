@@ -39,7 +39,8 @@ The application stores no passwords. It knows the provider through `BILLERY_SECU
 
 The backend checks this at every start (`AppRoleGuard`): if `DB_USER` is a superuser, has
 `BYPASSRLS`, is not a member of `billery_app`, or owns (or may act as the owner of) a table, it
-refuses to start and names the reasons, because row-level security would otherwise be skipped
+refuses to start and names the reasons; the same holds if it may switch (`SET ROLE`, membership)
+to a superuser or `BYPASSRLS` role, because row-level security would otherwise be skipped
 without any error. Typical cause: `DB_USER` set to the migration account.
 
 ## What you need

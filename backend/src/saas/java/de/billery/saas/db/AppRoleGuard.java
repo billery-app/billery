@@ -16,7 +16,8 @@ import org.springframework.stereotype.Component;
  *
  * <p>The isolation is forced row-level security. A role that is a superuser or has {@code
  * BYPASSRLS} skips every policy, so every tenant would see every other tenant's data, without any
- * error. A role that owns a table, or may act as its owner, can switch the policies off. Both are
+ * error, and so does a role that may switch to such a role ({@code SET ROLE}, membership). A role
+ * that owns a table, or may act as its owner, can switch the policies off. All of these are
  * configuration mistakes (connecting with the migration account, a wrong {@code DB_USER}) that
  * nothing else would notice. The backend must connect as a login role that is a member of {@code
  * billery_app} and nothing more (see {@code docs/operations/saas-deployment.md}).
@@ -48,7 +49,12 @@ public class AppRoleGuard {
           + "),"
           + " (SELECT string_agg(t.relname, ', ') FROM (SELECT c.relname FROM pg_class c"
           + OWNED_TABLES
-          + " ORDER BY c.relname LIMIT 5) t)"
+          + " ORDER BY c.relname LIMIT 5) t),"
+          // roles it may switch to with SET ROLE that skip row-level security
+          + " (SELECT string_agg(o.rolname || CASE WHEN o.rolsuper THEN ' (superuser)'"
+          + " ELSE ' (BYPASSRLS)' END, ', ' ORDER BY o.rolname) FROM pg_roles o"
+          + " WHERE o.rolname <> current_user AND (o.rolsuper OR o.rolbypassrls)"
+          + " AND pg_has_role(current_user, o.oid, 'MEMBER'))"
           + " FROM pg_roles r WHERE r.rolname = current_user";
 
   private final DataSource dataSource;
@@ -120,6 +126,10 @@ public class AppRoleGuard {
                 + owned
                 + " table(s), e.g. "
                 + rs.getString(6));
+      }
+      String privileged = rs.getString(7);
+      if (privileged != null) {
+        problems.add("role " + role + " may switch (SET ROLE) to " + privileged);
       }
     }
     return problems;
