@@ -8,6 +8,8 @@ import OwnersView from '../views/OwnersView.vue'
 import TemplatesView from '../views/TemplatesView.vue'
 import SearchView from '../views/SearchView.vue'
 import SettingsView from '../views/SettingsView.vue'
+import SettingsAreaView from '../views/SettingsAreaView.vue'
+import { guardSettingsArea } from '../utils/settingsAreas.js'
 
 const routes = [
   { path: '/', component: DashboardView },
@@ -18,7 +20,21 @@ const routes = [
   { path: '/owners', component: OwnersView },
   { path: '/templates', component: TemplatesView },
   { path: '/search', component: SearchView },
-  { path: '/settings', component: SettingsView },
+  // The settings overview and its sub-pages. The parent has no component of its own, so the
+  // navigation's "Einstellungen" stays highlighted on every sub-page; an area that does not apply
+  // (mode, role) leads back to the overview (utils/settingsAreas.js).
+  {
+    path: '/settings',
+    children: [
+      { path: '', component: SettingsView },
+      ...['account', 'team', 'export', 'backup'].map(area => ({
+        path: area,
+        component: SettingsAreaView,
+        meta: { area },
+        beforeEnter: guardSettingsArea
+      }))
+    ]
+  },
   // An unknown address (an old bookmark, a stale sign-in callback) shows the dashboard, not an
   // empty page.
   { path: '/:pathMatch(.*)*', redirect: '/' }

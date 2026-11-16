@@ -114,6 +114,22 @@ test('the main screens load without errors', async ({ page }) => {
   expect(problems).toEqual([])
 })
 
+test('the settings cards lead to their pages and back', async ({ page }) => {
+  const problems = watch(page)
+  await page.goto('/settings')
+  await page.getByTestId('settings-card-export').click()
+  await expect(page).toHaveURL(/\/settings\/export$/)
+  await expect(page.getByRole('heading', { name: 'Daten & Export', level: 1 })).toBeVisible()
+  await expect(page.getByTestId('export-button')).toBeVisible()
+  await page.getByTestId('settings-back').click()
+  await expect(page).toHaveURL(/\/settings$/)
+  // an area that does not apply here (self-hosted: no team) leads back to the overview
+  await page.goto('/settings/team')
+  await expect(page).toHaveURL(/\/settings$/)
+  await page.waitForLoadState('networkidle')
+  expect(problems).toEqual([])
+})
+
 test('the equipment amortisation opens the usage dialog', async ({ page }) => {
   const problems = watch(page)
   await page.goto('/articles-services')
