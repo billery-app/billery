@@ -31,6 +31,21 @@ import org.springframework.test.context.ActiveProfiles;
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class SaasApiTest extends SaasApiTestBase {
 
+  @org.springframework.beans.factory.annotation.Autowired
+  private de.billery.saas.storage.TenantFileStorage fileStorage;
+
+  /**
+   * The uploads go through the store that counts its failures (the alert BilleryFileStoreErrors).
+   */
+  @Test
+  void theUploadsGoThroughTheCountingStore() throws Exception {
+    java.lang.reflect.Field store =
+        de.billery.saas.storage.TenantFileStorage.class.getDeclaredField("store");
+    store.setAccessible(true);
+
+    assertEquals("MeteredObjectStore", store.get(fileStorage).getClass().getSimpleName());
+  }
+
   @Test
   void healthIsOpenAndTheApiNeedsAValidToken() throws Exception {
     assertEquals(200, get("/api/health", null, null).status());

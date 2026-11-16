@@ -33,6 +33,30 @@ tests:
       # the GoBD export is slow by design and must not count
       - series: 'http_server_requests_seconds_bucket{application="billery", uri="/api/export/gobd", le="+Inf"}'
         values: '0+600x30'
+      # the uploads volume fills up: 20 % free, then 10 %, then 3 %; the logs volume stays fine;
+      # a path that does not exist reports 0 / 0 and must stay quiet
+      - series: 'disk_free_bytes{application="billery", path="/app/uploads"}'
+        values: '20x5 10x10 3x15'
+      - series: 'disk_total_bytes{application="billery", path="/app/uploads"}'
+        values: '100x30'
+      - series: 'disk_free_bytes{application="billery", path="/app/logs"}'
+        values: '80x30'
+      - series: 'disk_total_bytes{application="billery", path="/app/logs"}'
+        values: '100x30'
+      - series: 'disk_free_bytes{application="billery", path="/nowhere"}'
+        values: '0x30'
+      - series: 'disk_total_bytes{application="billery", path="/nowhere"}'
+        values: '0x30'
+      # the bucket refuses writes from minute 5 on; reads keep working
+      - series: 'billery_files_store_errors_total{application="billery", operation="put"}'
+        values: '0x5 1 2 3 4 5 6 7 8 9 10'
+      - series: 'billery_files_store_errors_total{application="billery", operation="open"}'
+        values: '0x30'
+      # a host volume (node_exporter) with 10 % free
+      - series: 'node_filesystem_avail_bytes{fstype="ext4", mountpoint="/var/lib/docker"}'
+        values: '10x30'
+      - series: 'node_filesystem_size_bytes{fstype="ext4", mountpoint="/var/lib/docker"}'
+        values: '100x30'
     alert_rule_test:
       - eval_time: 5m
         alertname: BilleryMetricsMissing
@@ -86,6 +110,45 @@ tests:
             exp_annotations:
               summary: "Many requests hit the invitation_mail limit per ip"
               description: "More than 10 refusals in an hour. The limits hold; check the proxy log for the source and block it there if it goes on."
+      - eval_time: 3m
+        alertname: BilleryWatchdog
+        exp_alerts:
+          - exp_labels: {severity: none}
+            exp_annotations:
+              summary: "The alerting works"
+              description: "Always firing on purpose. If the dead man's switch stops receiving it, Prometheus or Alertmanager is down."
+      # 10 % free from minute 6, for 10 minutes: fires at 16
+      - eval_time: 17m
+        alertname: BilleryDiskSpaceLow
+        exp_alerts:
+          - exp_labels: {severity: warning, path: /app/uploads}
+            exp_annotations:
+              summary: "Less than 15 % free on /app/uploads"
+              description: "Uploads or logs will fail when it is full. Free space or grow the volume; check the backups next to it (check.sh)."
+      - eval_time: 17m
+        alertname: BilleryDiskSpaceCritical
+        exp_alerts: []
+      - eval_time: 25m
+        alertname: BilleryDiskSpaceCritical
+        exp_alerts:
+          - exp_labels: {severity: critical, path: /app/uploads}
+            exp_annotations:
+              summary: "Less than 5 % free on /app/uploads"
+              description: "Uploads and logs fail soon. Free space now."
+      - eval_time: 8m
+        alertname: BilleryFileStoreErrors
+        exp_alerts:
+          - exp_labels: {severity: warning, operation: put}
+            exp_annotations:
+              summary: "The file store fails (put)"
+              description: "Uploads or logos cannot be stored or read. Check the bucket (credentials, reachability) or the uploads volume; the backend log has the cause."
+      - eval_time: 15m
+        alertname: HostDiskSpaceLow
+        exp_alerts:
+          - exp_labels: {severity: warning, fstype: ext4, mountpoint: /var/lib/docker}
+            exp_annotations:
+              summary: "Less than 15 % free on /var/lib/docker"
+              description: "The database stops writing and backups fail when it is full. Free space or grow the disk; delete old local backups only if copies exist off the server."
   - interval: 1m
     input_series:
       - series: 'up{job="billery"}'
@@ -106,6 +169,16 @@ tests:
         values: '0+60x30'
       - series: 'http_server_requests_seconds_bucket{application="billery", uri="/api/customers/page", le="+Inf"}'
         values: '0+60x30'
+      - series: 'disk_free_bytes{application="billery", path="/app/uploads"}'
+        values: '60x30'
+      - series: 'disk_total_bytes{application="billery", path="/app/uploads"}'
+        values: '100x30'
+      - series: 'billery_files_store_errors_total{application="billery", operation="put"}'
+        values: '0x30'
+      - series: 'node_filesystem_avail_bytes{fstype="ext4", mountpoint="/var/lib/docker"}'
+        values: '50x30'
+      - series: 'node_filesystem_size_bytes{fstype="ext4", mountpoint="/var/lib/docker"}'
+        values: '100x30'
     alert_rule_test:
       - {eval_time: 20m, alertname: BilleryMetricsMissing, exp_alerts: []}
       - {eval_time: 20m, alertname: BilleryServerErrors, exp_alerts: []}
@@ -114,3 +187,7 @@ tests:
       - {eval_time: 20m, alertname: BillerySlowRequests, exp_alerts: []}
       - {eval_time: 20m, alertname: BilleryAbuseLimitReached, exp_alerts: []}
       - {eval_time: 20m, alertname: BilleryAbuseSuspected, exp_alerts: []}
+      - {eval_time: 20m, alertname: BilleryDiskSpaceLow, exp_alerts: []}
+      - {eval_time: 20m, alertname: BilleryDiskSpaceCritical, exp_alerts: []}
+      - {eval_time: 20m, alertname: BilleryFileStoreErrors, exp_alerts: []}
+      - {eval_time: 20m, alertname: HostDiskSpaceLow, exp_alerts: []}

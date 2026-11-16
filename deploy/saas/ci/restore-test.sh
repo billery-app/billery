@@ -70,6 +70,25 @@ check_report "$report"
 grep -q 'file archive readable' <<< "$report" || fail "the copy on the storage came without files: $report"
 echo "ok    both copies restore into a throwaway database"
 
+# The heartbeat of the restore test (a dead man's switch notices a missed or failed test): a
+# successful test calls the URL and is recorded for check.sh, a failed one calls <url>/fail.
+beats="$dir/beats.log"
+(cd "$dir" && exec python3 -m http.server 18096 --bind 127.0.0.1 > "$beats" 2>&1) &
+listener=$!
+sleep 1
+rm -f "$BACKUP_DIR/.last-restore-test"
+RESTORE_TEST_HEALTHCHECK_URL=http://127.0.0.1:18096/ping \
+  ./restore.sh --identity "$keys/key.txt" "$dump" > /dev/null 2>&1 || fail "the restore test failed"
+[[ -s "$BACKUP_DIR/.last-restore-test" ]] || fail "the successful restore test was not recorded"
+if RESTORE_TEST_HEALTHCHECK_URL=http://127.0.0.1:18096/ping \
+  ./restore.sh --identity "$keys/other.txt" "$dump" > /dev/null 2>&1; then
+  fail "a restore test with the wrong key succeeded"
+fi
+kill "$listener"
+grep -q '"GET /ping HTTP' "$beats" || fail "the successful restore test did not call its heartbeat URL"
+grep -q '"GET /ping/fail HTTP' "$beats" || fail "the failed restore test did not call <url>/fail"
+echo "ok    the restore test calls its heartbeat URL (/fail when it fails) and is recorded for check.sh"
+
 before=$(sql 'SELECT count(*) FROM customer')
 sql 'TRUNCATE customer CASCADE' > /dev/null
 [[ "$(sql 'SELECT count(*) FROM customer')" == 0 ]] || fail "the data was not changed for the test"

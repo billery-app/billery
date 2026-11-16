@@ -152,12 +152,16 @@ so going back to an older image after a migration means restoring the backup.
 [deployment record](./saas-data-lifecycle.md#deployment-record) (who the operator is, where the
 data is, which periods you promise) and name the people for the roles in
 [`saas-incident-response.md`](./saas-incident-response.md#roles). Closed companies are purged by
-hand after their export window; put the monthly check into your calendar.
+hand after their export window; put the monthly check into your calendar (`check.sh` warns about
+overdue ones). Set up the heartbeats: `BACKUP_HEALTHCHECK_URL` for the nightly backup,
+`RESTORE_TEST_HEALTHCHECK_URL` for the monthly restore test, and, with Prometheus, the watchdog
+alert to a dead man's switch ([`ops-gotchas.md`](./ops-gotchas.md#health-checks-monitoring-and-resources)).
 
 ## What this setup does not have yet
 
-One server is one point of failure. Monitoring is an external uptime check of `/api/health/ready` plus, optionally, Prometheus metrics with
-ready-made alert rules (`BILLERY_METRICS_PORT`, `monitoring/`; see
+One server is one point of failure. Monitoring is an external uptime check of `/api/health/ready` (and
+of the provider's discovery URL) plus, optionally, Prometheus metrics with ready-made alert rules,
+a watchdog for the alerting itself and an Alertmanager example (`BILLERY_METRICS_PORT`, `monitoring/`; see
 [`ops-gotchas.md`](./ops-gotchas.md#health-checks-monitoring-and-resources)). There are no
 tariffs, trial period or billing; per-tenant request limits exist (`BILLERY_LIMITS_*`, see `docs/reference/env-vars.md`). The kit's
 Caddy writes no access log, and the application does not record sign-ins, reads or exports (see

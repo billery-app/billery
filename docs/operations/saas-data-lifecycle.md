@@ -106,7 +106,9 @@ The export keeps working after a company was closed, until it is purged.
    promise into your terms and into the deployment record. During the window the operator can
    reopen the company on the owner's request.
 4. After the window the tenant is purged (next section). There is no automatic job: the operator
-   runs the check below on a fixed day, for example once a month.
+   runs the check below on a fixed day, for example once a month. `check.sh` reminds: it warns
+   about every closed company past `PURGE_AFTER_DAYS` (90, set it to the period you promise) that
+   is not purged yet, by id only.
 
 A suspended company (unpaid, abuse) is not on this clock: `closed_at` stays empty until it is
 closed.

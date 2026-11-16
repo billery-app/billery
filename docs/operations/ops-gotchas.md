@@ -243,19 +243,49 @@ customers in error messages. Only the operator of the host reads them.
   when the database is back.
 - **Alerting:** point an external uptime monitor (for example Uptime Kuma or healthchecks.io) at
   `https://<host>/api/health/ready` and alert after two failed checks. That covers an outage of the
-  application, the database, TLS or DNS.
+  application, the database, TLS or DNS. Let the same monitor warn about the TLS certificate's
+  expiry (most can; `check.sh` warns below 14 days too): the proxy renews it itself, and a failed
+  renewal otherwise shows only when the certificate has expired.
+- **Identity provider:** a second uptime check on the issuer's discovery URL
+  (`<issuer>/.well-known/openid-configuration`). When the provider is down nobody can sign in,
+  while `/api/health/ready` still answers 200: the backend itself is fine.
+- **Heartbeats (dead man's switches)** for what must happen regularly; each reports success, and
+  `/fail` appended on failure, so a check at healthchecks.io or similar also notices a run that
+  never happened:
+  - the nightly backup: `BACKUP_HEALTHCHECK_URL` (`backup.sh`; [`backup-restore.md`](./backup-restore.md));
+  - the monthly restore test: `RESTORE_TEST_HEALTHCHECK_URL` (`restore.sh` in test mode, period
+    about 35 days); `check.sh` also warns when `.last-restore-test` in the backup folder is older
+    than `RESTORE_TEST_MAX_AGE_DAYS` (35);
+  - the alerting itself: the alert `BilleryWatchdog` always fires; route it to a dead man's switch
+    (`deploy/saas/monitoring/alertmanager.example.yml`), so a stopped Prometheus or Alertmanager is
+    noticed.
+  The monthly purge check of closed companies has no job to report: `check.sh` warns about closed
+  companies past their export window (`PURGE_AFTER_DAYS`, 90) that are not purged yet
+  ([`saas-data-lifecycle.md`](./saas-data-lifecycle.md)).
+- **Disk space:** a full disk stops the database, uploads, logs and backups. The backend reports
+  the free space of its own volumes (`disk_free_bytes` / `disk_total_bytes` by `path`: the working
+  directory, `logs`, the uploads; `management.metrics.system.diskspace.paths`), alerts
+  `BilleryDiskSpaceLow` (below 15 %) and `BilleryDiskSpaceCritical` (below 5 %). The database
+  volume and the local backups are outside the backend: run node_exporter on the host for the
+  rule `HostDiskSpaceLow`, and `check.sh` checks the backup folder, the uploads, the logs and the
+  kit's database volume (warning below `DISK_MIN_FREE_PERCENT`, 15, failure below 5).
 - **Metrics:** with `BILLERY_METRICS_PORT` (for example `9464`) the backend serves Prometheus
   metrics at `http://<backend container>:<port>/prometheus`. That is a port of its own and is not
   published by the compose files: only containers on the stack's network reach it, the
   application's port never serves metrics. The metrics are requests by URI pattern, status and
   latency (`http_server_requests_seconds`, with buckets), the database pool (`hikaricp_*`), JVM
-  memory and garbage collection, CPU, and the refusals of the SaaS abuse limits
+  memory and garbage collection, CPU, free disk space of the backend's volumes, the failures of
+  the store for uploaded files (`billery_files_store_errors_total{operation}`, SaaS: the uploads
+  directory or the bucket) and the refusals of the SaaS abuse limits
   (`billery_quota_refused_total{quota, scope}`). They carry no business data: a URI is the pattern
-  (`/api/invoices/{id}`), never an id. `deploy/saas/monitoring/alerts.yml` alerts on a missing
-  scrape, more than 5 % server errors, a slow API, a waiting database pool, a full heap, a
-  reached system-wide sign-up or invitation mail limit and many refusals per source;
-  `alerts.test.yml` tests the rules (`promtool test rules`, also in CI); `prometheus.example.yml`
-  shows the scrape config. Route the alerts through your Alertmanager or Grafana. A request
+  (`/api/invoices/{id}`), never an id. `deploy/saas/monitoring/alerts.yml` has the always-firing
+  `BilleryWatchdog` and alerts on a missing scrape, more than 5 % server errors, a slow API, a
+  waiting database pool, a full heap, low disk space, failures of the file store, a reached
+  system-wide sign-up or invitation mail limit and many refusals per source, plus
+  `HostDiskSpaceLow` for node_exporter; `alerts.test.yml` tests the rules (`promtool test rules`,
+  also in CI); `prometheus.example.yml` shows the scrape and Alertmanager config,
+  `alertmanager.example.yml` the routing (watchdog to the dead man's switch, the rest to you;
+  checked with `amtool` in CI). Route the alerts through your Alertmanager or Grafana. A request
   to another path on the metrics port gets the application's public start page, never another
   Actuator endpoint.
 - **Resources:** both compose files limit memory (`BACKEND_MEMORY_LIMIT`, default `1g`;

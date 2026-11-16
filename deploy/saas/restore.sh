@@ -4,6 +4,9 @@
 #   ./restore.sh [--identity key.txt] <billery-*.dump[.age]> [uploads-*.tar.gz[.age]]
 #       Isolated test: restores into a throwaway PostgreSQL without network and reports what is in
 #       it. Changes nothing. Run it regularly: a backup that was never restored is not a backup.
+#       A successful test is recorded in <backup dir>/.last-restore-test (check.sh warns when it is
+#       old) and reported to RESTORE_TEST_HEALTHCHECK_URL (/fail appended when it failed), so a dead
+#       man's switch notices a test that failed or did not happen.
 #   ./restore.sh --remote <stamp> ...
 #       Takes the files of that backup (the stamp in their name) from the S3 storage first.
 #   ./restore.sh --apply ...
@@ -37,9 +40,19 @@ load_config "$config"
 
 test_container=""
 work=""
+# Only the test reports to the dead man's switch; --apply is a different, deliberate act.
+health_url=""
+[[ "$apply" == 1 ]] || health_url="$(setting RESTORE_TEST_HEALTHCHECK_URL)"
 cleanup() {
+  local code=$?
   [[ -z "$test_container" ]] || docker rm -f "$test_container" > /dev/null 2>&1 || true
   [[ -z "$work" ]] || rm -rf "$work"
+  if [[ -n "$health_url" ]]; then
+    local url="$health_url"
+    [[ "$code" -eq 0 ]] || url="${health_url%/}/fail"
+    curl -fsS -m 15 -o /dev/null "$url" || echo "warning: could not reach RESTORE_TEST_HEALTHCHECK_URL" >&2
+  fi
+  exit "$code"
 }
 trap cleanup EXIT
 
@@ -116,6 +129,7 @@ test_restore() {
     fi
   done
   [[ -z "$plain_uploads" ]] || echo "ok    file archive readable: $(tar tzf "$plain_uploads" | grep -vc '/$') files"
+  date -u +%s > "$dir/.last-restore-test"
 }
 
 apply_restore() {

@@ -1,11 +1,14 @@
 package de.billery.saas.storage;
 
 import de.billery.config.AppConfig;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.nio.file.Paths;
 import java.util.Locale;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Profile;
 
 /**
@@ -59,5 +62,20 @@ public class ObjectStoreConfig {
           throw new IllegalStateException(
               "BILLERY_FILES_STORE must be 'local' or 's3', not '" + store + "'");
     };
+  }
+
+  /**
+   * The store the application uses: the configured one, with its failures counted ({@link
+   * MeteredObjectStore}).
+   *
+   * @param objectStore the configured store ({@link #objectStore})
+   * @param meters the metrics registry
+   * @return the counting store
+   */
+  @Bean
+  @Primary
+  public ObjectStore meteredObjectStore(
+      @Qualifier("objectStore") ObjectStore objectStore, MeterRegistry meters) {
+    return new MeteredObjectStore(objectStore, meters);
   }
 }

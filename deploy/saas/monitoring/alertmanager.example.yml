@@ -1,0 +1,31 @@
+# Example for Alertmanager next to prometheus.example.yml. Two receivers:
+#
+# - deadmansswitch: gets only BilleryWatchdog, which always fires, every minute. A dead man's switch
+#   (healthchecks.io, Uptime Kuma "push", Cronitor, ...) expects that ping and alerts you when it
+#   stops: then Prometheus or Alertmanager is down, and no other alert would reach you either. Give
+#   the check a period of 5 minutes or so.
+# - team: every other alert. Replace the webhook with your mail, chat or pager integration.
+#
+# Check it with: amtool check-config alertmanager.example.yml
+route:
+  receiver: team
+  group_by: [alertname, path, operation, quota]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    - receiver: deadmansswitch
+      matchers: ['alertname = "BilleryWatchdog"']
+      group_wait: 0s
+      group_interval: 1m
+      repeat_interval: 1m
+
+receivers:
+  - name: deadmansswitch
+    webhook_configs:
+      # The ping URL of your dead man's switch check, e.g. https://hc-ping.com/<uuid>
+      - url: https://hc-ping.com/REPLACE-WITH-YOUR-CHECK-UUID
+        send_resolved: false
+  - name: team
+    webhook_configs:
+      - url: http://alert-receiver.example.invalid/billery
