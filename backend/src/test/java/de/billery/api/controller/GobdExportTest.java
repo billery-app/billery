@@ -273,6 +273,90 @@ class GobdExportTest {
     return response;
   }
 
+  /** Records what the controller reports, as "event period files ..." lines, in order. */
+  private static final class RecordingTrail implements de.billery.audit.AuditTrail {
+    final List<String> events = new ArrayList<>();
+    boolean failRequests;
+
+    @Override
+    public void gobdExportRequested(LocalDate from, LocalDate to, boolean withFiles) {
+      if (failRequests) {
+        throw new IllegalStateException("audit log unavailable");
+      }
+      events.add("requested " + from + ".." + to + " files=" + withFiles);
+    }
+
+    @Override
+    public void gobdExportRefused(LocalDate from, LocalDate to, boolean withFiles, String reason) {
+      events.add("refused " + from + ".." + to + ": " + reason);
+    }
+
+    @Override
+    public void gobdExportFinished(
+        LocalDate from, LocalDate to, boolean withFiles, int documents, String problem) {
+      events.add(
+          "finished " + from + ".." + to + " documents=" + documents + " problem=" + problem);
+    }
+  }
+
+  @Test
+  void aSentExportIsRecordedBeforeAndAfter() throws Exception {
+    issue(LocalDate.of(2026, 3, 1), "A", 1, 1);
+    issue(LocalDate.of(2026, 3, 2), "B", 1, 1);
+    RecordingTrail trail = new RecordingTrail();
+
+    new ExportController(serviceWithLimits(10, 10, BIG, 3_660, 1), trail)
+        .gobdExport(JAN_1, DEC_31, false, new MockHttpServletResponse());
+
+    assertEquals(
+        List.of(
+            "requested 2026-01-01..2026-12-31 files=false",
+            "finished 2026-01-01..2026-12-31 documents=2 problem=null"),
+        trail.events);
+  }
+
+  @Test
+  void aRefusedExportAndABrokenOffOneAreRecordedWithTheReason() throws Exception {
+    issue(LocalDate.of(2026, 3, 1), "A", 1, 1);
+    RecordingTrail trail = new RecordingTrail();
+
+    ExportController refusing = new ExportController(serviceWithLimits(0, 0, BIG, 3_660, 1), trail);
+    assertThrows(
+        ExportLimitException.class,
+        () -> refusing.gobdExport(JAN_1, DEC_31, false, new MockHttpServletResponse()));
+    assertEquals(2, trail.events.size(), trail.events.toString());
+    assertTrue(
+        trail.events.get(1).startsWith("refused 2026-01-01..2026-12-31: "),
+        trail.events.toString());
+
+    trail.events.clear();
+    ExportController tooSmall =
+        new ExportController(serviceWithLimits(10, 10, 100L, 3_660, 1), trail);
+    assertThrows(
+        ExportLimitException.class,
+        () -> tooSmall.gobdExport(JAN_1, DEC_31, false, new MockHttpServletResponse()));
+    assertEquals(2, trail.events.size(), trail.events.toString());
+    assertTrue(trail.events.get(1).contains("documents=1 problem="), trail.events.toString());
+    assertTrue(trail.events.get(1).contains("zu groß"), trail.events.toString());
+  }
+
+  @Test
+  void withoutTheRequestEntryThereIsNoExport() throws Exception {
+    issue(LocalDate.of(2026, 3, 1), "A", 1, 1);
+    RecordingTrail trail = new RecordingTrail();
+    trail.failRequests = true;
+    GobdExportService service = serviceWithLimits(10, 10, BIG, 3_660, 1);
+    MockHttpServletResponse response = new MockHttpServletResponse();
+
+    assertThrows(
+        IllegalStateException.class,
+        () -> new ExportController(service, trail).gobdExport(JAN_1, DEC_31, false, response));
+
+    assertEquals(0, response.getContentAsByteArray().length, "no byte went out");
+    assertEquals(List.of(), trail.events);
+    assertDoesNotThrow(() -> run(service, JAN_1, DEC_31, false), "and no slot was taken");
+  }
+
   @Test
   void aPeriodLongerThanTheLimitIsRejected() {
     GobdExportService service = serviceWithLimits(10_000, 2_000, BIG, 30, 1);

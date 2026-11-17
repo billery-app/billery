@@ -2,6 +2,7 @@ package de.billery.saas;
 
 import de.billery.saas.identity.IdentityRepository;
 import de.billery.saas.identity.IdentityService;
+import de.billery.saas.identity.SignInLog;
 import de.billery.saas.security.RequestLimitFilter;
 import de.billery.saas.security.RequestLimits;
 import de.billery.saas.security.TenantContextFilter;
@@ -56,6 +57,7 @@ public class SaasSecurityConfig {
    * @param issuers the accepted issuers
    * @param identities maps tokens to users
    * @param repository reads memberships
+   * @param signIns records sign-ins for the operator ({@code sign_in_log})
    * @param requestsPerSecond API requests per second and tenant ({@code billery.limits.*}); 0 = off
    * @param burst the most requests a tenant may make at once
    * @param heavyPerTenant concurrent PDF, preview, XRechnung, export and import requests per tenant
@@ -68,11 +70,12 @@ public class SaasSecurityConfig {
       TrustedIssuers issuers,
       IdentityService identities,
       IdentityRepository repository,
+      SignInLog signIns,
       @Value("${billery.limits.requests-per-second:20}") double requestsPerSecond,
       @Value("${billery.limits.burst:200}") int burst,
       @Value("${billery.limits.heavy-per-tenant:2}") int heavyPerTenant)
       throws Exception {
-    TenantContextFilter tenantFilter = new TenantContextFilter(identities, repository);
+    TenantContextFilter tenantFilter = new TenantContextFilter(identities, repository, signIns);
     return http.csrf(AbstractHttpConfigurer::disable)
         .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .oauth2ResourceServer(o -> o.authenticationManagerResolver(issuers.resolver()))

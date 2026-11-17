@@ -88,12 +88,14 @@ removed. Readers only read; accountants, admins and owners also write.
 
 ## Administration log
 
-Every invitation, acceptance and withdrawal, role change, removal and departure, the sign-up and the
-closing are written to `tenant_audit` with the time, the acting user and the address and role
+Every invitation, acceptance and withdrawal, role change, removal and departure, the sign-up, the
+closing and every GoBD export (the request before any data goes out, then its refusal or result) are written to `tenant_audit` with the time, the acting user and the address and role
 concerned, in the same transaction as the change (`TenantAuditLog`). Owners and administrators see
 the newest 200 entries in Einstellungen → Team & Zugriff (`GET /api/tenant/audit`). The application
 can only add and read entries; they stay as long as the tenant's data and go with `purge_tenant`.
-Sign-ins, exports and what an operator does directly in the database are not in it.
+Sign-ins are not in it: they go to `sign_in_log`, which only the operator reads (no monitoring of
+members through the application; [`saas-incident-response.md`](./saas-incident-response.md)). What
+an operator does directly in the database is in neither.
 
 ## Closing a tenant
 

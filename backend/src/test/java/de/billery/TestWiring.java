@@ -242,6 +242,6 @@ public final class TestWiring {
 
   /** Returns a new {@link ExportController}. */
   public static ExportController exportController() {
-    return new ExportController(gobdExportService());
+    return new ExportController(gobdExportService(), new de.billery.audit.NoAuditTrail());
   }
 }

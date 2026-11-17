@@ -43,7 +43,8 @@ class TenantPurgeTest {
           "owner",
           "tenant_invitation",
           "tenant_member",
-          "tenant_audit");
+          "tenant_audit",
+          "sign_in_log");
 
   @BeforeAll
   static void prepare() throws SQLException {
@@ -97,6 +98,11 @@ class TenantPurgeTest {
             + user
             + ")",
         "INSERT INTO tenant_audit (tenant_id, action) VALUES (" + t + ", 'TENANT_CREATED')",
+        "INSERT INTO sign_in_log (tenant_id, user_id, session_hash) VALUES ("
+            + t
+            + ", "
+            + user
+            + ", repeat('a', 64))",
         "INSERT INTO owner (tenant_id, first_name, last_name, company_name)"
             + " VALUES ("
             + t

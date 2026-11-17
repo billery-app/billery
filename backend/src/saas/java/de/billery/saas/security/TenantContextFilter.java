@@ -5,6 +5,7 @@ import de.billery.saas.identity.IdentityRepository;
 import de.billery.saas.identity.IdentityService;
 import de.billery.saas.identity.Membership;
 import de.billery.saas.identity.Role;
+import de.billery.saas.identity.SignInLog;
 import de.billery.saas.identity.TenantAccess;
 import de.billery.saas.tenant.TenantContext;
 import jakarta.servlet.FilterChain;
@@ -46,11 +47,21 @@ public class TenantContextFilter extends OncePerRequestFilter {
 
   private final IdentityService identities;
   private final IdentityRepository repository;
+  private final SignInLog signIns;
 
-  public TenantContextFilter(IdentityService identities, IdentityRepository repository) {
+  /**
+   * Creates the filter.
+   *
+   * @param identities maps a token to a user
+   * @param repository the users, memberships and addresses
+   * @param signIns records a provider session's first access to a company (operator only)
+   */
+  public TenantContextFilter(
+      IdentityService identities, IdentityRepository repository, SignInLog signIns) {
     super();
     this.identities = identities;
     this.repository = repository;
+    this.signIns = signIns;
   }
 
   @Override
@@ -102,6 +113,9 @@ public class TenantContextFilter extends OncePerRequestFilter {
       return;
     }
     Role role = access.get().role();
+    // Authenticated and a member: this is an access to the company, whatever the request does.
+    TenantContext.set(tenant.get(), userId, email, role);
+    signIns.record(token, user, tenant.get(), request.getRemoteAddr());
     if (isLeaving(request, userId)) {
       // Anyone may leave a tenant, whatever the role and whether or not it is still open; the
       // member service keeps the last owner in.

@@ -1,9 +1,13 @@
 package de.billery.api.controller;
 
+import de.billery.audit.AuditTrail;
+import de.billery.service.ExportLimitException;
 import de.billery.service.GobdExportService;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.time.LocalDate;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.springframework.http.HttpHeaders;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -15,10 +19,21 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/export")
 public class ExportController {
 
-  private final GobdExportService gobdExportService;
+  private static final Logger LOGGER = Logger.getLogger(ExportController.class.getName());
 
-  public ExportController(GobdExportService gobdExportService) {
+  private final GobdExportService gobdExportService;
+  private final AuditTrail auditTrail;
+
+  /**
+   * Creates the controller.
+   *
+   * @param gobdExportService checks and streams the export
+   * @param auditTrail where a requested export and its outcome are recorded (SaaS: the company's
+   *     administration log)
+   */
+  public ExportController(GobdExportService gobdExportService, AuditTrail auditTrail) {
     this.gobdExportService = gobdExportService;
+    this.auditTrail = auditTrail;
   }
 
   /**
@@ -52,13 +67,49 @@ public class ExportController {
       response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
       return;
     }
-    try (GobdExportService.PreparedExport export =
-        gobdExportService.prepare(start, end, documents)) {
+    // Write-ahead: the request is recorded before anything is read or sent. If that fails, the
+    // exception goes through and there is no export (no data out without a trace).
+    auditTrail.gobdExportRequested(start, end, documents);
+    GobdExportService.PreparedExport export;
+    try {
+      export = gobdExportService.prepare(start, end, documents);
+    } catch (RuntimeException e) {
+      // a limit, another export running, or a failure before the first byte: nothing left
+      outcome(() -> auditTrail.gobdExportRefused(start, end, documents, e.getMessage()));
+      throw e;
+    }
+    int count = export.documentCount();
+    boolean complete = false;
+    String problem = "abgebrochen";
+    try (export) {
       String filename = "GoBD-Export_" + start + "_" + end + ".zip";
       response.setContentType("application/zip");
       response.setHeader(
           HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"");
       export.writeTo(response.getOutputStream());
+      complete = true;
+    } catch (ExportLimitException e) {
+      problem = e.getMessage();
+      throw e;
+    } catch (IOException e) {
+      problem = "Verbindung abgebrochen";
+      throw e;
+    } finally {
+      // After close(): the export's read-only snapshot has ended, the entry has its own commit.
+      String why = complete ? null : problem;
+      outcome(() -> auditTrail.gobdExportFinished(start, end, documents, count, why));
+    }
+  }
+
+  /**
+   * Records an outcome. The request is already in the trail, so a failure here is logged and never
+   * hides the export's own result.
+   */
+  private static void outcome(Runnable entry) {
+    try {
+      entry.run();
+    } catch (RuntimeException e) {
+      LOGGER.log(Level.SEVERE, "The outcome of a GoBD export could not be recorded", e);
     }
   }
 }
