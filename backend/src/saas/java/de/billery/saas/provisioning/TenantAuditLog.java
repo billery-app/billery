@@ -10,9 +10,9 @@ import org.springframework.stereotype.Service;
 
 /**
  * The administration log of a tenant ({@code tenant_audit}): who invited, removed or changed whom,
- * who created or closed the company. Rows are written in the transaction of the change, with the
- * tenant and the acting user taken from the connection (column defaults). The application can only
- * add and read them.
+ * who created or closed the company, who exported its bookkeeping (GoBD export). Rows are written
+ * in the transaction of the change, with the tenant and the acting user taken from the connection
+ * (column defaults). The application can only add and read them.
  */
 @Service
 @Profile("saas")
@@ -41,6 +41,9 @@ public class TenantAuditLog {
 
   /** A member left the company. */
   public static final String MEMBER_LEFT = "MEMBER_LEFT";
+
+  /** A GoBD export was sent (period, documents, complete or broken off). */
+  public static final String GOBD_EXPORTED = "GOBD_EXPORTED";
 
   /** How many entries {@link #list()} returns at most, newest first. */
   static final int MAX_ENTRIES = 200;

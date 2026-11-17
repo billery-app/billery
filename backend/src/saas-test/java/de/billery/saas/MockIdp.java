@@ -103,6 +103,27 @@ public final class MockIdp implements AutoCloseable {
    */
   public String token(
       String subject, String email, boolean emailVerified, String audience, Duration validFor) {
+    return token(subject, email, emailVerified, audience, validFor, java.util.Map.of());
+  }
+
+  /**
+   * A signed token with further claims (for example {@code auth_time} or {@code sid}).
+   *
+   * @param subject the user's id at this provider
+   * @param email the e-mail claim, or null for none
+   * @param emailVerified the {@code email_verified} claim
+   * @param audience the audience claim
+   * @param validFor how long the token is valid from now; negative gives an expired token
+   * @param extra further claims
+   * @return the compact JWT
+   */
+  public String token(
+      String subject,
+      String email,
+      boolean emailVerified,
+      String audience,
+      Duration validFor,
+      java.util.Map<String, Object> extra) {
     Instant now = Instant.now();
     JWTClaimsSet.Builder claims =
         new JWTClaimsSet.Builder()
@@ -116,6 +137,7 @@ public final class MockIdp implements AutoCloseable {
     if (email != null) {
       claims.claim("email", email);
     }
+    extra.forEach(claims::claim);
     try {
       SignedJWT jwt =
           new SignedJWT(

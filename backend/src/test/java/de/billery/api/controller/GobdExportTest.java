@@ -273,6 +273,51 @@ class GobdExportTest {
     return response;
   }
 
+  /** What the controller reported to the audit trail. */
+  private record Recorded(
+      LocalDate from, LocalDate to, boolean files, int documents, String problem) {}
+
+  private static ExportController auditedController(
+      GobdExportService service, List<Recorded> recorded) {
+    return new ExportController(
+        service,
+        (from, to, files, documents, problem) ->
+            recorded.add(new Recorded(from, to, files, documents, problem)));
+  }
+
+  @Test
+  void aSentExportIsRecordedWithItsPeriodAndCount() throws Exception {
+    issue(LocalDate.of(2026, 3, 1), "A", 1, 1);
+    issue(LocalDate.of(2026, 3, 2), "B", 1, 1);
+    List<Recorded> recorded = new ArrayList<>();
+
+    auditedController(serviceWithLimits(10, 10, BIG, 3_660, 1), recorded)
+        .gobdExport(JAN_1, DEC_31, false, new MockHttpServletResponse());
+
+    assertEquals(List.of(new Recorded(JAN_1, DEC_31, false, 2, null)), recorded);
+  }
+
+  @Test
+  void aRefusedExportLeavesNoRecordAndABrokenOffOneSaysWhy() throws Exception {
+    issue(LocalDate.of(2026, 3, 1), "A", 1, 1);
+    List<Recorded> recorded = new ArrayList<>();
+
+    ExportController refusing = auditedController(serviceWithLimits(0, 0, BIG, 3_660, 1), recorded);
+    assertThrows(
+        ExportLimitException.class,
+        () -> refusing.gobdExport(JAN_1, DEC_31, false, new MockHttpServletResponse()));
+    assertEquals(List.of(), recorded, "nothing left the server");
+
+    ExportController tooSmall =
+        auditedController(serviceWithLimits(10, 10, 100L, 3_660, 1), recorded);
+    assertThrows(
+        ExportLimitException.class,
+        () -> tooSmall.gobdExport(JAN_1, DEC_31, false, new MockHttpServletResponse()));
+    assertEquals(1, recorded.size());
+    assertEquals(1, recorded.get(0).documents());
+    assertTrue(recorded.get(0).problem().contains("zu groß"), recorded.get(0).problem());
+  }
+
   @Test
   void aPeriodLongerThanTheLimitIsRejected() {
     GobdExportService service = serviceWithLimits(10_000, 2_000, BIG, 30, 1);

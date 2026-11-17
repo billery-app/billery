@@ -109,12 +109,14 @@ Some of it disappears by itself within hours.
 | State of the database and the files | changes with every request | `./backup.sh`, then copy the two files of that run out of the backup directory: the rotation (`KEEP`) would delete them |
 | Team changes | until the tenant is purged | `tenant_audit` (query below) |
 | Changes to documents | until the tenant is purged | `document_history` (query below) |
-| Sign-ins | the application records none | the identity provider's sign-in log; export it before its retention ends |
+| Sign-ins | 90 days (`sign_in_log`) | who signed in to which company, when, from which IP (query below); the identity provider's sign-in log has failed attempts too: export it before its retention ends |
+| GoBD exports | until the tenant is purged | `tenant_audit`, action `GOBD_EXPORTED` (query below) |
 | Requests (who called what, from where) | the kit's Caddy writes **no** access log | your proxy's access log if you switched one on; the hosting provider's network logs |
 | Access to backups, database, mail | at the providers | their audit logs |
 
-What cannot be reconstructed from the application: **who read or exported what.** A member with
-access leaves no trace when reading. If that question matters for your service, switch on an access
+What cannot be reconstructed from the application: **who read what.** Sign-ins and GoBD exports
+are recorded, single reads (a document opened, a PDF downloaded, a list paged) are not: a member
+with access leaves no trace when reading. If that question matters for your service, switch on an access
 log at the proxy (it records IP addresses, so give it a retention period and add it to
 [`saas-data-lifecycle.md`](./saas-data-lifecycle.md#what-is-stored-and-where)).
 
@@ -132,6 +134,21 @@ SELECT a.occurred_at, a.action, a.details, u.email AS actor
 SELECT h.tenant_id, h.action_date, h.action, h.invoice_id, i.document_number
   FROM document_history h JOIN invoice i ON i.tenant_id = h.tenant_id AND i.id = h.invoice_id
  WHERE h.performed_by = '<user id>' AND h.action_date >= TIMESTAMP '2026-01-31 00:00' ORDER BY h.id;
+
+-- sign-ins of one account, in every company, with the source address
+SELECT s.occurred_at, s.tenant_id, s.source_ip
+  FROM sign_in_log s
+ WHERE s.user_id = '<user id>' AND s.occurred_at >= TIMESTAMP '2026-01-31 00:00' ORDER BY s.id;
+
+-- who signed in from one address (another account of the attacker?)
+SELECT s.occurred_at, s.tenant_id, u.email
+  FROM sign_in_log s JOIN app_user u ON u.id = s.user_id
+ WHERE s.source_ip = '<address>' ORDER BY s.id;
+
+-- GoBD exports of one company: who took the bookkeeping out, and when
+SELECT a.occurred_at, a.details, u.email AS actor
+  FROM tenant_audit a LEFT JOIN app_user u ON u.id = a.actor_id
+ WHERE a.tenant_id = 42 AND a.action = 'GOBD_EXPORTED' ORDER BY a.id;
 
 -- sign-in identities linked in a period (a new identity on an old account can be a takeover)
 SELECT i.created_at, i.issuer, i.subject, u.email, u.created_at AS user_since

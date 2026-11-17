@@ -106,7 +106,8 @@ const AUDIT_LABELS = {
   INVITATION_ACCEPTED: 'Einladung angenommen',
   ROLE_CHANGED: 'Rolle geändert',
   MEMBER_REMOVED: 'Mitglied entfernt',
-  MEMBER_LEFT: 'Unternehmen verlassen'
+  MEMBER_LEFT: 'Unternehmen verlassen',
+  GOBD_EXPORTED: 'GoBD-Export'
 }
 
 export default {

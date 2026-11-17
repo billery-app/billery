@@ -27,7 +27,8 @@
 |------|----------|-------|
 | Business data of a tenant | company master data (`owner`), customers, catalog (articles, services, equipment), documents with lines, periods, payments and history, templates, number series, settings | the PostgreSQL database, every row tagged with its `tenant_id` |
 | Uploaded files | logos used in templates | the upload directory of the backend, one directory per tenant: `<upload dir>/<tenant id>/` (the `uploads` volume in the kit), or with `BILLERY_FILES_STORE=s3` a private bucket, prefix `<tenant id>/` |
-| Team data of a tenant | members and roles (`tenant_member`), invitations with the invited address (`tenant_invitation`), the administration log with addresses and roles (`tenant_audit`) | the database |
+| Team data of a tenant | members and roles (`tenant_member`), invitations with the invited address (`tenant_invitation`), the administration log with addresses and roles and the GoBD exports (period, number of documents, with or without files, complete or broken off, who) (`tenant_audit`) | the database |
+| Sign-ins | per user, company and session at the identity provider: time, the company, the source IP address and a SHA-256 of issuer, subject and the session's `auth_time` / `sid` (never a token) (`sign_in_log`). **Only the operator reads them**; the application can only insert, and the companies' owners and administrators do not see them | the database, 90 days |
 | Accounts | e-mail address, display name, creation time (`app_user`); the provider's issuer and subject per sign-in identity (`user_identity`) | the database, not tenant-specific: one person can belong to several companies |
 | Credentials | passwords, second factors, social logins, sign-in times | **only at the identity provider.** The application stores no password and keeps the access token in the browser's memory only |
 | Invitation mails | recipient address, company name, role, name of the inviting person | sent through the SMTP provider (`MAIL_*`); the application keeps only hashed counters per recipient and source IP for the limits (`daily_quota`), deleted after their window |
@@ -125,6 +126,7 @@ closed.
 | The same data in backups | when the last backup from before the purge expires: 14 backups on the server (two weeks with one run per night) and 30 days at the storage by default (`KEEP`, `BACKUP_S3_KEEP_DAYS`) | `backup.sh` |
 | Logs | after 30 days (files) or 50 MB of console output | Logback, Docker |
 | Open invitations | they stop working after 14 days; the row stays until an administrator revokes it or the tenant is purged | members, `purge_tenant` |
+| Sign-ins (`sign_in_log`) | after 90 days; with the account (cascade) and with the tenant (`purge_tenant`) | the application calls `prune_sign_in_log()` at most once an hour; the 90 days are fixed in that database function, the application cannot choose them or delete rows itself |
 | The account at the identity provider | never by the application | the user or the operator, at the provider |
 
 With the defaults a closed company's data is gone from the live system 90 days after closing and

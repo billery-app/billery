@@ -298,6 +298,15 @@ public class GobdExportService {
     }
 
     /**
+     * How many documents the export contains (issued invoices and credit notes of the period).
+     *
+     * @return the number checked against the limits in {@link #prepare}
+     */
+    public int documentCount() {
+      return documents.size();
+    }
+
+    /**
      * Writes the ZIP to {@code out} as it is produced. If anything fails on the way, the ZIP is
      * left without its central directory: a cut-off export is never a readable, seemingly complete
      * archive (the export must stay complete). {@code out} is not closed.

@@ -162,4 +162,26 @@ class TenantAuditTest extends SaasApiTestBase {
       stmt.execute("INSERT INTO tenant_audit (action, details) VALUES ('TENANT_CLOSED', 'test')");
     }
   }
+
+  @Test
+  void aGobdExportIsLoggedWithTheExportingUserAndItsOutcome() throws Exception {
+    String ella = token(idpA, "ella", "ella@example.com");
+    int tenant = signUp(ella, "Ella Export GmbH");
+
+    Reply export =
+        get("/api/export/gobd?from=2026-01-01&to=2026-12-31&documents=false", ella, tenant);
+    assertEquals(200, export.status(), export.body());
+    Reply refused =
+        get("/api/export/gobd?from=2000-01-01&to=2026-12-31&documents=false", ella, tenant);
+    assertEquals(413, refused.status(), "a period beyond the limit is refused");
+
+    List<String> entries = log(ella, tenant);
+    assertEquals(
+        List.of(
+            "TENANT_CREATED | Test ella | Ella Export GmbH",
+            "GOBD_EXPORTED | Test ella | 2026-01-01 bis 2026-12-31, 0 Belege ohne Belegdateien,"
+                + " vollständig"),
+        entries,
+        "the refused export left nothing and is not logged");
+  }
 }

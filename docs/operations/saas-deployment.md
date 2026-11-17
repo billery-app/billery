@@ -164,7 +164,8 @@ of the provider's discovery URL) plus, optionally, Prometheus metrics with ready
 a watchdog for the alerting itself and an Alertmanager example (`BILLERY_METRICS_PORT`, `monitoring/`; see
 [`ops-gotchas.md`](./ops-gotchas.md#health-checks-monitoring-and-resources)). There are no
 tariffs, trial period or billing; per-tenant request limits exist (`BILLERY_LIMITS_*`, see `docs/reference/env-vars.md`). The kit's
-Caddy writes no access log, and the application does not record sign-ins, reads or exports (see
+Caddy writes no access log; the application records sign-ins (for the operator, 90 days) and GoBD
+exports, not single reads (see
 [`saas-incident-response.md`](./saas-incident-response.md#4-save-evidence)). `check.sh` and the automated run in CI
 (`.github/workflows/saas-stack.yml`) prove the kit works against a mock provider; **the first run against
 your real provider and server is the real test**, and what it shows belongs in this page.
