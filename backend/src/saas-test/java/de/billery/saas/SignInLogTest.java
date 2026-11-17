@@ -202,4 +202,39 @@ class SignInLogTest extends SaasApiTestBase {
     }
     assertEquals(1, rows(user.toString()).size());
   }
+
+  @org.springframework.beans.factory.annotation.Autowired
+  private de.billery.saas.identity.SignInLog signInLog;
+
+  @org.springframework.beans.factory.annotation.Autowired
+  private org.springframework.scheduling.config.ScheduledTaskHolder scheduler;
+
+  @Test
+  void theRetentionRunsHourlyOnItsOwnWithoutACompany() throws Exception {
+    assertTrue(
+        scheduler.getScheduledTasks().stream()
+            .anyMatch(task -> task.toString().contains("SignInLog.prune")),
+        "prune is scheduled: " + scheduler.getScheduledTasks());
+
+    String token = token("expired-user", Map.of("auth_time", 1_700_000_456L));
+    int company = signUp(token, "Verfall GmbH");
+    String user = userId(token);
+    try (Connection admin = DriverManager.getConnection(ADMIN_URL);
+        PreparedStatement insert =
+            admin.prepareStatement(
+                "INSERT INTO sign_in_log (tenant_id, user_id, session_hash, occurred_at)"
+                    + " VALUES (?, ?::uuid, repeat('x', 64), CURRENT_TIMESTAMP - INTERVAL '95 days')")) {
+      insert.setInt(1, company);
+      insert.setString(2, user);
+      insert.executeUpdate();
+    }
+    assertEquals(1, rows(user).size());
+
+    // as the scheduler calls it: on a thread of its own, without a company or a user
+    Thread task = new Thread(signInLog::prune);
+    task.start();
+    task.join();
+
+    assertEquals(List.of(), rows(user), "the record past 90 days is gone");
+  }
 }

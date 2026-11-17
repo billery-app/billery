@@ -164,7 +164,7 @@ class TenantAuditTest extends SaasApiTestBase {
   }
 
   @Test
-  void aGobdExportIsLoggedWithTheExportingUserAndItsOutcome() throws Exception {
+  void aGobdExportIsLoggedBeforeItStartsAndWithItsOutcome() throws Exception {
     String ella = token(idpA, "ella", "ella@example.com");
     int tenant = signUp(ella, "Ella Export GmbH");
 
@@ -176,12 +176,21 @@ class TenantAuditTest extends SaasApiTestBase {
     assertEquals(413, refused.status(), "a period beyond the limit is refused");
 
     List<String> entries = log(ella, tenant);
+    assertEquals(5, entries.size(), entries.toString());
     assertEquals(
         List.of(
             "TENANT_CREATED | Test ella | Ella Export GmbH",
-            "GOBD_EXPORTED | Test ella | 2026-01-01 bis 2026-12-31, 0 Belege ohne Belegdateien,"
-                + " vollständig"),
-        entries,
-        "the refused export left nothing and is not logged");
+            "GOBD_EXPORT_REQUESTED | Test ella | 2026-01-01 bis 2026-12-31, ohne Belegdateien",
+            "GOBD_EXPORTED | Test ella | 2026-01-01 bis 2026-12-31, ohne Belegdateien, 0 Belege,"
+                + " vollständig",
+            "GOBD_EXPORT_REQUESTED | Test ella | 2000-01-01 bis 2026-12-31, ohne Belegdateien"),
+        entries.subList(0, 4),
+        "each export is recorded before it starts, then its outcome");
+    assertTrue(
+        entries
+            .get(4)
+            .startsWith(
+                "GOBD_EXPORT_REFUSED | Test ella | 2000-01-01 bis 2026-12-31, ohne Belegdateien: "),
+        entries.get(4));
   }
 }

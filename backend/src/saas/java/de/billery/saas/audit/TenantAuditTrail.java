@@ -7,10 +7,12 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 /**
- * SaaS: a sent GoBD export goes into the administration log of the active company ({@code
- * tenant_audit}, action {@link TenantAuditLog#GOBD_EXPORTED}), with the acting user from the
- * connection. Its owners and administrators see it next to the team actions; the operator uses it
- * to tell which data an account took out ({@code docs/operations/saas-incident-response.md}).
+ * SaaS: the GoBD exports go into the administration log of the active company ({@code
+ * tenant_audit}), with the acting user from the connection: the request before any data goes out
+ * ({@link TenantAuditLog#GOBD_EXPORT_REQUESTED}), then the refusal ({@link
+ * TenantAuditLog#GOBD_EXPORT_REFUSED}) or the sent export ({@link TenantAuditLog#GOBD_EXPORTED}).
+ * Its owners and administrators see them next to the team actions; the operator uses them to tell
+ * which data an account took out ({@code docs/operations/saas-incident-response.md}).
  */
 @Component
 @Profile("saas")
@@ -27,18 +29,29 @@ public class TenantAuditTrail implements AuditTrail {
     this.log = log;
   }
 
+  private static String period(LocalDate from, LocalDate to, boolean withFiles) {
+    return from + " bis " + to + (withFiles ? ", mit PDF und XRechnung" : ", ohne Belegdateien");
+  }
+
   @Override
-  public void gobdExport(
+  public void gobdExportRequested(LocalDate from, LocalDate to, boolean withFiles) {
+    log.record(TenantAuditLog.GOBD_EXPORT_REQUESTED, period(from, to, withFiles));
+  }
+
+  @Override
+  public void gobdExportRefused(LocalDate from, LocalDate to, boolean withFiles, String reason) {
+    log.record(TenantAuditLog.GOBD_EXPORT_REFUSED, period(from, to, withFiles) + ": " + reason);
+  }
+
+  @Override
+  public void gobdExportFinished(
       LocalDate from, LocalDate to, boolean withFiles, int documents, String problem) {
     log.record(
         TenantAuditLog.GOBD_EXPORTED,
-        from
-            + " bis "
-            + to
+        period(from, to, withFiles)
             + ", "
             + documents
             + " Belege"
-            + (withFiles ? " mit PDF und XRechnung" : " ohne Belegdateien")
             + (problem == null ? ", vollständig" : ", abgebrochen: " + problem));
   }
 }

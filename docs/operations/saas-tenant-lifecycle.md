@@ -89,7 +89,7 @@ removed. Readers only read; accountants, admins and owners also write.
 ## Administration log
 
 Every invitation, acceptance and withdrawal, role change, removal and departure, the sign-up, the
-closing and every GoBD export are written to `tenant_audit` with the time, the acting user and the address and role
+closing and every GoBD export (the request before any data goes out, then its refusal or result) are written to `tenant_audit` with the time, the acting user and the address and role
 concerned, in the same transaction as the change (`TenantAuditLog`). Owners and administrators see
 the newest 200 entries in Einstellungen → Team & Zugriff (`GET /api/tenant/audit`). The application
 can only add and read entries; they stay as long as the tenant's data and go with `purge_tenant`.

@@ -28,7 +28,8 @@ public class ExportController {
    * Creates the controller.
    *
    * @param gobdExportService checks and streams the export
-   * @param auditTrail where a sent export is recorded (SaaS: the company's administration log)
+   * @param auditTrail where a requested export and its outcome are recorded (SaaS: the company's
+   *     administration log)
    */
   public ExportController(GobdExportService gobdExportService, AuditTrail auditTrail) {
     this.gobdExportService = gobdExportService;
@@ -66,8 +67,17 @@ public class ExportController {
       response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
       return;
     }
-    // A refusal (limits, busy) throws here: nothing left the server, nothing is recorded.
-    GobdExportService.PreparedExport export = gobdExportService.prepare(start, end, documents);
+    // Write-ahead: the request is recorded before anything is read or sent. If that fails, the
+    // exception goes through and there is no export (no data out without a trace).
+    auditTrail.gobdExportRequested(start, end, documents);
+    GobdExportService.PreparedExport export;
+    try {
+      export = gobdExportService.prepare(start, end, documents);
+    } catch (RuntimeException e) {
+      // a limit, another export running, or a failure before the first byte: nothing left
+      outcome(() -> auditTrail.gobdExportRefused(start, end, documents, e.getMessage()));
+      throw e;
+    }
     int count = export.documentCount();
     boolean complete = false;
     String problem = "abgebrochen";
@@ -86,16 +96,20 @@ public class ExportController {
       throw e;
     } finally {
       // After close(): the export's read-only snapshot has ended, the entry has its own commit.
-      record(start, end, documents, count, complete ? null : problem);
+      String why = complete ? null : problem;
+      outcome(() -> auditTrail.gobdExportFinished(start, end, documents, count, why));
     }
   }
 
-  /** Records the export; a failure to record is logged and never hides the export's outcome. */
-  private void record(LocalDate from, LocalDate to, boolean withFiles, int count, String problem) {
+  /**
+   * Records an outcome. The request is already in the trail, so a failure here is logged and never
+   * hides the export's own result.
+   */
+  private static void outcome(Runnable entry) {
     try {
-      auditTrail.gobdExport(from, to, withFiles, count, problem);
+      entry.run();
     } catch (RuntimeException e) {
-      LOGGER.log(Level.SEVERE, "The GoBD export could not be recorded in the audit trail", e);
+      LOGGER.log(Level.SEVERE, "The outcome of a GoBD export could not be recorded", e);
     }
   }
 }

@@ -107,6 +107,8 @@ const AUDIT_LABELS = {
   ROLE_CHANGED: 'Rolle geändert',
   MEMBER_REMOVED: 'Mitglied entfernt',
   MEMBER_LEFT: 'Unternehmen verlassen',
+  GOBD_EXPORT_REQUESTED: 'GoBD-Export angefordert',
+  GOBD_EXPORT_REFUSED: 'GoBD-Export abgelehnt',
   GOBD_EXPORTED: 'GoBD-Export'
 }
 

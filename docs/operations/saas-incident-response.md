@@ -110,7 +110,7 @@ Some of it disappears by itself within hours.
 | Team changes | until the tenant is purged | `tenant_audit` (query below) |
 | Changes to documents | until the tenant is purged | `document_history` (query below) |
 | Sign-ins | 90 days (`sign_in_log`) | who signed in to which company, when, from which IP (query below); the identity provider's sign-in log has failed attempts too: export it before its retention ends |
-| GoBD exports | until the tenant is purged | `tenant_audit`, action `GOBD_EXPORTED` (query below) |
+| GoBD exports | until the tenant is purged | `tenant_audit`: `GOBD_EXPORT_REQUESTED` is written before any data goes out (no export without it), then `GOBD_EXPORT_REFUSED` or `GOBD_EXPORTED` (query below); a request without an outcome means the export was interrupted (process stopped) |
 | Requests (who called what, from where) | the kit's Caddy writes **no** access log | your proxy's access log if you switched one on; the hosting provider's network logs |
 | Access to backups, database, mail | at the providers | their audit logs |
 
@@ -148,7 +148,7 @@ SELECT s.occurred_at, s.tenant_id, u.email
 -- GoBD exports of one company: who took the bookkeeping out, and when
 SELECT a.occurred_at, a.details, u.email AS actor
   FROM tenant_audit a LEFT JOIN app_user u ON u.id = a.actor_id
- WHERE a.tenant_id = 42 AND a.action = 'GOBD_EXPORTED' ORDER BY a.id;
+ WHERE a.tenant_id = 42 AND a.action LIKE 'GOBD_EXPORT%' ORDER BY a.id;
 
 -- sign-in identities linked in a period (a new identity on an old account can be a takeover)
 SELECT i.created_at, i.issuer, i.subject, u.email, u.created_at AS user_since

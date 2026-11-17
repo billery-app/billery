@@ -16,6 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Component;
 
@@ -50,14 +51,10 @@ public class SignInLog {
   /** Sessions this instance has written (or found written), and the last request per user. */
   private static final int CACHE_SIZE = 10_000;
 
-  /** How often an instance asks the database to drop rows past the retention. */
-  private static final Duration PRUNE_EVERY = Duration.ofHours(1);
-
   private final JdbcClient jdbc;
   private final Clock clock;
   private final Map<String, Boolean> written = lru();
   private final Map<String, Instant> lastRequest = lru();
-  private Instant lastPrune = Instant.EPOCH;
 
   /**
    * Creates the log.
@@ -101,9 +98,6 @@ public class SignInLog {
    */
   public void record(Jwt token, UUID user, int tenant, String sourceIp) {
     Instant now = clock.instant();
-    // Checked on every access (a time comparison), so the retention holds while there is any
-    // traffic, not only when somebody signs in.
-    pruneNowAndThen(now);
     String session = sessionOf(token, user, tenant, now);
     if (session == null) {
       return;
@@ -158,15 +152,12 @@ public class SignInLog {
   }
 
   /**
-   * At most once an hour per instance: drops the rows past the retention (fixed in the database).
+   * Drops the rows past the retention, every hour (first a minute after the start), whether or not
+   * the instance serves requests. The 90 days are fixed in the database function; it runs as the
+   * table's owner, so it needs no company on this thread.
    */
-  private void pruneNowAndThen(Instant now) {
-    synchronized (this) {
-      if (Duration.between(lastPrune, now).compareTo(PRUNE_EVERY) < 0) {
-        return;
-      }
-      lastPrune = now;
-    }
+  @Scheduled(initialDelayString = "PT1M", fixedDelayString = "PT1H")
+  public void prune() {
     try {
       Integer gone = jdbc.sql("SELECT prune_sign_in_log()").query(Integer.class).single();
       if (gone != null && gone > 0) {

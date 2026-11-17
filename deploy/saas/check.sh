@@ -247,7 +247,7 @@ if [[ "$docker_checks" == 1 ]]; then
   if [[ "$stale" == "0" ]]; then
     ok "no sign-in record is past its 90 days"
   elif [[ "$stale" =~ ^[0-9]+$ ]]; then
-    warn "$stale sign-in records are older than 90 days: the backend removes them while it serves requests (or: SELECT prune_sign_in_log();)"
+    warn "$stale sign-in records are older than 90 days: the backend removes them every hour: is it running? (or: SELECT prune_sign_in_log();)"
   fi
   history=$(sql "SELECT has_table_privilege('billery_login', 'flyway_schema_history', 'SELECT')" || true)
   if [[ "$history" == "f" ]]; then ok "billery_login cannot read the Flyway history"; elif [[ -n "$history" ]]; then bad "billery_login can read the Flyway history"; fi

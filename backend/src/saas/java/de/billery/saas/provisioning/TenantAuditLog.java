@@ -42,6 +42,12 @@ public class TenantAuditLog {
   /** A member left the company. */
   public static final String MEMBER_LEFT = "MEMBER_LEFT";
 
+  /** A GoBD export was requested (written before any data goes out). */
+  public static final String GOBD_EXPORT_REQUESTED = "GOBD_EXPORT_REQUESTED";
+
+  /** A requested GoBD export was refused before any data went out (limit, busy). */
+  public static final String GOBD_EXPORT_REFUSED = "GOBD_EXPORT_REFUSED";
+
   /** A GoBD export was sent (period, documents, complete or broken off). */
   public static final String GOBD_EXPORTED = "GOBD_EXPORTED";
 
