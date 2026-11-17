@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -35,15 +36,15 @@ class SignInLogTest extends SaasApiTestBase {
   private static List<String> rows(String userId) throws SQLException {
     List<String> rows = new ArrayList<>();
     try (Connection admin = DriverManager.getConnection(ADMIN_URL);
-        Statement stmt = admin.createStatement();
-        ResultSet rs =
-            stmt.executeQuery(
-                "SELECT tenant_id, source_ip, length(session_hash), session_hash"
-                    + " FROM sign_in_log WHERE user_id = '"
-                    + userId
-                    + "' ORDER BY id")) {
-      while (rs.next()) {
-        rows.add(rs.getInt(1) + " | " + rs.getString(2) + " | " + rs.getInt(3));
+        PreparedStatement stmt =
+            admin.prepareStatement(
+                "SELECT tenant_id, source_ip, length(session_hash) FROM sign_in_log"
+                    + " WHERE user_id = ?::uuid ORDER BY id")) {
+      stmt.setString(1, userId);
+      try (ResultSet rs = stmt.executeQuery()) {
+        while (rs.next()) {
+          rows.add(rs.getInt(1) + " | " + rs.getString(2) + " | " + rs.getInt(3));
+        }
       }
     }
     return rows;
@@ -172,5 +173,33 @@ class SignInLogTest extends SaasApiTestBase {
           () -> stmt.execute("SELECT prune_sign_in_log(0)"),
           "no period can be passed in");
     }
+  }
+
+  @Test
+  void anAccountWithSignInsIsNotDeletedBeforeTheyExpire() throws Exception {
+    java.util.UUID user = java.util.UUID.randomUUID();
+    try (Connection admin = DriverManager.getConnection(ADMIN_URL)) {
+      // an account that nothing but a sign-in refers to (no membership, no log entry)
+      try (PreparedStatement insert =
+          admin.prepareStatement("INSERT INTO app_user (id, email) VALUES (?, ?)")) {
+        insert.setObject(1, user);
+        insert.setString(2, user + "@example.com");
+        insert.executeUpdate();
+      }
+      try (PreparedStatement insert =
+          admin.prepareStatement(
+              "INSERT INTO sign_in_log (tenant_id, user_id, session_hash)"
+                  + " VALUES (1, ?, repeat('d', 64))")) {
+        insert.setObject(1, user);
+        insert.executeUpdate();
+      }
+      try (PreparedStatement delete = admin.prepareStatement("DELETE FROM app_user WHERE id = ?")) {
+        delete.setObject(1, user);
+        SQLException refused =
+            assertThrows(SQLException.class, delete::executeUpdate, "the evidence outlives it");
+        assertTrue(refused.getMessage().contains("sign_in_log"), refused.getMessage());
+      }
+    }
+    assertEquals(1, rows(user.toString()).size());
   }
 }

@@ -29,8 +29,10 @@ import org.springframework.stereotype.Component;
  * by the token's {@code auth_time} (when the user authenticated), else its {@code sid} (the
  * provider's session id); renewed tokens of the same session carry the same value and add nothing.
  * A provider that puts neither into its access tokens gets a fallback: the first request of a user
- * in a company after {@value #IDLE_MINUTES} minutes without one counts as a new sign-in. The row
- * stores only a SHA-256 of issuer, subject and that value, never a token.
+ * in a company after {@value #IDLE_MINUTES} minutes without one counts as a new sign-in. That state
+ * is per instance: behind several instances without sticky sessions one sign-in can be recorded
+ * once per instance (more rows, never fewer). The row stores only a SHA-256 of issuer, subject and
+ * that value, never a token.
  *
  * <p>Duplicates are refused by the database (unique per company, user and session), so several
  * instances write each sign-in once; a small cache per instance keeps the database out of every
@@ -99,6 +101,9 @@ public class SignInLog {
    */
   public void record(Jwt token, UUID user, int tenant, String sourceIp) {
     Instant now = clock.instant();
+    // Checked on every access (a time comparison), so the retention holds while there is any
+    // traffic, not only when somebody signs in.
+    pruneNowAndThen(now);
     String session = sessionOf(token, user, tenant, now);
     if (session == null) {
       return;
@@ -123,7 +128,6 @@ public class SignInLog {
       synchronized (written) {
         written.put(key, Boolean.TRUE);
       }
-      pruneNowAndThen(now);
     } catch (DataAccessException e) {
       LOGGER.log(Level.WARNING, "A sign-in could not be recorded", e);
     }

@@ -11,7 +11,9 @@ CREATE TABLE sign_in_log (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     occurred_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     tenant_id INT NOT NULL DEFAULT (current_setting('app.tenant_id'))::int REFERENCES tenant(id),
-    user_id UUID NOT NULL REFERENCES app_user(id) ON DELETE CASCADE,
+    -- No cascade: an account with sign-ins is not deleted before they expire (it is anonymised, like
+    -- one named in tenant_audit), so the evidence of a takeover outlives the account.
+    user_id UUID NOT NULL REFERENCES app_user(id),
     source_ip VARCHAR(45),
     session_hash CHAR(64) NOT NULL,
     UNIQUE (tenant_id, user_id, session_hash)

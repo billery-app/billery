@@ -242,6 +242,13 @@ if [[ "$docker_checks" == 1 ]]; then
   else
     warn "${overdue%%|*} closed companies are past their export window of $purge_days days and not purged yet (ids ${overdue#*|}): docs/operations/saas-data-lifecycle.md"
   fi
+  # Sign-ins are kept 90 days; the backend removes older ones while there is traffic.
+  stale=$(sql "SELECT count(*) FROM sign_in_log WHERE occurred_at < CURRENT_TIMESTAMP - INTERVAL '91 days'" || true)
+  if [[ "$stale" == "0" ]]; then
+    ok "no sign-in record is past its 90 days"
+  elif [[ "$stale" =~ ^[0-9]+$ ]]; then
+    warn "$stale sign-in records are older than 90 days: the backend removes them while it serves requests (or: SELECT prune_sign_in_log();)"
+  fi
   history=$(sql "SELECT has_table_privilege('billery_login', 'flyway_schema_history', 'SELECT')" || true)
   if [[ "$history" == "f" ]]; then ok "billery_login cannot read the Flyway history"; elif [[ -n "$history" ]]; then bad "billery_login can read the Flyway history"; fi
   # The real test: the application role without a tenant must not see rows (fails closed).

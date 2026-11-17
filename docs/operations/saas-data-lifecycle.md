@@ -126,7 +126,7 @@ closed.
 | The same data in backups | when the last backup from before the purge expires: 14 backups on the server (two weeks with one run per night) and 30 days at the storage by default (`KEEP`, `BACKUP_S3_KEEP_DAYS`) | `backup.sh` |
 | Logs | after 30 days (files) or 50 MB of console output | Logback, Docker |
 | Open invitations | they stop working after 14 days; the row stays until an administrator revokes it or the tenant is purged | members, `purge_tenant` |
-| Sign-ins (`sign_in_log`) | after 90 days; with the account (cascade) and with the tenant (`purge_tenant`) | the application calls `prune_sign_in_log()` at most once an hour; the 90 days are fixed in that database function, the application cannot choose them or delete rows itself |
+| Sign-ins (`sign_in_log`) | after 90 days, and with the tenant (`purge_tenant`); **not** with the account: an account with sign-ins is kept as an (anonymised) placeholder until they expire, so the evidence of a takeover outlives the account | the application checks on every access and calls `prune_sign_in_log()` at most once an hour; the 90 days are fixed in that database function, the application cannot choose them or delete rows itself; `check.sh` warns if rows older than 91 days remain |
 | The account at the identity provider | never by the application | the user or the operator, at the provider |
 
 With the defaults a closed company's data is gone from the live system 90 days after closing and
@@ -182,7 +182,8 @@ Run SQL as the migration role (`billery_owner` in the kit:
     WHERE u.created_at < CURRENT_TIMESTAMP - INTERVAL '30 days'
       AND NOT EXISTS (SELECT 1 FROM tenant_member m WHERE m.user_id = u.id)
       AND NOT EXISTS (SELECT 1 FROM tenant_audit a WHERE a.actor_id = u.id)
-      AND NOT EXISTS (SELECT 1 FROM tenant_invitation i WHERE i.invited_by = u.id);
+      AND NOT EXISTS (SELECT 1 FROM tenant_invitation i WHERE i.invited_by = u.id)
+      AND NOT EXISTS (SELECT 1 FROM sign_in_log s WHERE s.user_id = u.id);
    ```
 
    The last statement removes accounts without a company together with their sign-in identities.
@@ -261,7 +262,9 @@ Removing an account:
    The account row itself stays as an anonymous placeholder while a company's log, invitations or
    document history still point at it; those entries then show the placeholder instead of a name,
    and the fact that *somebody* issued a given invoice stays intact. The cleanup statement of the
-   purge procedure deletes the row once nothing refers to it. A plain `DELETE FROM app_user` is
+   purge procedure deletes the row once nothing refers to it, at the latest 90 days after the last
+   sign-in (`sign_in_log` keeps the evidence of a takeover for that long, with the IP addresses;
+   it goes by itself). A plain `DELETE FROM app_user` is
    refused by the database as long as a log entry or an invitation names the person.
 3. The account **at the identity provider** is deleted there; the application cannot do it. Without
    that the person can sign in again and gets a new, empty account.
