@@ -68,7 +68,7 @@ The stack brings up PostgreSQL and the backend image, which also serves the buil
 
 **Prerequisites**
 
-- Java 25 (Temurin)
+- Java 25 (Temurin; the Docker image temporarily runs Amazon Corretto 25.0.5.1 until Temurin ships the fix for the OpenJDK advisory of 2026-11-17)
 - Maven 3.9+
 - Node.js `^20.19.0 || >=22.12.0`
 - Docker with Compose v2

@@ -58,8 +58,16 @@ weekly run writes the full report (all severities, fixed or not) into the job su
    request, so a change to `.trivyignore` is reported as a warning and in the job summary of the
    pull request: review every entry there. Ask for a code owner review of the file in the branch
    protection if more than one person merges.
-4. **Base image:** the images pin a patch version (`eclipse-temurin:25.0.3_9-jre-alpine`). A finding in
-   the OS or JRE is fixed by raising that pin (Dependabot `docker`).
+4. **Base image:** the images pin a patch version of the Java runtime. A finding in the OS or the
+   JRE is fixed by raising that pin (Dependabot `docker`). A JDK fix that the usual vendor has not
+   released yet may be taken from another OpenJDK build, pinned by digest, until it has:
+   **currently** `amazoncorretto:25.0.5-alpine3.24@sha256:…` (Corretto 25.0.5.1+2) instead of
+   `eclipse-temurin:25.0.5_8-jre-alpine-3.24`, for the OpenJDK advisory of 2026-11-17
+   (CVE-2026-114938 "Java4Shell", CVE-2026-114939 to CVE-2026-114947; every JDK 25 up to 25.0.5).
+   Temurin had not published 25.0.5.1 then. Corretto's Alpine image is a full JDK, so the image is
+   about 0.8 GB instead of about 0.3 GB. **Go back** to
+   `eclipse-temurin:25.0.5.1_<build>-jre-alpine-3.24` (or newer) as soon as Temurin publishes it
+   (`https://api.adoptium.net/v3/info/release_names?version=%5B25,26)`).
 5. **A release is blocked:** fix as above on `main`, then move the tag (delete and re-push it) or
    cut the next patch version. Do not weaken the policy to get a release out.
 
