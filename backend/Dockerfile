@@ -44,7 +44,12 @@ COPY --from=frontend /app/dist ./src/main/resources/static
 RUN mvn package -DskipTests -B ${MAVEN_PROFILES:+-P${MAVEN_PROFILES}}
 
 # Runtime stage
-FROM eclipse-temurin:25.0.5_8-jre-alpine-3.24
+# Hotfix (2026-11-18): Amazon Corretto 25.0.5.1+2, which fixes CVE-2026-114938 ("Java4Shell") to
+# CVE-2026-114947 of the OpenJDK advisory of 2026-11-17; every JDK 25 up to 25.0.5 is affected.
+# Temurin has not released 25.0.5.1 yet (its latest is 25.0.5+8). Pinned by digest because the tag
+# 25.0.5 does not name the patch level. Back to eclipse-temurin:25.0.5.1_*-jre-alpine-3.24 once it
+# exists (docs/operations/supply-chain.md).
+FROM amazoncorretto:25.0.5-alpine3.24@sha256:1124f698f69d2185828dbd1a1ebeb9aee21884ac64bed7af3deeafd20b21a9dc
 
 # Spring profile the image starts with. A SaaS JAR started WITHOUT the profile "saas" would run in
 # the self-host mode, that is without any authentication, so the SaaS image has it built in
