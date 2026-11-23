@@ -9,6 +9,8 @@ German invoice management system with a block-based template editor.
 
 Day-to-day commands, architecture gotchas and the documentation
 policy live in [`AGENTS.md`](../AGENTS.md) at the repo root.
+How to contribute (checks, code-owner review, license) is in
+[`CONTRIBUTING.md`](../CONTRIBUTING.md).
 
 ## Contents
 

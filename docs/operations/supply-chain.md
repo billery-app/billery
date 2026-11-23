@@ -56,8 +56,8 @@ weekly run writes the full report (all severities, fixed or not) into the job su
    every entry, an expiry date in the future and at most 90 days away. The entry expires and the
    finding returns for review; it is never open-ended. The scans run with the list of the pull
    request, so a change to `.trivyignore` is reported as a warning and in the job summary of the
-   pull request: review every entry there. Ask for a code owner review of the file in the branch
-   protection if more than one person merges.
+   pull request: review every entry there. The file is a code-owner path (`.github/CODEOWNERS`), so a
+   contributor's change to it needs the maintainer's approval.
 4. **Base image:** the images pin a patch version of the Java runtime. A finding in the OS or the
    JRE is fixed by raising that pin (Dependabot `docker`). A JDK fix that the usual vendor has not
    released yet may be taken from another OpenJDK build, pinned by digest, until it has (check
@@ -99,9 +99,9 @@ file against it), and the image ids of the two scanned images (compared after `d
 A release runs the workflow **of the tagged commit** with a write token (`contents`, `packages`). So
 whoever can push a `v*` tag can publish an image: the tag format check only stops accidents. Before the
 first release, add a ruleset in the repository settings (Settings > Rules > Rulesets, target: tags,
-pattern `v*`) that restricts **creating, updating and deleting** to the maintainers, and keep
-`.github/workflows/` and `.trivyignore` under a required review of a code owner if more than one person
-can merge. The `publish` job holds `packages: write` for all its steps; they are shell commands and
+pattern `v*`) that restricts **creating, updating and deleting** to the maintainers. `.github/workflows/`
+and `.trivyignore` are code-owner paths (`.github/CODEOWNERS`, ruleset `main` requires the review); keep
+them there when a second maintainer gets other paths. The `publish` job holds `packages: write` for all its steps; they are shell commands and
 pinned actions only, so splitting it further would not change who can run it, which is what the ruleset
 decides.
 

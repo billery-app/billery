@@ -1,0 +1,43 @@
+# Code owners: a pull request needs an approving review of an owner of every file it changes
+# before it can be merged into main (ruleset "main branch": one approval, code owner review, a
+# new push dismisses the approval, the last push must be approved by someone else).
+#
+# One maintainer owns everything today. The security-relevant paths are listed on their own
+# anyway, so that a second maintainer can be given the rest without also getting these.
+# The last matching line wins, so the specific paths come after the catch-all.
+
+*                                   @AnthBrun
+
+# Tenant isolation, authentication, roles and the SaaS schema
+/backend/src/saas/                  @AnthBrun
+/backend/src/saas-test/             @AnthBrun
+/backend/src/main/resources/db/     @AnthBrun
+
+# Security headers, origin check, CORS, uploads, PDF rendering of user templates, file imports,
+# desktop backups and restores
+/backend/src/main/java/de/billery/config/                               @AnthBrun
+/backend/src/main/java/de/billery/storage/                              @AnthBrun
+/backend/src/main/java/de/billery/pdf/                                  @AnthBrun
+/backend/src/main/java/de/billery/desktop/                              @AnthBrun
+/backend/src/main/java/de/billery/api/ApiExceptionHandler.java          @AnthBrun
+/backend/src/main/java/de/billery/api/controller/FileUploadController.java  @AnthBrun
+/backend/src/main/java/de/billery/service/DocumentConversionService.java    @AnthBrun
+/backend/src/main/java/de/billery/service/FileSecurityService.java          @AnthBrun
+
+# Build, release, images and what goes into them
+/.github/                           @AnthBrun
+/backend/Dockerfile                 @AnthBrun
+/frontend/Dockerfile                @AnthBrun
+/backend/pom.xml                    @AnthBrun
+/frontend/package.json              @AnthBrun
+/frontend/package-lock.json         @AnthBrun
+/app-desktop/                       @AnthBrun
+/scripts/                           @AnthBrun
+/.trivyignore                       @AnthBrun
+/.semgrepignore                     @AnthBrun
+
+# Deployment kits and the operator's runbooks
+/deploy/                            @AnthBrun
+/docker-compose.yml                 @AnthBrun
+/docs/operations/                   @AnthBrun
+/SECURITY.md                        @AnthBrun
