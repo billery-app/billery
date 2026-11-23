@@ -133,7 +133,7 @@ Status: ✅ in place · ⚠️ partial · ❌ gap.
 
 | ID | Threat | Control | Enforced by | Status |
 |----|--------|---------|-------------|--------|
-| T30 | **A change that breaks behaviour reaches `main`** (T/D) | Required status checks on `main`: `build`, `postgres`, `saas`, `xrechnung`, `frontend-test`, `dependency-scan`, `e2e-smoke`, `SAST Security Checks`, `gitleaks` (a job skipped by its path condition counts as passed) | **No approving review is required**, and the code-owner rule has no effect without a `CODEOWNERS` file (G10, issue #23) | ⚠️ |
+| T30 | **A change that breaks behaviour reaches `main`** (T/D) | Required status checks on `main`: `build`, `postgres`, `saas`, `xrechnung`, `frontend-test`, `dependency-scan`, `e2e-smoke`, `SAST Security Checks`, `gitleaks` (a job skipped by its path condition counts as passed) ; one approving review of a code owner (`.github/CODEOWNERS`), a new push dismisses it, the last push must be approved by someone else, review threads resolved | The maintainer's own pull requests (and those of agents working for the maintainer) merge through the administrators' pull-request bypass, without a second person: required checks, CodeQL, the Copilot review and the advisory LLM review are the only gate there (G10) | 🟡 |
 | T31 | **Agent-written change that satisfies the checklist but breaks the product** | `AGENTS.md` verification rules | CI job `e2e-smoke` (`frontend/e2e/`) uses the packaged app in Chromium and fails on console errors, CSP violations and `/api` errors; it covers the main screens, the PDF preview and the document form's customer search only (G11) | ⚠️ |
 | T32 | **Malicious dependency or workflow** | Dependabot (configured, weekly, grouped), Trivy dependency and image scan that fails on HIGH/CRITICAL with a fix (`security.yml`), the same gate before a release, SBOMs per release, the pushed image is the scanned one (build job read-only, `publish` the only write token), SAST | The new third-party action is pinned to a commit; the existing actions are still pinned by tag (accepted exclusion in semgrep). No signing or provenance of releases | ⚠️ |
 | T33 | **Prompt injection through PR/issue text** into the LLM review | Review is advisory, runs only for the maintainer's verified commits, model has no tools | Workflow conditions | ✅ |
@@ -145,7 +145,7 @@ Ordered by risk, not by effort.
 
 | ID | Gap | Why it matters | Suggested direction |
 |----|-----|----------------|---------------------|
-| **G10** | No review required on `main` (the test jobs are required checks by now) | A change, e.g. one written by an agent, can be merged without anyone but its author looking at it (T30) | Add a `CODEOWNERS` file for the security-relevant paths (the rule requires code-owner review, but without the file it has no effect); issue #23 |
+| **G10** | One maintainer: a contributor's pull request needs the maintainer's approval, but the maintainer's own pull requests merge through the administrators' bypass (pull requests only, no direct push) | A change by the maintainer or an agent working for the maintainer reaches `main` without a second person looking at it (T30) | Automated reviews (CodeQL, Copilot, LLM review) and the required checks; a second maintainer gets the non-security paths in `CODEOWNERS`, and the bypass then goes |
 | **G4** | Request limits count per instance (the GoBD export's one-per-tenant lock is shared); no quotas on stored data, no PDF render time or size limit (an export stops at its time limit, after the document being rendered) | One tenant can still degrade everyone with few, expensive requests (T21) | A shared counter when there is more than one instance; timeouts on rendering; storage quotas with the tariffs |
 | **G11** | End-to-end check of the built product covers only a smoke path | `e2e-smoke` runs the packaged app (SPA in the JAR) but not saving through the form, the lifecycle, import/export or the SaaS build | Extend `frontend/e2e/` with the core write flows; make `e2e-smoke` a required check |
 | **G1** | The origin check rejects bearer clients without `Origin` (the blocked PDF preview, `frame-src` without `blob:`, is fixed) | API clients outside a browser cannot write | Decide the bearer exemption |
@@ -175,7 +175,7 @@ hostile document being imported, and the integrity of the installer.
 
 These are consequences, not a plan. They are ordered the same way as the gaps.
 
-1. **Gate (T30, G10):** required status checks for all test jobs; `CODEOWNERS`.
+1. **Gate (T30, G10):** required status checks for all test jobs; code-owner review (`CODEOWNERS`); a second maintainer to remove the bypass.
 2. **Invariant tests, not bug tests (T1, T2, T6):** the `SaasIsolationTest` pattern
    (enumerate everything, fail on anything unlisted) now also covers roles
    (`SaasRoleMatrixTest`); response headers on every route are still open.

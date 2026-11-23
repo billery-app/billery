@@ -146,7 +146,8 @@ Developer and operator documentation lives in [`docs/`](./docs/):
 
 ## Security
 
-Please report vulnerabilities privately, see [`SECURITY.md`](./SECURITY.md).
+Please report vulnerabilities privately, see [`SECURITY.md`](./SECURITY.md). Contributions: see
+[`CONTRIBUTING.md`](./CONTRIBUTING.md).
 
 ## License
 
