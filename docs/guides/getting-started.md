@@ -12,10 +12,9 @@
 - **Java 25** (Temurin recommended). One version everywhere: the pom compiles
   with `<release>25</release>`, the CI workflows, the Docker image and the
   desktop runtime (`scripts/build-desktop.*`) use Temurin 25; the CI uses
-  Node 24 like the Docker image. Until Temurin publishes 25.0.5.1 (OpenJDK
-  advisory of 2026-11-17, "Java4Shell") the Docker image runs Amazon Corretto
-  25.0.5.1, and a desktop runtime must be built with a JDK of at least 25.0.5.1
-  as well (for example Corretto): `build-desktop.*` jlinks the JDK it runs on
+  Node 24 like the Docker image. Build a desktop runtime with a JDK of at least
+  25.0.5.1 (OpenJDK advisory of 2026-11-17, "Java4Shell"): `build-desktop.*`
+  jlinks the JDK it runs on
 - **Maven 3.9+**
 - **Node.js** `^20.19.0 || >=22.12.0` (per `package.json:engines`)
 - **Docker** with Compose v2 (for the full-stack dev DB and

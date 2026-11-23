@@ -14,7 +14,7 @@
 | Service | Image | Port | Container name |
 |---------|-------|------|----------------|
 | `postgres` | `postgres:17` (any PostgreSQL 15 or newer works, also an external one) | 5432 (not published) | `billery-db` |
-| `backend` | built from `backend/Dockerfile` (multi-stage: Node builds the SPA, Maven builds the JAR with the SPA inside, a Java 25 runtime runs it: Temurin JRE, temporarily Amazon Corretto 25.0.5.1 for the OpenJDK advisory of 2026-11-17, see [`supply-chain.md`](./supply-chain.md)) | 8080 | `billery-backend` |
+| `backend` | built from `backend/Dockerfile` (multi-stage: Node builds the SPA, Maven builds the JAR with the SPA inside, Temurin JRE runs it) | 8080 | `billery-backend` |
 | `frontend` (optional, profile `split`) | built from `frontend/Dockerfile` (Node 24, `serve`) | 5173 | `billery-frontend` |
 
 The **backend image is the whole application**: it serves the SPA and the

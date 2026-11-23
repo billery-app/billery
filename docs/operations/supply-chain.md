@@ -60,14 +60,12 @@ weekly run writes the full report (all severities, fixed or not) into the job su
    protection if more than one person merges.
 4. **Base image:** the images pin a patch version of the Java runtime. A finding in the OS or the
    JRE is fixed by raising that pin (Dependabot `docker`). A JDK fix that the usual vendor has not
-   released yet may be taken from another OpenJDK build, pinned by digest, until it has:
-   **currently** `amazoncorretto:25.0.5-alpine3.24@sha256:…` (Corretto 25.0.5.1+2) instead of
-   `eclipse-temurin:25.0.5_8-jre-alpine-3.24`, for the OpenJDK advisory of 2026-11-17
-   (CVE-2026-114938 "Java4Shell", CVE-2026-114939 to CVE-2026-114947; every JDK 25 up to 25.0.5).
-   Temurin had not published 25.0.5.1 then. Corretto's Alpine image is a full JDK, so the image is
-   about 0.8 GB instead of about 0.3 GB. **Go back** to
-   `eclipse-temurin:25.0.5.1_<build>-jre-alpine-3.24` (or newer) as soon as Temurin publishes it
-   (`https://api.adoptium.net/v3/info/release_names?version=%5B25,26)`).
+   released yet may be taken from another OpenJDK build, pinned by digest, until it has (check
+   `https://api.adoptium.net/v3/info/release_names?version=%5B25,26)`), then back to Temurin. That
+   happened once: for the OpenJDK advisory of 2026-11-17 (CVE-2026-114938 "Java4Shell",
+   CVE-2026-114939 to CVE-2026-114947) the image ran Amazon Corretto 25.0.5.1 from 2026-11-18 until
+   Temurin published 25.0.5.1+2; it now pins `eclipse-temurin:25.0.5.1_2-jre-alpine-3.24` by
+   digest. Corretto's Alpine image is a full JDK (the application image about 0.8 GB instead of about 0.55 GB).
 5. **A release is blocked:** fix as above on `main`, then move the tag (delete and re-push it) or
    cut the next patch version. Do not weaken the policy to get a release out.
 
