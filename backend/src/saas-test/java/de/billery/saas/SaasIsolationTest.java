@@ -86,7 +86,9 @@ class SaasIsolationTest extends SaasApiTestBase {
       int template,
       int spareTemplate,
       String member,
-      String invitation) {
+      String invitation,
+      int mailAccount,
+      int spareMailAccount) {
 
     /** Ids that exist nowhere: the reference answer of every attack. */
     static Fixture missing() {
@@ -107,7 +109,9 @@ class SaasIsolationTest extends SaasApiTestBase {
           MISSING,
           MISSING,
           "00000000-0000-0000-0000-000000000000",
-          "00000000-0000-0000-0000-000000000000");
+          "00000000-0000-0000-0000-000000000000",
+          MISSING,
+          MISSING);
     }
   }
 
@@ -344,7 +348,22 @@ class SaasIsolationTest extends SaasApiTestBase {
         template,
         spareTemplate,
         member,
-        invitation);
+        invitation,
+        mailAccount(token, tenant, "Mail" + tag),
+        mailAccount(token, tenant, "MailS" + tag));
+  }
+
+  /** A mail account of the tenant, pointing at the suite's fake SMTP server. */
+  private int mailAccount(String token, int tenant, String name) throws Exception {
+    return create("/api/mail/accounts", token, tenant, mailAccountBody(name));
+  }
+
+  private static String mailAccountBody(String name) {
+    return "{\"name\":\""
+        + name
+        + "\",\"host\":\"127.0.0.1\",\"port\":"
+        + smtp.port()
+        + ",\"security\":\"NONE\",\"fromAddress\":\"rechnung@example.com\"}";
   }
 
   /** A second member (a reader), so that changing or removing a member is possible. */
@@ -535,6 +554,38 @@ class SaasIsolationTest extends SaasApiTestBase {
         "GET /api/invoices/{id}/pdf",
         Attack.get(Kind.BY_ID, f -> "/api/invoices/" + f.draft() + "/pdf"));
     a.put(
+        "GET /api/invoices/{id}/mail",
+        Attack.get(Kind.BY_ID, f -> "/api/invoices/" + f.issued() + "/mail"));
+    a.put(
+        "POST /api/invoices/{id}/mail",
+        Attack.send(
+            "POST",
+            f -> "/api/invoices/" + f.issued() + "/mail",
+            f ->
+                "{\"accountId\":"
+                    + f.mailAccount()
+                    + ",\"to\":[\"kunde@example.com\"],\"subject\":\"Rechnung\","
+                    + "\"text\":\"Anbei\"}"));
+    // mail accounts
+    a.put("GET /api/mail/accounts", Attack.get(Kind.LIST, f -> "/api/mail/accounts"));
+    a.put("GET /api/mail/settings", Attack.get(Kind.LIST, f -> "/api/mail/settings"));
+    a.put(
+        "PUT /api/mail/accounts/{id}",
+        Attack.send(
+            "PUT",
+            f -> "/api/mail/accounts/" + f.spareMailAccount(),
+            f -> mailAccountBody("Hacked")));
+    a.put(
+        "DELETE /api/mail/accounts/{id}",
+        Attack.send("DELETE", f -> "/api/mail/accounts/" + f.spareMailAccount(), f -> null));
+    a.put(
+        "POST /api/mail/accounts/{id}/default",
+        Attack.send(
+            "POST", f -> "/api/mail/accounts/" + f.spareMailAccount() + "/default", f -> null));
+    a.put(
+        "POST /api/mail/accounts/{id}/test",
+        Attack.send("POST", f -> "/api/mail/accounts/" + f.mailAccount() + "/test", f -> null));
+    a.put(
         "GET /api/invoices/{id}/xrechnung",
         Attack.get(Kind.BY_ID, f -> "/api/invoices/" + f.issued() + "/xrechnung"));
     a.put(
@@ -605,7 +656,9 @@ class SaasIsolationTest extends SaasApiTestBase {
           "POST /api/documents/export",
           "POST /api/upload",
           "POST /api/tenant/invitations",
-          "POST /api/tenant/close");
+          "POST /api/tenant/close",
+          "POST /api/mail/accounts",
+          "PUT /api/mail/templates");
 
   /** Endpoints with no tenant data at all. */
   private static final Set<String> TENANT_FREE =
@@ -885,6 +938,8 @@ class SaasIsolationTest extends SaasApiTestBase {
       {"POST", "/api/documents/export", "{}"},
       {"POST", "/api/tenant/invitations", "{}"},
       {"POST", "/api/tenant/close", null},
+      {"POST", "/api/mail/accounts", "{}"},
+      {"PUT", "/api/mail/templates", "{}"},
       {"POST", "/api/upload", null}
     };
     for (String[] request : requests) {

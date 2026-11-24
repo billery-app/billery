@@ -43,8 +43,9 @@ import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandl
  *                             owner  admin  accountant  reader
  * READ         (read data)      yes    yes     yes         yes
  * WRITE        (change data)    yes    yes     yes         no   (the filter: a reader only reads)
- * TEAM         (members,        yes    yes     no          no   (MemberService, InvitationService)
- *               invitations)
+ * TEAM         (members,        yes    yes     no          no   (MemberService, InvitationService,
+ *               invitations,                                      SaasManagerAccess)
+ *               mail accounts)
  * OWNER_ONLY   (close tenant)   yes    no      no          no   (TenantProvisioningService)
  * </pre>
  *
@@ -88,10 +89,13 @@ class SaasRoleMatrixTest extends SaasApiTestBase {
           "GET /api/invoices/statistics",
           "GET /api/invoices/{id}",
           "GET /api/invoices/{id}/history",
+          "GET /api/invoices/{id}/mail",
           "GET /api/invoices/{id}/payments",
           "GET /api/invoices/{id}/pdf",
           "GET /api/invoices/{id}/xrechnung",
           "GET /api/invoices/{id}/xrechnung/check",
+          "GET /api/mail/accounts",
+          "GET /api/mail/settings",
           "GET /api/owners",
           "GET /api/owners/primary",
           "GET /api/search",
@@ -126,6 +130,7 @@ class SaasRoleMatrixTest extends SaasApiTestBase {
           "POST /api/invoices/{id}/archive",
           "POST /api/invoices/{id}/cancel",
           "POST /api/invoices/{id}/clone",
+          "POST /api/invoices/{id}/mail",
           "POST /api/invoices/{id}/payments",
           "POST /api/invoices/{id}/payments/{paymentId}/reverse",
           "POST /api/invoices/{id}/unarchive",
@@ -144,9 +149,19 @@ class SaasRoleMatrixTest extends SaasApiTestBase {
           "PUT /api/services/{id}",
           "PUT /api/templates/{id}");
 
-  /** Members and invitations: owner and admin only, readers and accountants may not even list. */
+  /**
+   * Members and invitations: owner and admin only, readers and accountants may not even list. The
+   * company's mail accounts and mail templates: owner and admin change them (everyone reads them,
+   * the send dialog lists the accounts).
+   */
   private static final Set<String> TEAM =
       Set.of(
+          "DELETE /api/mail/accounts/{id}",
+          "POST /api/mail/accounts",
+          "POST /api/mail/accounts/{id}/default",
+          "POST /api/mail/accounts/{id}/test",
+          "PUT /api/mail/accounts/{id}",
+          "PUT /api/mail/templates",
           "DELETE /api/tenant/invitations/{id}",
           "DELETE /api/tenant/members/{userId}",
           "GET /api/tenant/audit",

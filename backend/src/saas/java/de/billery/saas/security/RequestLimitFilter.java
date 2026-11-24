@@ -22,10 +22,13 @@ import org.springframework.web.filter.OncePerRequestFilter;
  */
 public class RequestLimitFilter extends OncePerRequestFilter {
 
-  /** The requests that render or package documents: PDF, preview, XRechnung, export, import. */
+  /**
+   * The requests that render or package documents: PDF, preview, XRechnung, sending by mail (which
+   * renders the PDF), export, import.
+   */
   static final Pattern HEAVY =
       Pattern.compile(
-          "^/api/(invoices/\\d+/(pdf|xrechnung)|templates/preview|export/.*|documents/(export|import).*)$");
+          "^/api/(invoices/\\d+/(pdf|xrechnung|mail)|templates/preview|export/.*|documents/(export|import).*)$");
 
   private final RequestLimits limits;
 

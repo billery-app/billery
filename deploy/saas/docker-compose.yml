@@ -92,6 +92,10 @@ services:
       # URLs stored in templates.
       BILLERY_FILES_SECRET: ${BILLERY_FILES_SECRET:?Set BILLERY_FILES_SECRET (./generate-secrets.sh does it)}
       BILLERY_FILES_DIR: /app/uploads
+      # Encrypts the passwords of the companies' own mail accounts (32 random bytes, Base64:
+      # openssl rand -base64 32). Empty: companies cannot store a mail password. Changing it makes
+      # the stored passwords unreadable (they are entered again).
+      BILLERY_SECRETS_KEY: ${BILLERY_SECRETS_KEY:-}
       # Where uploads are kept: local (the uploads volume, default) or s3 (a bucket of any
       # S3-compatible store, for several instances without a shared disk). backup.sh follows it.
       BILLERY_FILES_STORE: ${BILLERY_FILES_STORE:-local}
@@ -103,9 +107,10 @@ services:
       BILLERY_FILES_S3_PATH_STYLE: ${BILLERY_FILES_S3_PATH_STYLE:-true}
       # Same origin: the SPA and the API are served by this one service. Empty = no CORS.
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
-      # Outgoing mail (invitations). Optional: without MAIL_HOST and MAIL_FROM nothing is sent and
-      # the app says so when someone is invited. MAIL_SECURITY: starttls (port 587, default),
-      # ssl (465) or none.
+      # Outgoing system mail (invitations), the operator's account; mails to a company's customers
+      # go through the company's own accounts instead (Settings → Mail-Einstellungen). Optional:
+      # without MAIL_HOST and MAIL_FROM nothing is sent and the app says so when someone is
+      # invited. MAIL_SECURITY: starttls (port 587, default), ssl (465) or none.
       BILLERY_PUBLIC_URL: ${BILLERY_PUBLIC_URL:-}
       # Prometheus metrics on this port inside the network only (never published); -1 = off.
       BILLERY_METRICS_PORT: ${BILLERY_METRICS_PORT:--1}
@@ -115,6 +120,9 @@ services:
       BILLERY_LIMITS_HEAVY_PER_TENANT: ${BILLERY_LIMITS_HEAVY_PER_TENANT:-2}
       BILLERY_INVITATION_MAILS_PER_DAY: ${BILLERY_INVITATION_MAILS_PER_DAY:-1000}
       BILLERY_INVITATION_MAILS_PER_IP: ${BILLERY_INVITATION_MAILS_PER_IP:-100}
+      # Mails one company may send to its customers in 24 hours (its own accounts); 0 = no limit.
+      # A company's own limit: tenant.mail_daily_limit (docs/operations/saas-tenant-lifecycle.md).
+      BILLERY_CUSTOMER_MAILS_PER_DAY: ${BILLERY_CUSTOMER_MAILS_PER_DAY:-200}
       # Sign-up limits; the source IP comes from X-Forwarded-For, which Caddy overwrites.
       BILLERY_MAX_COMPANIES_PER_USER: ${BILLERY_MAX_COMPANIES_PER_USER:-5}
       BILLERY_SIGNUPS_PER_USER_PER_DAY: ${BILLERY_SIGNUPS_PER_USER_PER_DAY:-3}

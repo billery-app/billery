@@ -40,6 +40,7 @@ class TenantPurgeTest {
           "invoice_template",
           "document_number_series",
           "user_settings",
+          "mail_account",
           "owner",
           "tenant_invitation",
           "tenant_member",
@@ -110,6 +111,10 @@ class TenantPurgeTest {
         "INSERT INTO user_settings (tenant_id, setting_key, setting_value) VALUES ("
             + t
             + ", 'k', 'v')",
+        "INSERT INTO mail_account (tenant_id, name, host, port, security, from_address,"
+            + " password_encrypted, is_default) VALUES ("
+            + t
+            + ", 'Konto', 'smtp.example.com', 587, 'STARTTLS', 'a@x.de', 'v1:x', 1)",
         "INSERT INTO document_number_series (tenant_id, document_type_id, doc_year, last_number)"
             + " VALUES ("
             + t

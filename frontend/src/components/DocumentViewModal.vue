@@ -161,6 +161,7 @@
       -->
       <div class="modal-footer">
         <div v-if="actionError" class="action-error" role="alert">{{ actionError }}</div>
+        <div v-if="mailNotice" class="action-notice" role="status" data-testid="mail-notice">{{ mailNotice }}</div>
 
         <div v-if="doc && showPaymentForm" ref="footerForm" class="footer-form payment-form">
           <h3>Zahlung erfassen</h3>
@@ -249,6 +250,14 @@
               title="E-Rechnung im Format XRechnung (UBL) für Geschäftskunden und Behörden"
               data-testid="xrechnung-download"
             >E-Rechnung</button>
+            <button
+              v-if="canSendMail"
+              type="button"
+              class="btn btn-secondary"
+              title="Dokument per E-Mail an den Kunden senden"
+              data-testid="send-mail-button"
+              @click="showSendMail = true"
+            >Per E-Mail</button>
             <button v-if="!isCreditNoteDoc" type="button" @click="openCloneForm" class="btn btn-secondary">Duplizieren</button>
             <button v-if="listActions.edit" type="button" @click="emit('edit-request', doc)" class="btn btn-secondary">Bearbeiten</button>
             <button v-if="listActions.restore" type="button" @click="emit('restore-request', doc.id)" class="btn btn-secondary">Wiederherstellen</button>
@@ -292,6 +301,7 @@
         </div>
       </div>
     </div>
+    <SendMailModal v-model:visible="showSendMail" :document-id="doc ? doc.id : null" @sent="onMailSent" />
   </div>
 </template>
 
@@ -302,6 +312,8 @@ import { useDocumentType } from '../composables/useDocumentType.js'
 import { isInvoiceOverdue, isDraft, isOpenInvoice, isCancelled, DRAFT, SENT, CANCELLED } from '../utils/documentStatus.js'
 import { isInvoice, isCreditNote } from '../data/documentTypes.js'
 import { chargesVat, legalNote, formatRate } from '../utils/vat.js'
+import SendMailModal from './SendMailModal.vue'
+import { activeRole, isSaas } from '../services/session.js'
 
 const { documentLabel, statusText, statusClass, statusOptions: getStatusOptions } = useDocumentType()
 
@@ -339,6 +351,9 @@ const pdfLoading = ref(false)
 const error = ref(null)
 
 const actionError = ref(null)
+/** What the last mail dispatch did ("Gesendet an …"), shown above the actions. */
+const mailNotice = ref(null)
+const showSendMail = ref(false)
 const payments = ref([])
 const history = ref([])
 const relatedNumber = ref('')
@@ -430,7 +445,8 @@ const HISTORY_LABELS = {
   STATUS_CHANGED: 'Status geändert',
   PAYMENT_RECORDED: 'Zahlung erfasst',
   PAYMENT_REVERSED: 'Zahlung storniert',
-  CANCELLED: 'Storniert'
+  CANCELLED: 'Storniert',
+  MAIL_SENT: 'Per E-Mail gesendet'
 }
 
 /**
@@ -551,6 +567,24 @@ function resetFooter() {
   showPaymentForm.value = false
   menuOpen.value = false
   actionError.value = null
+  mailNotice.value = null
+}
+
+/** A reader may look at documents but not send them (SaaS); everybody else may. */
+const canSendMail = computed(() => !!doc.value && !(isSaas() && activeRole() === 'READER'))
+
+/**
+ * After a dispatch: reload the document (an invoice draft is issued now, an offer "Gesendet") and
+ * tell the list.
+ * @param {{issued: boolean, documentNumber: string, to: string[]}} result
+ */
+async function onMailSent(result) {
+  actionError.value = null
+  await loadInvoice()
+  emit('status-updated')
+  mailNotice.value = result.issued
+    ? `Als ${result.documentNumber} ausgestellt und an ${result.to.join(', ')} gesendet.`
+    : `An ${result.to.join(', ')} gesendet.`
 }
 
 watch(() => props.visible, async (newVal) => {
@@ -1209,6 +1243,12 @@ function formatCurrency(value) {
 .action-error {
   margin-bottom: var(--space-3);
   color: var(--color-danger);
+  font-size: var(--font-size-md);
+}
+
+.action-notice {
+  margin-bottom: var(--space-3);
+  color: var(--color-success-hover);
   font-size: var(--font-size-md);
 }
 

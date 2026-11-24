@@ -12,6 +12,11 @@ import de.billery.api.controller.ServiceController;
 import de.billery.config.DbConfig;
 import de.billery.data.Database;
 import de.billery.document.DocumentStrategyRegistry;
+import de.billery.mail.CompanyMailSender;
+import de.billery.mail.CredentialCipher;
+import de.billery.mail.CustomerMailLimit;
+import de.billery.mail.MailHostPolicy;
+import de.billery.mail.MailMetrics;
 import de.billery.pdf.TemplateBasedPdfGenerator;
 import de.billery.repository.ArticleRepository;
 import de.billery.repository.CustomerRepository;
@@ -20,16 +25,20 @@ import de.billery.repository.DocumentNumberSeriesRepository;
 import de.billery.repository.EquipmentRepository;
 import de.billery.repository.InvoiceRepository;
 import de.billery.repository.InvoiceTemplateRepository;
+import de.billery.repository.MailAccountRepository;
 import de.billery.repository.OwnerRepository;
 import de.billery.repository.PaymentRepository;
 import de.billery.repository.ServiceRepository;
 import de.billery.repository.UserSettingsRepository;
+import de.billery.service.DocumentMailService;
 import de.billery.service.DocumentNumberService;
 import de.billery.service.DocumentPdfService;
 import de.billery.service.DocumentService;
 import de.billery.service.EInvoiceService;
 import de.billery.service.GobdExportService;
 import de.billery.service.InvoiceLifecycleService;
+import de.billery.service.MailAccountService;
+import de.billery.service.MailTemplateService;
 import de.billery.statistics.InvoiceStatisticsService;
 import de.billery.storage.LocalFileStorage;
 import de.billery.tenant.DefaultCurrentTenant;
@@ -243,5 +252,68 @@ public final class TestWiring {
   /** Returns a new {@link ExportController}. */
   public static ExportController exportController() {
     return new ExportController(gobdExportService(), new de.billery.audit.NoAuditTrail());
+  }
+
+  /** Returns a new {@link MailAccountRepository}. */
+  public static MailAccountRepository mailAccountRepository() {
+    return new MailAccountRepository(jdbcClient());
+  }
+
+  /** Returns a new {@link MailTemplateService}. */
+  public static MailTemplateService mailTemplateService() {
+    return new MailTemplateService(settingsRepository());
+  }
+
+  /**
+   * Returns a new {@link CompanyMailSender}.
+   *
+   * @param cipher decrypts the passwords
+   * @param policy which servers are allowed
+   * @param metrics counts the mails
+   */
+  public static CompanyMailSender companyMailSender(
+      CredentialCipher cipher, MailHostPolicy policy, MailMetrics metrics) {
+    return new CompanyMailSender(cipher, policy, metrics);
+  }
+
+  /**
+   * Returns a new {@link MailAccountService}.
+   *
+   * @param cipher encrypts the passwords
+   * @param policy which servers are allowed
+   * @param metrics counts the test mails
+   */
+  public static MailAccountService mailAccountService(
+      CredentialCipher cipher, MailHostPolicy policy, MailMetrics metrics) {
+    return new MailAccountService(
+        mailAccountRepository(),
+        cipher,
+        policy,
+        companyMailSender(cipher, policy, metrics),
+        transactions());
+  }
+
+  /**
+   * Returns a new {@link DocumentMailService}.
+   *
+   * @param sender delivers the mails
+   * @param limit the daily limit
+   */
+  public static DocumentMailService documentMailService(
+      CompanyMailSender sender, CustomerMailLimit limit) {
+    return new DocumentMailService(
+        invoiceRepository(),
+        customerRepository(),
+        mailAccountRepository(),
+        mailTemplateService(),
+        pdfGenerator(),
+        documentPdfService(),
+        eInvoiceService(),
+        lifecycleService(),
+        historyRepository(),
+        new DocumentStrategyRegistry(),
+        sender,
+        limit,
+        transactions());
   }
 }

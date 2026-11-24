@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import DocumentViewModal from './DocumentViewModal.vue'
 import invoiceAPI from '../services/invoiceService.js'
+import mailService from '../services/mailService.js'
+import { session } from '../services/session.js'
 import { DRAFT, SENT, ACCEPTED, REJECTED, CONVERTED, PAID, CANCELLED, PARTIALLY_PAID } from '../utils/documentStatus.js'
 
 const INVOICE = 1
@@ -175,7 +177,7 @@ describe('DocumentViewModal — action bar of invoices', () => {
 
     expect(steps(wrapper)).toEqual(['Ausstellen'])
     expect(primaries(wrapper)).toEqual(['Ausstellen'])
-    expect(documentActions(wrapper)).toEqual(['PDF', 'Duplizieren', 'Bearbeiten'])
+    expect(documentActions(wrapper)).toEqual(['PDF', 'Per E-Mail', 'Duplizieren', 'Bearbeiten'])
     expect(await menu(wrapper)).toEqual(['Löschen'])
   })
 
@@ -185,7 +187,7 @@ describe('DocumentViewModal — action bar of invoices', () => {
 
       expect(steps(wrapper)).toEqual(['Zahlung erfassen'])
       expect(primaries(wrapper)).toEqual(['Zahlung erfassen'])
-      expect(documentActions(wrapper)).toEqual(['PDF', 'E-Rechnung', 'Duplizieren', 'Bearbeiten'])
+      expect(documentActions(wrapper)).toEqual(['PDF', 'E-Rechnung', 'Per E-Mail', 'Duplizieren', 'Bearbeiten'])
       expect(await menu(wrapper)).toEqual(['Stornieren', 'Archivieren'])
     }
   })
@@ -202,19 +204,19 @@ describe('DocumentViewModal — action bar of invoices', () => {
     const cancelled = await open(INVOICE, CANCELLED)
     expect(steps(cancelled)).toEqual([])
     expect(await menu(cancelled)).toEqual([])
-    expect(documentActions(cancelled)).toEqual(['PDF', 'E-Rechnung', 'Duplizieren'])
+    expect(documentActions(cancelled)).toEqual(['PDF', 'E-Rechnung', 'Per E-Mail', 'Duplizieren'])
 
     const creditNote = await open(CREDIT_NOTE, SENT)
     expect(steps(creditNote)).toEqual([])
     expect(await menu(creditNote)).toEqual([])
-    expect(documentActions(creditNote)).toEqual(['PDF', 'E-Rechnung'])
+    expect(documentActions(creditNote)).toEqual(['PDF', 'E-Rechnung', 'Per E-Mail'])
     expect(primaries(creditNote)).toEqual(['PDF'])
   })
 
   it('offers restoring an archived document next to the document actions', async () => {
     const wrapper = await open(INVOICE, PAID, { edit: true, restore: true })
 
-    expect(documentActions(wrapper)).toEqual(['PDF', 'E-Rechnung', 'Duplizieren', 'Bearbeiten', 'Wiederherstellen'])
+    expect(documentActions(wrapper)).toEqual(['PDF', 'E-Rechnung', 'Per E-Mail', 'Duplizieren', 'Bearbeiten', 'Wiederherstellen'])
     await wrapper.findAll('.action-group-document button').at(-1).trigger('click')
     expect(wrapper.emitted('restore-request')).toEqual([[1]])
   })
@@ -325,7 +327,7 @@ describe('DocumentViewModal — the lifecycle strip is told apart from the docum
     expect(wrapper.find('.action-group-document .lifecycle-caption').exists()).toBe(false)
     // The status buttons are in the strip only, the document actions in their own group only.
     expect(steps(wrapper)).toEqual(['Angenommen', 'Abgelehnt'])
-    expect(documentActions(wrapper)).toEqual(['PDF', 'Duplizieren'])
+    expect(documentActions(wrapper)).toEqual(['PDF', 'Per E-Mail', 'Duplizieren'])
   })
 
   it('shows no strip and no caption when the document has no next step', async () => {
@@ -436,11 +438,60 @@ describe('DocumentViewModal — history', () => {
     expect(rows[0].get('.history-details').text()).toBe('Angenommen')
   })
 
+  it('names a dispatch in the history', async () => {
+    const rows = await openWithHistory([entry(1, 'MAIL_SENT', 'An: max@kunde.de; Betreff: Rechnung')])
+
+    expect(rows[0].get('.history-action').text()).toBe('Per E-Mail gesendet')
+  })
+
   it('never shows the key of an unknown action', async () => {
     const rows = await openWithHistory([entry(1, 'SOMETHING_NEW', null)])
 
     expect(rows[0].get('.history-action').text()).toBe('Sonstige Änderung')
     expect(rows[0].get('.history-details').text()).toBe('')
     expect(rows[0].find('.history-actor').exists()).toBe(false)
+  })
+})
+
+describe('DocumentViewModal — sending by mail', () => {
+  beforeEach(() => {
+    resetMocks()
+    session.mode = 'selfhost'
+    session.memberships = []
+    session.activeTenantId = null
+  })
+
+  it('hides the mail action from a reader in SaaS', async () => {
+    session.mode = 'saas'
+    session.memberships = [{ tenantId: 1, tenantName: 'Eins', role: 'READER' }]
+    session.activeTenantId = 1
+    const wrapper = await open(INVOICE, SENT)
+
+    expect(documentActions(wrapper)).not.toContain('Per E-Mail')
+  })
+
+  it('opens the dialog, and after sending reloads the document and says where it went', async () => {
+    vi.spyOn(mailService, 'draft').mockResolvedValue({
+      to: 'max@kunde.de',
+      subject: 'Rechnung',
+      text: 'Text',
+      accounts: [{ id: 1, name: 'Konto', fromAddress: 'r@firma.de', fromName: '', isDefault: true }],
+      needsIssue: false,
+      attachmentName: 'Rechnung.pdf',
+      xrechnungPossible: false,
+      xrechnungMissing: []
+    })
+    vi.spyOn(mailService, 'send').mockResolvedValue({ issued: false, documentNumber: 'RE-1', documentStatusId: SENT })
+    const wrapper = await open(INVOICE, SENT)
+    const loads = invoiceAPI.getInvoice.mock.calls.length
+
+    await wrapper.get('[data-testid="send-mail-button"]').trigger('click')
+    await flushPromises()
+    await wrapper.get('.send-form').trigger('submit')
+    await flushPromises()
+
+    expect(invoiceAPI.getInvoice.mock.calls.length).toBeGreaterThan(loads)
+    expect(wrapper.get('[data-testid="mail-notice"]').text()).toBe('An max@kunde.de gesendet.')
+    expect(wrapper.emitted('status-updated')).toBeTruthy()
   })
 })

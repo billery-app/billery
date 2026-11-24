@@ -58,6 +58,19 @@ describe('createAppRouter', () => {
       expect(router.currentRoute.value.path).toBe('/settings/team')
     })
 
+    it('opens the mail settings self-hosted, in SaaS only for owners and admins', async () => {
+      const router = createAppRouter()
+      await router.push('/settings/mail')
+      expect(router.currentRoute.value.path).toBe('/settings/mail')
+
+      session.mode = 'saas'
+      session.memberships = [{ tenantId: 1, tenantName: 'Eins GmbH', role: 'ACCOUNTANT' }]
+      session.activeTenantId = 1
+      await router.push('/settings')
+      await router.push('/settings/mail')
+      expect(router.currentRoute.value.path).toBe('/settings')
+    })
+
     it('opens the backup in the desktop app', async () => {
       session.desktop = true
       const router = createAppRouter()

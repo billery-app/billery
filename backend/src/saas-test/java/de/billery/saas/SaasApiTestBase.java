@@ -60,6 +60,13 @@ abstract class SaasApiTestBase {
   static volatile java.util.Map<String, Integer> signUpLimits = java.util.Map.of();
 
   static java.nio.file.Path uploads;
+
+  /** The key the company mail passwords are encrypted with in the suite (32 bytes, Base64). */
+  static final String SECRETS_KEY = java.util.Base64.getEncoder().encodeToString(new byte[32]);
+
+  /** Receives the mails the suite sends through company mail accounts. */
+  static de.billery.mail.FakeSmtpServer smtp;
+
   static MockIdp idpA;
   static MockIdp idpB;
   static MockIdp stranger;
@@ -86,6 +93,10 @@ abstract class SaasApiTestBase {
     registry.add("billery.security.audience", () -> AUDIENCE);
     registry.add("billery.oidc.client-id", () -> "billery-spa");
     registry.add("billery.files.secret", () -> FILES_SECRET);
+    // The company mail accounts of the tests point at a fake SMTP server on the loopback
+    // interface, which the SaaS host policy would refuse (MailHostPolicyTest covers the policy).
+    registry.add("billery.mail.allow-private-hosts", () -> "true");
+    registry.add("billery.secrets.key", () -> SECRETS_KEY);
     registry.add("billery.files.dir", () -> uploads.toString());
     if (S3TestStore.configured()) {
       // With S3_TEST_URL the whole SaaS API suite keeps its uploads in the object store.
@@ -101,6 +112,7 @@ abstract class SaasApiTestBase {
   @BeforeAll
   static void prepare() throws SQLException, IOException {
     uploads = java.nio.file.Files.createTempDirectory("billery-uploads");
+    smtp = new de.billery.mail.FakeSmtpServer();
     idpA = new MockIdp();
     idpB = new MockIdp();
     stranger = new MockIdp();
@@ -124,6 +136,7 @@ abstract class SaasApiTestBase {
 
   @AfterAll
   static void stop() throws IOException {
+    smtp.close();
     try (var files = java.nio.file.Files.walk(uploads)) {
       files.sorted(java.util.Comparator.reverseOrder()).forEach(path -> path.toFile().delete());
     }

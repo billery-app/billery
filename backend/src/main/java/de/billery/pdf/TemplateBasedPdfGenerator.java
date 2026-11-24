@@ -150,6 +150,28 @@ public class TemplateBasedPdfGenerator {
   }
 
   /**
+   * Resolves the {@code {{variables}}} of a plain text (subject and text of a mail to the customer)
+   * with the same values the document's PDF shows: company, customer, number, dates and the amounts
+   * from {@code VatCalculator}. Unknown placeholders are removed; nothing is escaped (the text is
+   * sent as plain text).
+   *
+   * @param text the text with placeholders
+   * @param stored the document
+   * @return the resolved text
+   * @throws MissingConfigurationException if no company data is configured
+   */
+  public String resolvePlainText(String text, Invoice stored) {
+    if (text == null || !text.contains("{{")) {
+      return text == null ? "" : text;
+    }
+    Customer customer = customerRepository.findById(stored.getCustomerId());
+    List<InvoiceItem> items = invoiceRepository.findItemsByInvoiceId(stored.getId());
+    VatBreakdown vat = VatCalculator.calculate(items, TaxTreatment.parse(stored.getTaxTreatment()));
+    stored.setComputedTaxAmount(vat.tax());
+    return replaceVariables(text, new VariableContext(getOwner(), customer, stored));
+  }
+
+  /**
    * Renders an unsaved template draft to PDF through the same pipeline as real documents, for the
    * template editor's "exact preview". Nothing is stored.
    *

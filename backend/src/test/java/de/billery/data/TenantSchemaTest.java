@@ -98,6 +98,7 @@ class TenantSchemaTest {
             "invoice_item",
             "invoice_period",
             "invoice_template",
+            "mail_account",
             "owner",
             "payment",
             "service",

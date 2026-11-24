@@ -121,7 +121,8 @@ erDiagram
 | `DocumentHistoryEntry` | `document_history` | Audit log (action, date, notes, actor id and, filled in by the controller through `ActorNames`, the actor's name), written by `DocumentHistoryRepository`. |
 | `DocumentNumberSeries` | `document_number_series` | `last_number` per `(document_type_id, year)`. |
 | `DocumentType` / `DocumentStatus` | `document_type` / `document_status` | Lookup tables, seeded with fixed IDs. |
-| `UserSettings` | `user_settings` | Key-value table for per-user settings. |
+| `UserSettings` | `user_settings` | Key-value table for per-user settings (also the mail templates, `mail_<kind>_subject` / `mail_<kind>_text`). |
+| `MailAccount` | `mail_account` | A company's own SMTP account for mail to customers: server, port, security, login, sender, the password encrypted by `mail.CredentialCipher` (never returned by the API), one default per company. PostgreSQL: `V3__mail_accounts.sql`; H2: both `scheme-h2.sql` and `DatabaseMigration.migrateAddMailAccountTable`. |
 
 `V1__baseline.sql` and `V1__baseline.sql` seed the `document_type` and
 `document_status` lookup rows with the IDs the code depends on:
@@ -243,7 +244,7 @@ stateDiagram-v2
 - **Correcting** an issued invoice = cancel + copy (`POST /clone`) as a new
   draft. Invoices are not versioned (a `…/` number on create → 409); versioning
   stays for offers and cost calculations.
-- **Audit trail:** status changes are logged by name (`Entwurf → Gesendet`, `DocumentStatus.transitionNote`; entries written before that hold `Status <id>` and the document view translates them, rows are never rewritten). Every step appends to `document_history`
+- **Audit trail:** status changes are logged by name (`Entwurf → Gesendet`, `DocumentStatus.transitionNote`; entries written before that hold `Status <id>` and the document view translates them, rows are never rewritten). A mail to the customer is `MAIL_SENT` (recipients, subject, account, attachment names; not the text). Every step appends to `document_history`
   (`GET /api/invoices/{id}/history`). Only a draft's entries are deleted, with
   the draft.
 - **Statistics** count issued invoices of the invoice types in the period of

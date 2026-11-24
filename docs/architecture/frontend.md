@@ -58,7 +58,7 @@ counts and needs "Trotzdem wiederherstellen".
 - A `<nav class="navbar">` with the app title, the search button (which
   opens `SpotlightSearch.vue`), and links to the main routes
   (`/customers`, `/invoices`, `/articles-services`).
-- An "Einstellungen" `router-link` to `/settings`. The settings view is the single entry point for owner management, templates, and any future settings surface; the navbar has no dropdown. **The overview shows only cards**, grouped (Allgemein, Daten, Weitere Einstellungen); every area is one card. `utils/settingsAreas.js` describes the areas once (title, icon, description, target, `available()` for mode and role, `upcoming` for "Demnächst verfügbar"); the overview (`SettingsView`) and the router guard both use it, so an area that is hidden cannot be opened by its address either (`guardSettingsArea` leads back to `/settings`). A card opens its own view (`/owners`, `/templates`) or a sub-page `/settings/<id>` (`SettingsAreaView`: back link, visible title, the area's component: `account` → `AccountSettings`, `team` → `TeamSettings`, `export` → `GobdExportSettings`, `backup` → `BackupSettings`). A new area is an entry in `settingsAreas.js` plus, for a sub-page, a component in `SettingsAreaView` and its id in the router; the card titles are the names the documentation uses ("Einstellungen → Team & Zugriff").
+- An "Einstellungen" `router-link` to `/settings`. The settings view is the single entry point for owner management, templates, and any future settings surface; the navbar has no dropdown. **The overview shows only cards**, grouped (Allgemein, Daten, Weitere Einstellungen); every area is one card. `utils/settingsAreas.js` describes the areas once (title, icon, description, target, `available()` for mode and role, `upcoming` for "Demnächst verfügbar"); the overview (`SettingsView`) and the router guard both use it, so an area that is hidden cannot be opened by its address either (`guardSettingsArea` leads back to `/settings`). A card opens its own view (`/owners`, `/templates`) or a sub-page `/settings/<id>` (`SettingsAreaView`: back link, visible title, the area's component: `account` → `AccountSettings`, `team` → `TeamSettings`, `export` → `GobdExportSettings`, `backup` → `BackupSettings`, `mail` → `MailSettings`: the company's mail accounts and the templates of mails to customers, self-hosted always, in SaaS for owners and admins). A new area is an entry in `settingsAreas.js` plus, for a sub-page, a component in `SettingsAreaView` and its id in the router; the card titles are the names the documentation uses ("Einstellungen → Team & Zugriff").
 - An `AccountMenu` at the end of the navbar, only in SaaS mode, with actions only: the tenant
   switcher (more than one company), open invitations to accept, sign-out. Who is signed in, the
   active company and the role are shown in Settings → Konto (`AccountSettings`, every role),
@@ -469,8 +469,18 @@ rows:
 | Group | Content | Source |
 |-------|---------|--------|
 | top row, the lifecycle strip (`.action-group-lifecycle`) | a caption and the next lifecycle step; the first button is the **only** `.btn-primary`, further status changes are secondary | `lifecycleActions`, `lifecycleCaption` |
-| row below, left (`.action-group-document`) | PDF, E-Rechnung (issued invoices, credit notes), Duplizieren, Bearbeiten, Wiederherstellen | template |
+| row below, left (`.action-group-document`) | PDF, E-Rechnung (issued invoices, credit notes), Per E-Mail (not for a SaaS reader), Duplizieren, Bearbeiten, Wiederherstellen | template |
 | row below, right (`.action-group-end`) | "Mehr" menu, Schließen | `menuActions` |
+
+- **Per E-Mail** opens `SendMailModal` (nested above the view, `--z-modal-nested`): sender
+  account (the default first), recipients (split at comma, semicolon or space, at most 5 with CC),
+  subject and text from the company's template (editable), the PDF as attachment, optionally the
+  XRechnung (disabled with the missing fields named), "Kopie an mich". An invoice draft shows
+  "Ausstellen und senden" and is issued only after a `confirm()`. Without a mail account the
+  dialog links to Einstellungen → Mail-Einstellungen (SaaS accountants are told to ask an
+  administrator). After sending, the view reloads the document (issued, or an offer now
+  "Gesendet"), says where it went and emits `status-updated`; the history shows "Per E-Mail
+  gesendet". Services: `services/mailService.js`.
 
 - **Two kinds of buttons, kept apart:** the strip changes the document's
   status, the row below works with the document as it is. Side by side

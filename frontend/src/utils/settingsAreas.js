@@ -78,10 +78,12 @@ export const SETTINGS_GROUPS = [
     areas: [
       {
         id: 'mail',
-        upcoming: true,
+        to: '/settings/mail',
         icon: '✉️',
         title: 'Mail-Einstellungen',
-        description: 'SMTP-Zugangsdaten für den Rechnungsversand'
+        description: 'Mailkonten und Vorlagen für den Versand an Kunden',
+        // SaaS: the company's mail accounts are managed by its owners and admins
+        available: () => !isSaas() || ['OWNER', 'ADMIN'].includes(activeRole())
       },
       {
         id: 'profile',

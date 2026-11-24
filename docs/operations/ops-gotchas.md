@@ -139,15 +139,24 @@ opened directly; as a logo in an `<img>` it still renders in the browser.
 
 ## Mail
 
-`SmtpMailProvider` opens a new SMTP connection per send (no pooling).
-For high-volume use, this is a small efficiency hit.
+Every mail opens its own SMTP connection (no pooling); mail is sent rarely.
 
-Only the SaaS invitations send mail (`InvitationMailer`, see
-[`../architecture/document-pipeline.md`](../architecture/document-pipeline.md)); the self-host
-build sends nothing, so `MAIL_*` has no effect there. The settings are read once at startup. An
-invalid `MAIL_PORT` or `MAIL_SECURITY` stops the start; a wrong login or host only shows at the
-first send, as "keine E-Mail verschickt" in Einstellungen → Team & Zugriff and a warning in the
-backend log.
+- **System mail** (`MAIL_*`, the operator's account) sends only the SaaS invitations
+  (`InvitationMailer`); in the self-host build `MAIL_*` has no effect. The settings are read once
+  at startup. An invalid `MAIL_PORT` or `MAIL_SECURITY` stops the start; a wrong login or host only
+  shows at the first send, as "keine E-Mail verschickt" in Einstellungen → Team & Zugriff, a
+  warning in the backend log and the alert `BillerySystemMailFailing`.
+- **Mail to customers** goes through each company's own accounts (Einstellungen →
+  Mail-Einstellungen). Their passwords need `BILLERY_SECRETS_KEY` (`openssl rand -base64 32`); the
+  desktop app creates `mail-secrets.key` next to its database instead. Keep the key stable: a new
+  one makes the stored passwords unreadable (the companies enter them again; "Anmeldung abgelehnt"
+  until then). Back it up with the other secrets, not with the database.
+- **Outgoing ports.** Many hosting providers block outgoing SMTP (25, often 465 / 587) by default.
+  Then every company's test mail fails with "nicht erreichbar" and `BilleryCompanyMailsFailing`
+  fires with `reason="connect"`; ask the provider to open 465 and 587. In SaaS a company account
+  may only name public servers on 25 / 465 / 587 / 2525 with encryption (`MailHostPolicy`).
+- **Limits.** SaaS: `BILLERY_CUSTOMER_MAILS_PER_DAY` per company (default 200), a company's own
+  value in `tenant.mail_daily_limit` ([`saas-tenant-lifecycle.md`](./saas-tenant-lifecycle.md)).
 
 ## Backups
 

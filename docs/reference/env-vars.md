@@ -54,7 +54,7 @@ counts for its user. A refused request gets 429 with `Retry-After` and a message
 |----------|---------|---------|
 | `BILLERY_LIMITS_REQUESTS_PER_SECOND` | `20` | API requests per second and tenant, refilled continuously. `0` switches the rate limit off. |
 | `BILLERY_LIMITS_BURST` | `200` | The most requests a tenant may make at once (a page that loads several lists, a quick series of clicks). |
-| `BILLERY_LIMITS_HEAVY_PER_TENANT` | `2` | Concurrent PDF, preview, XRechnung, export and import requests per tenant. `0` switches it off. The GoBD export also keeps its own limits (`EXPORT_MAX_CONCURRENT` per instance, one export per tenant at a time). |
+| `BILLERY_LIMITS_HEAVY_PER_TENANT` | `2` | Concurrent PDF, preview, XRechnung, mail dispatch, export and import requests per tenant. `0` switches it off. The GoBD export also keeps its own limits (`EXPORT_MAX_CONCURRENT` per instance, one export per tenant at a time). |
 
 With several instances each one counts for itself, so the effective limit grows with them.
 The limiter's memory is bounded, however many tenants there are: idle tenants take none (a full
@@ -90,8 +90,22 @@ Copy [`.env.example`](../../.env.example) to `.env`.
 
 Environment variables (Docker, the SaaS kit's `.env`) or, for local development, `backend/.env`.
 Spring maps `MAIL_HOST` to `mail.host` and so on (`mail.MailSettings`); `SmtpMailProvider` sends
-through Simple Java Mail. **Mail is optional:** without `MAIL_HOST` and `MAIL_FROM` nothing is sent
-and nothing fails. The SaaS invitation mail also needs `BILLERY_PUBLIC_URL`. Today only the SaaS invitations send mail (`InvitationMailer`).
+through Simple Java Mail. `MAIL_*` is the operator's **system account**: it sends only system mails
+(today the SaaS invitations, `InvitationMailer`), never mail to a company's customers. **It is
+optional:** without `MAIL_HOST` and `MAIL_FROM` nothing is sent and nothing fails. The SaaS
+invitation mail also needs `BILLERY_PUBLIC_URL`.
+
+Mail to customers goes through the **companies' own accounts**, entered in Einstellungen →
+Mail-Einstellungen and stored in the database (`mail_account`); only their key and the SaaS limit
+are environment settings:
+
+| Variable | Default | Notes |
+|----------|---------|-------|
+| `BILLERY_SECRETS_KEY` | — | 32 random bytes, Base64 (`openssl rand -base64 32`): encrypts the passwords of the companies' mail accounts (AES-256-GCM, `mail.CredentialCipher`). Empty: no mail password can be stored (accounts without login still work); the desktop app uses the key file `mail-secrets.key` next to its database instead. Not 32 bytes of Base64: the start fails. Keep it stable: a new key makes the stored passwords unreadable (they are entered again). `generate-secrets.sh` fills it. |
+| `BILLERY_CUSTOMER_MAILS_PER_DAY` | `200` | SaaS: mails one company may send to its customers in 24 hours (`CustomerMailQuota`, 429 above it). `0` = no limit. One company's own limit: `tenant.mail_daily_limit` (operator only, [`saas-tenant-lifecycle.md`](../operations/saas-tenant-lifecycle.md)). |
+| `billery.mail.allow-private-hosts` | `false` | Test suites only (`SaasApiTestBase`): lets SaaS company accounts name the fake mail server on the loopback interface. Never set it in production: it lifts the restriction of `MailHostPolicy` to public servers. |
+
+The system account:
 
 | Variable | Default | Notes |
 |----------|---------|-------|
@@ -109,8 +123,8 @@ and nothing fails. The SaaS invitation mail also needs `BILLERY_PUBLIC_URL`. Tod
 | `MAIL_FROM` | — | Sender address. Empty: mail is off. |
 | `MAIL_SECURITY` | `starttls` | `starttls`, `ssl` or `none` (only for a server on the same host or in tests; together with `MAIL_USERNAME` or `MAIL_PASSWORD` the start fails, the login would travel unencrypted). Anything else stops the start with the value named. |
 
-One delivery may take 15 s (connect, TLS, send) before it counts as failed. Settings are read at
-startup; restart the backend after a change.
+One delivery may take 15 s (connect, TLS, send) before it counts as failed. `MAIL_*` is read at
+startup; restart the backend after a change. Company accounts take effect at once.
 
 ## GoBD export limits
 

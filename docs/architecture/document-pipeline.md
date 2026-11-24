@@ -359,34 +359,74 @@ unknown variables in an imported file show up in the editor's validation.
 
 ## Mail subsystem
 
-`mail/` implements a tiny SMTP mailer:
+`mail/` sends plain-text mail with attachments through SMTP (Simple Java Mail on Angus Mail).
+There are **two kinds of accounts, never mixed**:
 
-- `MailProvider` is the interface with one method, `send(MailMessage)`.
-- `SmtpMailProvider` is the only implementation. It uses Simple Java
-  Mail (`org.simplejavamail`) to build and send the email.
-- `MailSettings` holds the SMTP account (`MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`,
-  `MAIL_PASSWORD`, `MAIL_FROM`, `MAIL_SECURITY`, mapped by Spring). Without `MAIL_HOST` and
-  `MAIL_FROM` mail is off and `MailProvider.configured()` is false. See
-  [`../reference/env-vars.md`](../reference/env-vars.md).
-- `MailMessage` is the message structure (from, to, subject, text,
-  optional HTML body, attachments).
-- `MailException` is a runtime exception thrown by `SmtpMailProvider.send`
-  on failure.
+| Kind | Configured by | Used for | Class |
+|------|---------------|----------|-------|
+| System account | the operator, `MAIL_*` environment ([`env-vars.md`](../reference/env-vars.md)) | system mails: today the SaaS invitations | `SmtpMailProvider` (`MailProvider`) |
+| Company accounts | the company, Einstellungen → Mail-Einstellungen (`mail_account`) | documents to the company's customers, test mails | `CompanyMailSender` |
 
-The mail subsystem is intentionally minimal. There is no templating
-engine for the body — the caller passes a pre-formatted plain text
-(or HTML) body. For the "send invoice by mail" feature, the caller
-attaches the PDF and supplies a short body.
+Without a company account nothing is sent to customers: there is no fallback to the system account
+(the dialog says so and links to the settings).
+
+- `SmtpTransport` delivers one `MailMessage` through one `SmtpEndpoint` (host, port, security,
+  login, sender). A connection per message, 15 s timeout.
+- `MailHostPolicy` decides which servers a company account may name. Self-host and desktop: any
+  (a relay on the same host is normal). Profile `saas`: only public addresses, ports 25 / 465 /
+  587 / 2525 and an encrypted connection, checked when the account is saved **and** on every
+  connection by a guarded socket factory, at the moment the socket connects to the resolved
+  address (so DNS rebinding cannot reach the operator's network). The factory is put into the
+  JavaMail session as an object after the mailer is built: Simple Java Mail's `withProperty`
+  turns every value into a string, and JavaMail then silently ignores it (`MailHostPolicyTest`
+  proves the guard is used for STARTTLS, SSL and plain SMTP). `billery.mail.allow-private-hosts`
+  switches the restriction off for the SaaS test suite only.
+- `CredentialCipher` encrypts the company accounts' passwords (AES-256-GCM, random IV, the active
+  tenant as authenticated data). The key is outside the database: `BILLERY_SECRETS_KEY`, or in the
+  desktop app the file `mail-secrets.key` next to its database (in no backup). Without a key no
+  password can be stored; changing the key means entering the passwords again. The API never
+  returns a password (`hasPassword` only), and changing server, port, security or login of an
+  account with a stored password requires the password again, so whoever may edit the settings
+  cannot redirect the stored password to a server of their own.
+- `MailMetrics` counts `billery_mails_total{kind=system|company, outcome=sent|failed, reason}`;
+  `MailException.Reason` (`auth`, `connect`, `timeout`, `tls`, `rejected`, `refused_host`,
+  `other`) is also the German explanation the user sees. Neither carries an address or content.
+- `CustomerMailLimit`: SaaS counts the mails to customers per company and 24 hours
+  (`saas.provisioning.CustomerMailQuota` in `daily_quota`, default
+  `BILLERY_CUSTOMER_MAILS_PER_DAY`, a company's own limit in `tenant.mail_daily_limit` set by the
+  operator); self-host has none.
+
+### Sending a document
+
+`DocumentMailService` (`GET` / `POST /api/invoices/{id}/mail`, `DocumentMailController`):
+
+- The dialog starts from the company's template for the kind of document (`MailTemplateService`,
+  stored in `user_settings` as `mail_<kind>_subject` / `mail_<kind>_text`, defaults in the code),
+  with the variables resolved exactly like the PDF's (`TemplateBasedPdfGenerator.resolvePlainText`,
+  amounts from `VatCalculator`). For an invoice draft the number variables stay and are filled
+  after issuing; the subject and text the user sends are resolved once more.
+- The attachment is `DocumentPdfService.pdf` (the download's PDF, ZUGFeRD for issued invoices with
+  complete data); optionally the XRechnung as XML (refused with the missing fields when
+  incomplete).
+- An invoice draft is issued only when the request confirms it (`issue: true`, the SPA asks with a
+  confirmation): issuing is final (GoBD), so a mail that fails afterwards leaves an issued invoice
+  that can be sent again, and the error message says so.
+- At most 5 recipients (To and CC), plain addresses, no line breaks in the subject; "Kopie an
+  mich" is a BCC to the account's own address.
+- After the server accepted the mail, `document_history` gets `MAIL_SENT` (recipients, subject,
+  account, attachment names, not the text) and a draft offer or cost calculation becomes `SENT`
+  through the transition table. A failed delivery writes no history.
+- The daily limit is claimed before anything is issued or sent.
 
 ### Where mail is triggered
 
-Only by the **SaaS invitations**: `TeamController` calls `InvitationMailer` after storing an
-invitation. The self-host build sends nothing. There is no "send invoice by mail" button in the
-SPA and no `/api/invoices/{id}/mail` endpoint; adding one needs no new dependency.
+- The SaaS invitations: `TeamController` calls `InvitationMailer` (system account).
+- The send dialog of a document (`SendMailModal` in the document view) and the test mail in
+  Einstellungen → Mail-Einstellungen (company accounts).
 
-The settings are read once at startup, so changing `MAIL_*` requires a restart. An invalid
+The `MAIL_*` settings are read once at startup, so changing them requires a restart. An invalid
 `MAIL_PORT` or `MAIL_SECURITY` stops the start; an empty `MAIL_PORT` means the usual port of
-`MAIL_SECURITY`.
+`MAIL_SECURITY`. Company accounts take effect at once.
 
 ## File upload
 

@@ -71,6 +71,9 @@ services:
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
       # Prometheus metrics on this port inside the network only (never published); -1 = off.
       BILLERY_METRICS_PORT: ${BILLERY_METRICS_PORT:--1}
+      # Encrypts the passwords of the mail accounts in Settings → Mail-Einstellungen
+      # (openssl rand -base64 32). Empty: no mail password can be stored.
+      BILLERY_SECRETS_KEY: ${BILLERY_SECRETS_KEY:-}
     ports:
       # Loopback by default: the app has no login of its own, so it must only be reachable
       # through your proxy. A proxy on the same host connects to 127.0.0.1:APP_PORT; a proxy
