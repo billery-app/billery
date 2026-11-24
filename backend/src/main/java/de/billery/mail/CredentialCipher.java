@@ -6,8 +6,10 @@ import de.billery.desktop.BackupLocations;
 import de.billery.tenant.CurrentTenant;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.security.GeneralSecurityException;
 import java.security.SecureRandom;
@@ -163,26 +165,53 @@ public class CredentialCipher {
     return new KeyFile(desktop.appData().resolve(KEY_FILE));
   }
 
-  private static byte[] keyFile(Path file, boolean create) throws IOException {
+  /**
+   * Reads the desktop key file, or creates it. The file is created with owner-only permissions from
+   * the start (no moment in which another local user could read it); on a file system without POSIX
+   * permissions (Windows) the user's app-data folder protects it. When two starts race, the second
+   * reads the key the first wrote.
+   *
+   * @param file the key file
+   * @param create whether a missing file may be created
+   * @return the key, or an empty array when there is none and none may be created
+   * @throws IOException if the file cannot be read or written, or is damaged
+   */
+  static byte[] keyFile(Path file, boolean create) throws IOException {
     if (Files.exists(file)) {
-      byte[] key =
-          Base64.getDecoder().decode(Files.readString(file, StandardCharsets.US_ASCII).strip());
-      if (key.length != KEY_BYTES) {
-        throw new IOException("The key file " + file + " is damaged");
-      }
-      return key;
+      return readKey(file);
     }
     if (!create) {
       return new byte[0];
     }
     byte[] key = new byte[KEY_BYTES];
     new SecureRandom().nextBytes(key);
-    Files.writeString(file, Base64.getEncoder().encodeToString(key), StandardCharsets.US_ASCII);
     try {
-      Files.setPosixFilePermissions(file, PosixFilePermissions.fromString("rw-------"));
+      createOwnerOnly(file);
+    } catch (FileAlreadyExistsException e) {
+      return readKey(file);
+    }
+    Files.writeString(
+        file,
+        Base64.getEncoder().encodeToString(key),
+        StandardCharsets.US_ASCII,
+        StandardOpenOption.TRUNCATE_EXISTING);
+    return key;
+  }
+
+  private static void createOwnerOnly(Path file) throws IOException {
+    try {
+      Files.createFile(
+          file, PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------")));
     } catch (UnsupportedOperationException e) {
-      // Windows: the app-data folder belongs to the user already.
-      return key;
+      Files.createFile(file);
+    }
+  }
+
+  private static byte[] readKey(Path file) throws IOException {
+    byte[] key =
+        Base64.getDecoder().decode(Files.readString(file, StandardCharsets.US_ASCII).strip());
+    if (key.length != KEY_BYTES) {
+      throw new IOException("The key file " + file + " is damaged");
     }
     return key;
   }

@@ -6,8 +6,12 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.util.Base64;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /** {@link CredentialCipher}: round trip, the tenant binding and a missing or wrong key. */
 class CredentialCipherTest {
@@ -61,5 +65,21 @@ class CredentialCipherTest {
     assertThrows(IllegalStateException.class, () -> new CredentialCipher("not base64!", () -> 1));
     String short16 = Base64.getEncoder().encodeToString(new byte[16]);
     assertThrows(IllegalStateException.class, () -> new CredentialCipher(short16, () -> 1));
+  }
+
+  @Test
+  void theDesktopKeyFileIsCreatedReadableByItsOwnerOnlyAndThenReused(@TempDir Path dir)
+      throws Exception {
+    Path file = dir.resolve("mail-secrets.key");
+    assertEquals(0, CredentialCipher.keyFile(file, false).length, "not created when only read");
+    assertFalse(Files.exists(file));
+
+    byte[] key = CredentialCipher.keyFile(file, true);
+
+    assertEquals(32, key.length);
+    if (Files.getFileStore(file).supportsFileAttributeView("posix")) {
+      assertEquals("rw-------", PosixFilePermissions.toString(Files.getPosixFilePermissions(file)));
+    }
+    assertTrue(java.util.Arrays.equals(key, CredentialCipher.keyFile(file, true)), "reused");
   }
 }
