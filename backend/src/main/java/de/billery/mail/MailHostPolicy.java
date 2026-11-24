@@ -167,10 +167,10 @@ public class MailHostPolicy {
       return false;
     }
     int first = ((b[0] & 0xff) << 8) | (b[1] & 0xff);
-    int second = ((b[2] & 0xff) << 8) | (b[3] & 0xff);
     if (first == 0x2002) {
       return false;
     }
+    int second = ((b[2] & 0xff) << 8) | (b[3] & 0xff);
     if (first == 0x2001 && (second < 0x0200 || second == 0x0db8)) {
       return false;
     }
