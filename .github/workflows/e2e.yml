@@ -4,7 +4,8 @@ permissions:
 
 # Builds the product the way backend/Dockerfile does (SPA inside the backend JAR, one origin) and
 # uses it in a real browser (frontend/e2e). Catches what unit tests cannot see: response headers
-# (CSP), filters, routing of the built SPA, console errors (threat model G11).
+# (CSP), filters, routing of the built SPA, console errors, and the core write flows (threat model
+# G11).
 on:
   # Pull requests only: main gets its code through them, a second run after the merge found nothing
   # new (Actions minutes). No branch or path filter, like maven.yml / frontend.yml: meant to be a required status check.
@@ -118,11 +119,20 @@ jobs:
             npx playwright install chromium
           fi
 
+      # A mail sink for the send-by-mail step of flows.spec.js (company account on 127.0.0.1:1025;
+      # the test reads the result through its API on 8025). Started here, not as a service
+      # container, so pull requests that skip the suite do not pull the image.
+      - name: Start Mailpit
+        if: steps.diff.outputs.relevant == 'true'
+        run: docker run -d --name mailpit -p 127.0.0.1:1025:1025 -p 127.0.0.1:8025:8025 axllent/mailpit:v1.21.0
+
       - name: Run the smoke suite
         if: steps.diff.outputs.relevant == 'true'
         working-directory: frontend
         env:
           E2E_BASE_URL: http://127.0.0.1:8080
+          E2E_MAILPIT_URL: http://127.0.0.1:8025
+          E2E_SMTP_PORT: '1025'
         run: npm run test:e2e
 
       - name: Upload traces and backend log

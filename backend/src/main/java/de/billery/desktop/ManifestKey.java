@@ -1,10 +1,11 @@
 package de.billery.desktop;
 
+import de.billery.config.SecretFiles;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.attribute.PosixFilePermissions;
 import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.logging.Level;
@@ -43,8 +44,10 @@ final class ManifestKey {
   }
 
   /**
-   * The key, created (readable for the owner only, where the file system supports it) if there is
-   * none yet.
+   * The key, created if there is none yet. The file is created readable for the owner only from the
+   * start (no moment in which another local user could read it); on a file system without POSIX
+   * permissions (Windows) the user's app-data folder protects it. When two starts race, the second
+   * reads the key the first wrote.
    *
    * @param locations the desktop data
    * @return the key
@@ -57,13 +60,11 @@ final class ManifestKey {
     }
     key = new byte[KEY_BYTES];
     new SecureRandom().nextBytes(key);
-    Path file = locations.signingKeyFile();
-    Files.writeString(file, Base64.getEncoder().encodeToString(key), StandardCharsets.US_ASCII);
     try {
-      Files.setPosixFilePermissions(file, PosixFilePermissions.fromString("rw-------"));
-    } catch (UnsupportedOperationException e) {
-      // Windows: the app-data folder belongs to the user already.
-      LOGGER.fine("No POSIX permissions for the backup signing key");
+      SecretFiles.createOwnerOnly(
+          locations.signingKeyFile(), Base64.getEncoder().encodeToString(key));
+    } catch (FileAlreadyExistsException e) {
+      return load(locations);
     }
     return key;
   }

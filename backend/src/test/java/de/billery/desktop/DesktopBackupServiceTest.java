@@ -227,6 +227,19 @@ class DesktopBackupServiceTest {
   }
 
   @Test
+  void theSigningKeyIsReadableByItsOwnerOnly() throws Exception {
+    service.backup(BackupNames.MANUAL);
+    java.nio.file.Path file = locations.signingKeyFile();
+
+    if (Files.getFileStore(file).supportsFileAttributeView("posix")) {
+      assertEquals(
+          "rw-------",
+          java.nio.file.attribute.PosixFilePermissions.toString(
+              Files.getPosixFilePermissions(file)));
+    }
+  }
+
+  @Test
   void theSigningKeyIsNeitherInTheDatabaseNorInTheBackup() throws Exception {
     BackupFile backup = service.backup(BackupNames.MANUAL);
     String key = Files.readString(locations.signingKeyFile()).strip();

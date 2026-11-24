@@ -164,6 +164,10 @@ Every mail opens its own SMTP connection (no pooling); mail is sent rarely.
   no counter: it starts at 0 again), only the log shows it: a "versendet" line without its
   "vermerkt" line, e.g. `grep -hE 'versendet$|vermerkt$' logs/billery*.log` in the `logs` volume after a crash. Note such a
   dispatch by hand in the incident log; the document itself is complete.
+- **A timeout is not proof of non-delivery.** When the mail server accepted a mail but its answer
+  was lost, the delivery counts as failed (WARN `Mail of document <id> … failed: TIMEOUT`, reason
+  `timeout` in `billery_mails_total`), and nothing is recorded. A customer who reports a duplicate
+  mail after such a timeout got the first one too; accepted as a residual risk.
 - **Limits.** SaaS: `BILLERY_CUSTOMER_MAILS_PER_DAY` per company (default 200), a company's own
   value in `tenant.mail_daily_limit` ([`saas-tenant-lifecycle.md`](./saas-tenant-lifecycle.md)).
 

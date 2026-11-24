@@ -235,15 +235,17 @@ the repo no longer holds a generated SVG for it. See
 
 ## What is **not** covered today
 
-- **E2E tests** — only a smoke suite (`frontend/e2e/`, Playwright, CI job
-  `e2e-smoke` in `.github/workflows/e2e.yml`, details in
-  [`frontend/e2e/README.md`](../../frontend/e2e/README.md)): it runs the
-  packaged app (SPA inside the backend JAR, empty H2), loads the main screens,
-  opens the template editor's PDF preview and a document, searches a customer
-  in the document form, and fails on console errors, CSP violations and
-  `/api` errors. Saving documents through the form, the lifecycle (issue,
-  payments, cancel), import/export and the SaaS build are not covered in the
-  browser.
+- **E2E tests** cover the self-host product, not the SaaS build
+  (`frontend/e2e/`, Playwright, CI job `e2e-smoke` in
+  `.github/workflows/e2e.yml`, details in
+  [`frontend/e2e/README.md`](../../frontend/e2e/README.md)): the packaged app
+  (SPA inside the backend JAR, empty H2) with the main screens, the template
+  editor's PDF preview, the document view and, in `flows.spec.js`, the core
+  write flows through the forms (customer, invoice, issue, partial and full
+  payment, send by mail through a Mailpit the workflow starts, cancel, GoBD
+  export as a complete ZIP; an offer accepted). Every step fails on console
+  errors, CSP violations and `/api` errors. Not covered in the browser: the
+  SaaS build (sign-in, tenants, team) and the DOCX/ODT exchange.
 - **DOCX / ODT** has unit tests in `service/DocumentConversionServiceTest`
   (sections round trip in both formats, Word heading styles and tables,
   an ODT with LibreOffice-style markup built in the test, change tracking,
