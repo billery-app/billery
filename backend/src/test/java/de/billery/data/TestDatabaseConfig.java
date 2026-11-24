@@ -129,7 +129,7 @@ public class TestDatabaseConfig {
         stmt.execute(
             "TRUNCATE TABLE payment, document_history, invoice_item, invoice_period, invoice,"
                 + " invoice_template, document_number_series, user_settings, service, article,"
-                + " customer, owner, equipment, document_type, document_status"
+                + " customer, owner, equipment, mail_account, document_type, document_status"
                 + " RESTART IDENTITY CASCADE");
       } else {
         truncateH2(stmt);
@@ -161,6 +161,7 @@ public class TestDatabaseConfig {
       // from one test class into the next (CatalogOrderTest broke
       // MasterDataControllersTest).
       "TRUNCATE TABLE equipment",
+      "TRUNCATE TABLE mail_account",
       "TRUNCATE TABLE document_type",
       "TRUNCATE TABLE document_status"
     };

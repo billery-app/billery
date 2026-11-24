@@ -68,8 +68,12 @@ Je Belegart und Jahr gibt es einen eigenen, lückenlos fortlaufenden Nummernkrei
 ### 4. Protokollierung
 
 Jeder Schritt (Anlegen, Bearbeiten eines Entwurfs, Ausstellen, Zahlung,
-Gegenbuchung, Storno) wird mit Zeitpunkt und Details im Änderungsprotokoll des
-Belegs festgehalten (Tabelle `document_history`). Einträge ausgestellter Belege
+Gegenbuchung, Storno, Versand per E-Mail) wird mit Zeitpunkt und Details im
+Änderungsprotokoll des Belegs festgehalten (Tabelle `document_history`). Beim
+Versand per E-Mail sind das Empfänger, Betreff, das verwendete Mailkonto und die
+Namen der Anhänge; der Text der E-Mail wird nicht gespeichert. Der Anhang ist
+das PDF des Belegs, bei ausgestellten Rechnungen derselbe eingefrorene Stand wie
+beim Herunterladen (bei vollständigen Daten mit eingebetteter XRechnung). Einträge ausgestellter Belege
 werden nie geändert oder gelöscht. Die Desktop- und die selbst betriebene
 Version kennen keine Benutzerkonten; ein ausführender Benutzer wird dort daher
 nicht protokolliert.
@@ -208,8 +212,12 @@ vorgegeben werden. Bitte als Anhang zu dieser Dokumentation führen:
   Direkte Änderungen an der Datenbank außerhalb des Programms sind nicht zulässig.
 - Aufbewahrung: Rechnungen 8 Jahre (§ 147 Abs. 3 AO), Aufbewahrungsort der
   regelmäßigen GoBD-Exporte.
-- Versand: Auf welchem Weg Rechnungen und E-Rechnungen an Kunden gehen und wo
-  gesendete E-Rechnungen abgelegt werden.
+- Versand: Auf welchem Weg Rechnungen und E-Rechnungen an Kunden gehen (per
+  E-Mail aus Billery über das eigene Mailkonto, Einstellungen →
+  Mail-Einstellungen, oder auf anderem Weg) und wo gesendete E-Rechnungen
+  abgelegt werden. Billery bewahrt den Beleg selbst auf und protokolliert den
+  Versand; eine Kopie der E-Mail gibt es nur im Postfach des Absenders (Option
+  „Kopie an mich“).
 - Bei Programmwechsel oder Updates: Datum und Version, Ergebnis des
   Funktionstests.
 

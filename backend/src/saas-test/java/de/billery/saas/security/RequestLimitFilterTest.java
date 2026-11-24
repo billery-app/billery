@@ -121,6 +121,7 @@ class RequestLimitFilterTest {
         new String[] {
           "/api/invoices/12/pdf",
           "/api/invoices/12/xrechnung",
+          "/api/invoices/12/mail",
           "/api/templates/preview",
           "/api/export/gobd",
           "/api/documents/export",
@@ -129,7 +130,12 @@ class RequestLimitFilterTest {
       assertTrue(RequestLimitFilter.HEAVY.matcher(path).matches(), path);
     }
     for (String path :
-        new String[] {"/api/invoices/12", "/api/invoices/12/xrechnung/check", "/api/customers"}) {
+        new String[] {
+          "/api/invoices/12",
+          "/api/invoices/12/xrechnung/check",
+          "/api/customers",
+          "/api/mail/accounts"
+        }) {
       assertTrue(!RequestLimitFilter.HEAVY.matcher(path).matches(), path);
     }
   }

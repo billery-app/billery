@@ -64,6 +64,7 @@ describe('SettingsView', () => {
     expect(href('owners')).toBe('/owners')
     expect(href('templates')).toBe('/templates')
     expect(href('export')).toBe('/settings/export')
+    expect(href('mail')).toBe('/settings/mail')
   })
 
   it('keeps the names the documentation uses', () => {
@@ -75,7 +76,6 @@ describe('SettingsView', () => {
     const wrapper = mountWithRouter()
     const upcoming = wrapper.findAll('.settings-card.is-disabled')
     expect(upcoming.map(card => card.find('.card-title').text())).toEqual([
-      'Mail-Einstellungen Demnächst verfügbar',
       'Benutzer & Profil Demnächst verfügbar',
       'Hilfe Demnächst verfügbar'
     ])
@@ -118,6 +118,15 @@ describe('SettingsView in SaaS mode', () => {
     expect(cardIds(mountWithRouter())).toEqual(
       expect.arrayContaining(['account', 'team'])
     )
+  })
+
+  it('shows the mail settings only to owners and admins', () => {
+    saasAs('ACCOUNTANT')
+    expect(cardIds(mountWithRouter())).not.toContain('mail')
+    saasAs('READER')
+    expect(cardIds(mountWithRouter())).not.toContain('mail')
+    saasAs('OWNER')
+    expect(cardIds(mountWithRouter())).toContain('mail')
   })
 
   it('never shows the desktop backup in SaaS', () => {

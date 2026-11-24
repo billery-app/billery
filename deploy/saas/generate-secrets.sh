@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Creates .env from .env.example with fresh random secrets (database passwords and the file URL
-# secret). It never overwrites an existing .env: your values stay, and so do the passwords the
-# database was initialised with (they cannot be changed here afterwards, see the runbook).
+# Creates .env from .env.example with fresh random secrets (database passwords, the file URL
+# secret and the key of the companies' mail passwords). It never overwrites an existing .env:
+# your values stay, and so do the passwords the database was initialised with (they cannot be
+# changed here afterwards, see the runbook).
 # After it, fill in BILLERY_VERSION, BILLERY_DOMAIN and the three provider values.
 set -euo pipefail
 
@@ -26,6 +27,7 @@ fill POSTGRES_ADMIN_PASSWORD "$(secret 24)"
 fill DB_MIGRATION_PASSWORD "$(secret 24)"
 fill DB_PASSWORD "$(secret 24)"
 fill BILLERY_FILES_SECRET "$(secret 32)"
+fill BILLERY_SECRETS_KEY "$(openssl rand -base64 32)"
 
 chmod 600 .env
 echo ".env created (mode 600) with new secrets. Still empty and yours to fill in:"

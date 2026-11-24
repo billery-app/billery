@@ -307,6 +307,25 @@ CREATE TABLE IF NOT EXISTS user_settings (
 );
 
 -- ============================================================================
+-- 9b. MAIL ACCOUNTS (the company's own SMTP accounts, #13)
+-- ============================================================================
+-- The password is encrypted by the application (mail.CredentialCipher, key outside the database).
+CREATE TABLE IF NOT EXISTS mail_account (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    host VARCHAR(255) NOT NULL,
+    port INT NOT NULL,
+    security VARCHAR(10) NOT NULL,
+    username VARCHAR(255),
+    password_encrypted TEXT,
+    from_address VARCHAR(255) NOT NULL,
+    from_name VARCHAR(255),
+    is_default SMALLINT NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ============================================================================
 -- 10. INDEXES for performance
 -- ============================================================================
 

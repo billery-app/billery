@@ -93,6 +93,14 @@ if [[ "$docker_checks" == 1 ]]; then
     else
       warn "no mail (MAIL_HOST, MAIL_FROM or BILLERY_PUBLIC_URL empty): invitations are stored, but nobody is told by e-mail"
     fi
+    secrets_key="$(cfg BILLERY_SECRETS_KEY)"
+    if [[ -z "$secrets_key" ]]; then
+      warn "BILLERY_SECRETS_KEY is empty: companies cannot store the password of a mail account (openssl rand -base64 32)"
+    elif [[ "$(printf '%s' "$secrets_key" | base64 -d 2> /dev/null | wc -c)" -eq 32 ]]; then
+      ok "BILLERY_SECRETS_KEY is 32 bytes"
+    else
+      bad "BILLERY_SECRETS_KEY must be 32 bytes, Base64-encoded (openssl rand -base64 32)"
+    fi
     perm=$(stat -c %a .env 2> /dev/null || echo "?")
     if [[ "$perm" == "600" || "$perm" == "400" ]]; then ok ".env is mode $perm"; else warn ".env is mode $perm (chmod 600 .env)"; fi
   fi

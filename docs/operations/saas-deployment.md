@@ -140,6 +140,7 @@ so going back to an older image after a migration means restoring the backup.
 
 **Secrets.**
 - `BILLERY_FILES_SECRET`: rotating it invalidates the URLs of uploaded files stored in templates.
+- `BILLERY_SECRETS_KEY`: encrypts the passwords of the companies' mail accounts. Keep it with the other secrets, not with the database backups; a new key makes the stored passwords unreadable (each company enters its password again). Mail to customers needs outgoing connections to the companies' mail servers on 465 / 587: many hosting providers block them until asked ([`ops-gotchas.md`](./ops-gotchas.md#mail)).
 - `BILLERY_FILES_STORE`: `local` keeps the uploads in the `uploads` volume, which is enough for one backend instance. Running several instances without a shared disk needs `s3` and the `BILLERY_FILES_S3_*` settings (a private bucket of any S3-compatible store, [`env-vars.md`](../reference/env-vars.md)); `check.sh` checks them and `backup.sh` backs the bucket up. Switching an existing installation copies the files first, keeping the keys: `<upload dir>/<tenant>/<file>` becomes the object `<tenant>/<file>` (for example `rclone copy /app/uploads <remote>:<bucket>`); the stored URLs stay valid.
 - Database passwords: `ALTER ROLE billery_login PASSWORD '…'` (and `billery_owner`) in `psql` as `billery_admin`,
   then the same value in `.env`, then `docker compose up -d`. Editing `.env` alone changes nothing in the database.

@@ -62,6 +62,7 @@ table and moves the uniqueness rules to include it:
 | `owner`, `customer`, `equipment`, `article`, `service`, `invoice`, `invoice_item`, `invoice_period`, `invoice_template`, `document_history`, `payment` | `tenant_id` column. |
 | `document_number_series` | unique `(tenant_id, document_type_id, doc_year)`: number ranges are per company. |
 | `user_settings` | primary key `(tenant_id, setting_key)`. |
+| `mail_account` (core `V3__mail_accounts.sql`) | created with `tenant_id` and `UNIQUE (tenant_id, id)`; at most one default account per tenant (partial unique index). SaaS `V9__mail.sql` adds the foreign key to `tenant`, the session default and forced RLS, and `tenant.mail_daily_limit` (operator only: the application role may update only `status` and `closed_at` of its tenant row). |
 | `invoice` | unique `document_number` becomes unique `(tenant_id, document_number)`. |
 | `owner` | one row per tenant (unique `tenant_id`), replacing the global "primary" owner. |
 | `document_type`, `document_status` | **global lookup tables**, no `tenant_id`, no RLS. |

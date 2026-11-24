@@ -14,6 +14,7 @@ import { findArea } from '../utils/settingsAreas.js'
 import AccountSettings from '../components/AccountSettings.vue'
 import BackupSettings from '../components/BackupSettings.vue'
 import GobdExportSettings from '../components/GobdExportSettings.vue'
+import MailSettings from '../components/MailSettings.vue'
 import TeamSettings from '../components/TeamSettings.vue'
 
 /** Which component an area's sub-page shows (`/settings/<id>`). */
@@ -21,7 +22,8 @@ const COMPONENTS = {
   account: AccountSettings,
   team: TeamSettings,
   export: GobdExportSettings,
-  backup: BackupSettings
+  backup: BackupSettings,
+  mail: MailSettings
 }
 
 /**

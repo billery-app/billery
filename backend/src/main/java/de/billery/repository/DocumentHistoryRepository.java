@@ -40,6 +40,9 @@ public class DocumentHistoryRepository extends BaseRepository {
   /** An invoice was cancelled by a credit note. */
   public static final String ACTION_CANCELLED = "CANCELLED";
 
+  /** The document was sent to the customer by mail (recipients, subject, account, attachments). */
+  public static final String ACTION_MAIL_SENT = "MAIL_SENT";
+
   /** Maps a {@code document_history} row. */
   private static final RowMapper<DocumentHistoryEntry> ENTRY_MAPPER =
       (rs, rowNum) ->

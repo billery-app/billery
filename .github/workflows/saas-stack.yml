@@ -107,7 +107,8 @@ jobs:
           cp deploy/saas/.env.example deploy/saas/generate-secrets.sh "$dir"/
           (cd "$dir" && ./generate-secrets.sh > /dev/null)
           test "$(stat -c %a "$dir/.env")" = 600
-          for key in POSTGRES_ADMIN_PASSWORD DB_MIGRATION_PASSWORD DB_PASSWORD BILLERY_FILES_SECRET; do
+          for key in POSTGRES_ADMIN_PASSWORD DB_MIGRATION_PASSWORD DB_PASSWORD BILLERY_FILES_SECRET \
+            BILLERY_SECRETS_KEY; do
             grep -Eq "^$key=.{32,}$" "$dir/.env" || { echo "$key is empty or short"; exit 1; }
           done
           if (cd "$dir" && ./generate-secrets.sh 2> /dev/null); then echo "it overwrote an existing .env"; exit 1; fi

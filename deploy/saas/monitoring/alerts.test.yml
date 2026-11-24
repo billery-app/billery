@@ -52,6 +52,21 @@ tests:
         values: '0x5 1 2 3 4 5 6 7 8 9 10'
       - series: 'billery_files_store_errors_total{application="billery", operation="open"}'
         values: '0x30'
+      # the operator's mail server refuses the login from minute 5 on
+      - series: 'billery_mails_total{application="billery", kind="system", outcome="failed", reason="auth"}'
+        values: '0x5 1 2 3 4 5 6 7 8 9 10'
+      # mails to customers: 1 sent and 1 failing connection per minute until minute 5, then only
+      # failing connections (outgoing port blocked)
+      - series: 'billery_mails_total{application="billery", kind="company", outcome="sent", reason="none"}'
+        values: '0 1 2 3 4 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5'
+      - series: 'billery_mails_total{application="billery", kind="company", outcome="failed", reason="connect"}'
+        values: '0+1x30'
+      # a mail went out at minute 4 but could not be recorded
+      - series: 'billery_mail_dispatch_unrecorded_total{application="billery"}'
+        values: '0x4 1x26'
+      # a company reaches its daily limit of mails to customers again and again
+      - series: 'billery_quota_refused_total{application="billery", quota="customer_mail", scope="tenant"}'
+        values: '0x5 0+1x25'
       # a host volume (node_exporter) with 10 % free
       - series: 'node_filesystem_avail_bytes{fstype="ext4", mountpoint="/var/lib/docker"}'
         values: '10x30'
@@ -110,6 +125,10 @@ tests:
             exp_annotations:
               summary: "Many requests hit the invitation_mail limit per ip"
               description: "More than 10 refusals in an hour. The limits hold; check the proxy log for the source and block it there if it goes on."
+          - exp_labels: {severity: warning, quota: customer_mail, scope: tenant}
+            exp_annotations:
+              summary: "Many requests hit the customer_mail limit per tenant"
+              description: "More than 10 refusals in an hour. The limits hold; check the proxy log for the source and block it there if it goes on."
       - eval_time: 3m
         alertname: BilleryWatchdog
         exp_alerts:
@@ -142,6 +161,29 @@ tests:
             exp_annotations:
               summary: "The file store fails (put)"
               description: "Uploads or logos cannot be stored or read. Check the bucket (credentials, reachability) or the uploads volume; the backend log has the cause."
+      - eval_time: 8m
+        alertname: BillerySystemMailFailing
+        exp_alerts:
+          - exp_labels: {severity: warning, reason: auth}
+            exp_annotations:
+              summary: "System mails fail (auth)"
+              description: "Invitation mails do not go out. Check MAIL_HOST, MAIL_USERNAME / MAIL_PASSWORD and whether the server may reach the mail server; the backend log has the cause."
+      - {eval_time: 3m, alertname: BilleryCompanyMailsFailing, exp_alerts: []}
+      - {eval_time: 3m, alertname: BilleryMailDispatchUnrecorded, exp_alerts: []}
+      - eval_time: 10m
+        alertname: BilleryMailDispatchUnrecorded
+        exp_alerts:
+          - exp_labels: {severity: warning}
+            exp_annotations:
+              summary: "A mail to a customer is missing in the document history"
+              description: "The backend log has 'versendet, aber nicht in der Historie vermerkt' with the document id. Check the database; the dispatch can be noted by hand (docs/operations/ops-gotchas.md, Mail)."
+      - eval_time: 20m
+        alertname: BilleryCompanyMailsFailing
+        exp_alerts:
+          - exp_labels: {severity: warning, reason: connect}
+            exp_annotations:
+              summary: "Most mails to customers fail (connect)"
+              description: "More mails to customers failed than went out in the last hour. connect / timeout: check that the server may open outgoing connections to ports 465 and 587 (many hosting providers block them by default). auth / rejected: the companies' own settings; they see the error in the send dialog."
       - eval_time: 15m
         alertname: HostDiskSpaceLow
         exp_alerts:
@@ -177,6 +219,17 @@ tests:
         values: '0x30'
       - series: 'node_filesystem_avail_bytes{fstype="ext4", mountpoint="/var/lib/docker"}'
         values: '50x30'
+      # mails go out; one company fails now and then (its own wrong password)
+      - series: 'billery_mails_total{application="billery", kind="system", outcome="failed", reason="auth"}'
+        values: '0x30'
+      - series: 'billery_mails_total{application="billery", kind="company", outcome="sent", reason="none"}'
+        values: '0+3x30'
+      - series: 'billery_mails_total{application="billery", kind="company", outcome="failed", reason="auth"}'
+        values: '0+1x30'
+      - series: 'billery_quota_refused_total{application="billery", quota="customer_mail", scope="tenant"}'
+        values: '0x30'
+      - series: 'billery_mail_dispatch_unrecorded_total{application="billery"}'
+        values: '0x30'
       - series: 'node_filesystem_size_bytes{fstype="ext4", mountpoint="/var/lib/docker"}'
         values: '100x30'
     alert_rule_test:
@@ -190,4 +243,7 @@ tests:
       - {eval_time: 20m, alertname: BilleryDiskSpaceLow, exp_alerts: []}
       - {eval_time: 20m, alertname: BilleryDiskSpaceCritical, exp_alerts: []}
       - {eval_time: 20m, alertname: BilleryFileStoreErrors, exp_alerts: []}
+      - {eval_time: 20m, alertname: BillerySystemMailFailing, exp_alerts: []}
+      - {eval_time: 20m, alertname: BilleryCompanyMailsFailing, exp_alerts: []}
+      - {eval_time: 20m, alertname: BilleryMailDispatchUnrecorded, exp_alerts: []}
       - {eval_time: 20m, alertname: HostDiskSpaceLow, exp_alerts: []}

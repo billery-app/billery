@@ -86,6 +86,23 @@ Who may do what: an owner manages every role, an admin only accountants and read
 change, remove). Anyone may leave a tenant. The last owner can neither leave, be demoted nor be
 removed. Readers only read; accountants, admins and owners also write.
 
+## Mail to customers
+
+Each company sends its invoices and offers through **its own** mail accounts (Einstellungen →
+Mail-Einstellungen, owners and administrators); the operator's `MAIL_*` account is never used for
+them. The passwords are encrypted with `BILLERY_SECRETS_KEY`. In SaaS a company account may only
+name a public mail server on port 25, 465, 587 or 2525 with an encrypted connection
+(`MailHostPolicy`). A company may send `BILLERY_CUSTOMER_MAILS_PER_DAY` mails to customers in 24
+hours (default 200; refusals count in `billery_quota_refused_total{quota="customer_mail"}`). A
+company that needs more, for example a larger one, gets its own limit from the operator; the
+application cannot change it (its database role may update only the lifecycle columns of the
+tenant row):
+
+```sql
+UPDATE tenant SET mail_daily_limit = 1000 WHERE id = 42;   -- own limit
+UPDATE tenant SET mail_daily_limit = NULL WHERE id = 42;   -- back to the default
+```
+
 ## Administration log
 
 Every invitation, acceptance and withdrawal, role change, removal and departure, the sign-up, the

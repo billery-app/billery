@@ -69,10 +69,11 @@ groups:
           description: "Nobody can sign up (signup) or receive an invitation mail (invitation_mail) for up to 24 hours. Look for abuse in the log; if it is real growth, raise BILLERY_SIGNUPS_PER_DAY or BILLERY_INVITATION_MAILS_PER_DAY."
 
       - alert: BilleryAbuseSuspected
-        # Many refusals by the limits per user, source IP or recipient within an hour: someone is
-        # trying more than the limits allow. The limits hold; this is for a look at the source.
+        # Many refusals by the limits per user, source IP, recipient or company (customer_mail:
+        # mails to customers) within an hour: someone is trying more than the limits allow. The
+        # limits hold; this is for a look at the source.
         expr: |
-          sum by (quota, scope) (increase(billery_quota_refused_total{application="billery", scope=~"user|ip|recipient"}[1h])) > 10
+          sum by (quota, scope) (increase(billery_quota_refused_total{application="billery", scope=~"user|ip|recipient|tenant"}[1h])) > 10
         labels:
           severity: warning
         annotations:
@@ -124,6 +125,44 @@ groups:
         annotations:
           summary: "The file store fails ({{ $labels.operation }})"
           description: "Uploads or logos cannot be stored or read. Check the bucket (credentials, reachability) or the uploads volume; the backend log has the cause."
+
+      - alert: BillerySystemMailFailing
+        # The operator's SMTP account (MAIL_*) fails: invitations are created, but their mail does
+        # not go out (the inviting user is told).
+        expr: |
+          sum by (reason) (increase(billery_mails_total{application="billery", kind="system", outcome="failed"}[15m])) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: "System mails fail ({{ $labels.reason }})"
+          description: "Invitation mails do not go out. Check MAIL_HOST, MAIL_USERNAME / MAIL_PASSWORD and whether the server may reach the mail server; the backend log has the cause."
+
+      - alert: BilleryCompanyMailsFailing
+        # Most mails to customers fail, across companies: one company with a wrong password is
+        # its own matter (it sees the error), but connect or timeout failures for many usually mean
+        # the server may not reach mail servers at all (outgoing ports 465 / 587 blocked).
+        expr: |
+          sum by (reason) (increase(billery_mails_total{application="billery", kind="company", outcome="failed"}[1h])) > 5
+            and on ()
+          sum(increase(billery_mails_total{application="billery", kind="company", outcome="failed"}[1h]))
+            > sum(increase(billery_mails_total{application="billery", kind="company", outcome="sent"}[1h]))
+        labels:
+          severity: warning
+        annotations:
+          summary: "Most mails to customers fail ({{ $labels.reason }})"
+          description: "More mails to customers failed than went out in the last hour. connect / timeout: check that the server may open outgoing connections to ports 465 and 587 (many hosting providers block them by default). auth / rejected: the companies' own settings; they see the error in the send dialog."
+
+      - alert: BilleryMailDispatchUnrecorded
+        # A mail to a customer went out, but writing it into the document's history failed (the
+        # user was told not to send again). The history lacks the entry; an offer may still be a
+        # draft.
+        expr: |
+          sum(increase(billery_mail_dispatch_unrecorded_total{application="billery"}[1h])) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: "A mail to a customer is missing in the document history"
+          description: "The backend log has 'versendet, aber nicht in der Historie vermerkt' with the document id. Check the database; the dispatch can be noted by hand (docs/operations/ops-gotchas.md, Mail)."
 
   - name: billery-host
     # Needs node_exporter on the host (not part of the kit): the volumes the backend does not see,

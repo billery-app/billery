@@ -2,11 +2,14 @@ package de.billery.api;
 
 import de.billery.data.DatabaseException;
 import de.billery.pdf.MissingConfigurationException;
+import de.billery.service.BadRequestException;
 import de.billery.service.DocumentNotFoundException;
 import de.billery.service.DocumentStateException;
 import de.billery.service.ExportBusyException;
 import de.billery.service.ExportLimitException;
 import de.billery.service.InvalidStatusChangeException;
+import de.billery.service.MailDeliveryException;
+import de.billery.service.MailNotRecordedException;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -141,5 +144,47 @@ public class ApiExceptionHandler {
   @ExceptionHandler(DocumentNotFoundException.class)
   public ResponseEntity<Map<String, String>> handleDocumentNotFound(DocumentNotFoundException e) {
     return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", e.getMessage()));
+  }
+
+  /**
+   * The input is not acceptable (mail account settings, recipients). The message is meant for the
+   * user.
+   *
+   * @param e the failure
+   * @return HTTP 400 with the exception message
+   */
+  @ExceptionHandler(BadRequestException.class)
+  public ResponseEntity<Map<String, String>> handleBadRequest(BadRequestException e) {
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", e.getMessage()));
+  }
+
+  /**
+   * A mail to a customer was not sent: the company's mail server failed (502) or its daily limit is
+   * reached (429).
+   *
+   * @param e the failure
+   * @return HTTP 502 or 429 with the exception message
+   */
+  @ExceptionHandler(MailDeliveryException.class)
+  public ResponseEntity<Map<String, String>> handleMailDelivery(MailDeliveryException e) {
+    if (e.limitReached()) {
+      return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+          .header(HttpHeaders.RETRY_AFTER, "3600")
+          .body(Map.of("message", e.getMessage()));
+    }
+    return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(Map.of("message", e.getMessage()));
+  }
+
+  /**
+   * A mail went out but could not be recorded in the document's history. The message tells the user
+   * not to send it again.
+   *
+   * @param e the failure
+   * @return HTTP 500 with the exception message
+   */
+  @ExceptionHandler(MailNotRecordedException.class)
+  public ResponseEntity<Map<String, String>> handleMailNotRecorded(MailNotRecordedException e) {
+    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+        .body(Map.of("message", e.getMessage()));
   }
 }

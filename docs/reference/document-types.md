@@ -82,10 +82,11 @@ status change.
 | `ACCEPTED` | `CONVERTED`, `CANCELLED` |
 | `CONVERTED`, `CANCELLED` | final |
 
-- **`SENT` is a status, set by hand.** It means "sent to the customer, waiting for the answer" and
-  is what the list filters on. There is no mail dispatch yet. When it comes, "send by mail" is an
-  action that performs `DRAFT → SENT` and writes a history entry (time, recipient); sending again
-  leaves the status and only adds an entry.
+- **`SENT` means "sent to the customer, waiting for the answer"** and is what the list filters on.
+  It is set by hand or by sending the document by mail ("Per E-Mail" in the document view,
+  `DocumentMailService`): the dispatch performs `DRAFT → SENT` and writes a `MAIL_SENT` history
+  entry (recipients, subject, account, attachments); sending again leaves the status and only adds
+  an entry.
 - **Setting the status a document already has is a no-op** (`200`, no history entry), so a double
   click on "Angenommen" is harmless.
 - **A refused change answers HTTP 400 with a JSON `message`** that names both statuses and the

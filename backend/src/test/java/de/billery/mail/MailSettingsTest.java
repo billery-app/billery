@@ -17,7 +17,11 @@ class MailSettingsTest {
     assertFalse(new MailSettings(" ", "", "", "", "app@example.com", "").configured());
     assertTrue(
         new MailSettings("smtp.example.com", "", "", "", "app@example.com", "").configured());
-    assertFalse(new SmtpMailProvider(new MailSettings("", "", "", "", "", "")).configured());
+    assertFalse(
+        new SmtpMailProvider(
+                new MailSettings("", "", "", "", "", ""),
+                new MailMetrics(new io.micrometer.core.instrument.simple.SimpleMeterRegistry()))
+            .configured());
   }
 
   @Test
@@ -66,7 +70,10 @@ class MailSettingsTest {
 
   @Test
   void sendingWithoutSettingsFailsInsteadOfConnecting() {
-    SmtpMailProvider provider = new SmtpMailProvider(new MailSettings("", "", "", "", "", ""));
+    SmtpMailProvider provider =
+        new SmtpMailProvider(
+            new MailSettings("", "", "", "", "", ""),
+            new MailMetrics(new io.micrometer.core.instrument.simple.SimpleMeterRegistry()));
     MailMessage message = new MailMessage();
     message.setTo("a@example.com");
     assertThrows(MailException.class, () -> provider.send(message));

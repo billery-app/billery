@@ -32,7 +32,9 @@
 | Accounts | e-mail address, display name, creation time (`app_user`); the provider's issuer and subject per sign-in identity (`user_identity`) | the database, not tenant-specific: one person can belong to several companies |
 | Credentials | passwords, second factors, social logins, sign-in times | **only at the identity provider.** The application stores no password and keeps the access token in the browser's memory only |
 | Invitation mails | recipient address, company name, role, name of the inviting person | sent through the SMTP provider (`MAIL_*`); the application keeps only hashed counters per recipient and source IP for the limits (`daily_quota`), deleted after their window |
-| Abuse limits | how often a user, a source IP (SHA-256 hash) and the whole system signed up or sent invitation mails in the last 24 hours | `daily_quota` in the database; rows go when their 24-hour window has passed |
+| A company's mail accounts | name, mail server, port, login, sender address and name, the password **encrypted** (AES-256-GCM, key `BILLERY_SECRETS_KEY` outside the database and its backups) (`mail_account`) | the database, tenant data; deleted with the account or the company |
+| Mails to customers | recipients, subject, the document's PDF (and XRechnung) | sent through the **company's own** SMTP account; the application stores only the dispatch in the document's history (`document_history` `MAIL_SENT`: recipients, subject, account, attachment names, not the text) and a counter per company for the daily limit (`daily_quota`) |
+| Abuse limits | how often a user, a source IP (SHA-256 hash) and the whole system signed up or sent invitation mails, and how many mails each company sent to customers, in the last 24 hours | `daily_quota` in the database; rows go when their 24-hour window has passed |
 | Backups | a dump of the whole database (all tenants) and an archive of all uploaded files | the backup directory on the server and, if configured, an S3-compatible storage, encrypted with the operator's key ([`backup-restore.md`](./backup-restore.md)) |
 | Logs | request failures, stack traces, warnings; by rule no passwords, tokens, document contents or e-mail addresses, but an error message can still name a customer | the `logs` volume (30 days, at most 1 GB) and Docker's console log (5 × 10 MB per container) |
 | Metrics | counters and timings without business data | the monitoring system, if `BILLERY_METRICS_PORT` is used |
@@ -56,6 +58,7 @@ What the application reads from a token is listed in
 | File storage provider (only with `BILLERY_FILES_STORE=s3`) | the uploaded files (logos) of every tenant, not encrypted by the application | their infrastructure | their logs |
 | Identity provider | accounts, credentials, sign-in times; **no** business data | its own system | its sign-in log |
 | Mail provider | the invitation mails | SMTP | its log |
+| Each company's own mail provider | the mails that company sends to its customers, with the documents attached; the company's own contract | SMTP, from the operator's server | its log |
 
 Tenants cannot reach each other's data: [`../architecture/multi-tenancy.md`](../architecture/multi-tenancy.md)
 and [`../architecture/threat-model.md`](../architecture/threat-model.md) describe how that is
@@ -120,7 +123,8 @@ closed.
 
 | Data | Deleted | By |
 |------|---------|----|
-| Documents, customers, catalog, templates, settings, team, invitations, administration log of a tenant | at the purge, after the export window | `purge_tenant` (operator) |
+| Documents, customers, catalog, templates, settings, mail accounts, team, invitations, administration log of a tenant | at the purge, after the export window | `purge_tenant` (operator) |
+| A mail account (with its encrypted password) | when an owner or administrator deletes it in Einstellungen → Mail-Einstellungen | the company |
 | Uploaded files of a tenant | in the same step | removing the tenant's directory or bucket prefix (operator) |
 | Accounts that belong to no company any more | at the same run, if older than 30 days and not referenced by another company's log | the cleanup statement (operator) |
 | The same data in backups | when the last backup from before the purge expires: 14 backups on the server (two weeks with one run per night) and 30 days at the storage by default (`KEEP`, `BACKUP_S3_KEEP_DAYS`) | `backup.sh` |

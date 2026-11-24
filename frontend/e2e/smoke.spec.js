@@ -123,6 +123,13 @@ test('the settings cards lead to their pages and back', async ({ page }) => {
   await expect(page.getByTestId('export-button')).toBeVisible()
   await page.getByTestId('settings-back').click()
   await expect(page).toHaveURL(/\/settings$/)
+  // the mail settings: accounts and templates of the mails to customers
+  await page.getByTestId('settings-card-mail').click()
+  await expect(page).toHaveURL(/\/settings\/mail$/)
+  await expect(page.getByRole('heading', { name: 'Mail-Einstellungen', level: 1 })).toBeVisible()
+  await expect(page.getByTestId('mail-account-form')).toBeVisible()
+  await expect(page.getByTestId('mail-template-form')).toBeVisible()
+  await page.getByTestId('settings-back').click()
   // an area that does not apply here (self-hosted: no team) leads back to the overview
   await page.goto('/settings/team')
   await expect(page).toHaveURL(/\/settings$/)
@@ -187,6 +194,15 @@ test('a document opens from the list and the customer is searched in the documen
   await page.keyboard.press('Escape')
   await expect(page.getByRole('menu')).toHaveCount(0)
   await expect(bar.getByRole('button', { name: 'Mehr' })).toBeFocused()
+
+  // "Per E-Mail" opens the send dialog: without a mail account it links to the settings,
+  // with one it shows the form (an instance used for local runs may have one).
+  await bar.getByRole('button', { name: 'Per E-Mail' }).click()
+  const sendDialog = page.getByTestId('send-mail')
+  await expect(sendDialog).toBeVisible()
+  await expect(sendDialog.getByTestId('no-account').or(sendDialog.locator('.send-form'))).toBeVisible()
+  await sendDialog.getByRole('button', { name: /Schließen|Abbrechen/ }).click()
+  await expect(sendDialog).toHaveCount(0)
 
   await page.keyboard.press('Escape')
   await page.goto('/invoices')

@@ -78,6 +78,7 @@ public class DatabaseMigration {
       migrateVatPerLine(conn);
       migrateAddArticleNote(conn);
       migrateTemplateSampleLiterals(conn);
+      migrateAddMailAccountTable(conn);
     } catch (SQLException e) {
       throw new DatabaseException("Database migration failed", e);
     }
@@ -584,6 +585,32 @@ public class DatabaseMigration {
   private static void migrateAddArticleNote(Connection conn) throws SQLException {
     try (Statement stmt = conn.createStatement()) {
       stmt.execute("ALTER TABLE article ADD COLUMN IF NOT EXISTS note TEXT");
+    }
+  }
+
+  /**
+   * Migration: the table of the company's own SMTP accounts (#13), the same as in {@code
+   * scheme-h2.sql}. Idempotent ({@code IF NOT EXISTS}).
+   */
+  private static void migrateAddMailAccountTable(Connection conn) throws SQLException {
+    try (Statement stmt = conn.createStatement()) {
+      stmt.execute(
+          """
+          CREATE TABLE IF NOT EXISTS mail_account (
+              id INT AUTO_INCREMENT PRIMARY KEY,
+              name VARCHAR(100) NOT NULL,
+              host VARCHAR(255) NOT NULL,
+              port INT NOT NULL,
+              security VARCHAR(10) NOT NULL,
+              username VARCHAR(255),
+              password_encrypted TEXT,
+              from_address VARCHAR(255) NOT NULL,
+              from_name VARCHAR(255),
+              is_default SMALLINT NOT NULL DEFAULT 0,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          )
+          """);
     }
   }
 

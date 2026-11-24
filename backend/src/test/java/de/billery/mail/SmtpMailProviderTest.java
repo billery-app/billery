@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -91,7 +92,8 @@ class SmtpMailProviderTest {
                   "",
                   "",
                   "billery@example.com",
-                  "none"));
+                  "none"),
+              new MailMetrics(new SimpleMeterRegistry()));
 
       provider.send(message());
 
@@ -117,7 +119,8 @@ class SmtpMailProviderTest {
                   "",
                   "",
                   "billery@example.com",
-                  "none"));
+                  "none"),
+              new MailMetrics(new SimpleMeterRegistry()));
 
       MailException e = assertThrows(MailException.class, () -> provider.send(message()));
       assertEquals("Mailversand fehlgeschlagen", e.getMessage());
