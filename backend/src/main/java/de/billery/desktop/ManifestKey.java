@@ -1,12 +1,11 @@
 package de.billery.desktop;
 
+import de.billery.config.SecretFiles;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
-import java.nio.file.attribute.PosixFilePermissions;
 import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.logging.Level;
@@ -61,27 +60,12 @@ final class ManifestKey {
     }
     key = new byte[KEY_BYTES];
     new SecureRandom().nextBytes(key);
-    Path file = locations.signingKeyFile();
     try {
-      createOwnerOnly(file);
+      SecretFiles.createOwnerOnly(
+          locations.signingKeyFile(), Base64.getEncoder().encodeToString(key));
     } catch (FileAlreadyExistsException e) {
       return load(locations);
     }
-    Files.writeString(
-        file,
-        Base64.getEncoder().encodeToString(key),
-        StandardCharsets.US_ASCII,
-        StandardOpenOption.TRUNCATE_EXISTING);
     return key;
-  }
-
-  private static void createOwnerOnly(Path file) throws IOException {
-    try {
-      Files.createFile(
-          file, PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------")));
-    } catch (UnsupportedOperationException e) {
-      LOGGER.fine("No POSIX permissions for the backup signing key");
-      Files.createFile(file);
-    }
   }
 }

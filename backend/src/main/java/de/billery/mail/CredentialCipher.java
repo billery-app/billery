@@ -1,6 +1,7 @@
 package de.billery.mail;
 
 import de.billery.config.AppConfig;
+import de.billery.config.SecretFiles;
 import de.billery.data.Database;
 import de.billery.desktop.BackupLocations;
 import de.billery.tenant.CurrentTenant;
@@ -9,8 +10,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
-import java.nio.file.attribute.PosixFilePermissions;
 import java.security.GeneralSecurityException;
 import java.security.SecureRandom;
 import java.util.Arrays;
@@ -186,25 +185,11 @@ public class CredentialCipher {
     byte[] key = new byte[KEY_BYTES];
     new SecureRandom().nextBytes(key);
     try {
-      createOwnerOnly(file);
+      SecretFiles.createOwnerOnly(file, Base64.getEncoder().encodeToString(key));
     } catch (FileAlreadyExistsException e) {
       return readKey(file);
     }
-    Files.writeString(
-        file,
-        Base64.getEncoder().encodeToString(key),
-        StandardCharsets.US_ASCII,
-        StandardOpenOption.TRUNCATE_EXISTING);
     return key;
-  }
-
-  private static void createOwnerOnly(Path file) throws IOException {
-    try {
-      Files.createFile(
-          file, PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------")));
-    } catch (UnsupportedOperationException e) {
-      Files.createFile(file);
-    }
   }
 
   private static byte[] readKey(Path file) throws IOException {
