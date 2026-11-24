@@ -48,6 +48,7 @@ frontend/
 └── e2e/
     ├── README.md            # this file
     ├── smoke.spec.js        # main screens, template editor PDF preview, document view (action bar, lifecycle strip, "Mehr" menu) + customer search
+    ├── flows.spec.js        # core write flows: customer and invoice through the forms, issue, partial and full payment, send by mail, cancel, GoBD export; offer accepted
     ├── dashboard.spec.js    # / renders, period selector visible
     └── invoices.spec.js     # /invoices renders + create/delete a draft via the API
 ```
@@ -62,6 +63,15 @@ The suite works on an empty database (that is what CI has):
   are never touched.
 - `invoices.spec.js` uses the first customer, or creates and deletes a
   temporary one, and deletes its draft in a `finally`.
+- `flows.spec.js` issues and cancels an invoice: **issued documents cannot be
+  deleted (GoBD)**, so it leaves an invoice, a credit note, an offer and their
+  customer (tagged `Ablauf<timestamp>`) behind. Run it only against the empty
+  CI database or a throwaway instance. It deletes its catalog service, its
+  mail account and company data it created. The send-by-mail step needs a
+  [Mailpit](https://mailpit.axllent.org/) (`E2E_MAILPIT_URL`, SMTP on
+  `E2E_SMTP_PORT`, default 1025) and is skipped without one:
+  `docker run --rm -p 127.0.0.1:1025:1025 -p 127.0.0.1:8025:8025 axllent/mailpit:v1.21.0`,
+  then `E2E_MAILPIT_URL=http://127.0.0.1:8025`.
 
 Write requests send the app's own `Origin` header; the backend rejects writes
 without it (CSRF protection). An interrupted run against a dev database may
@@ -70,7 +80,8 @@ leave rows whose customer name starts with `E2E-`; delete them in the app.
 ## Adding a test
 
 1. Prefer read-only flows; a mutating flow tags its rows with the marker and
-   cleans up in `afterAll` / `finally`.
+   cleans up in `afterAll` / `finally` (issued documents cannot be cleaned up:
+   say so in the file, like `flows.spec.js`).
 2. Use `getByRole` / `getByText` / `getByLabel` / `getByTestId` locators.
 3. Reuse `watch(page)` from `smoke.spec.js` so the test fails on console
    errors and failed API calls, not only on the asserted element.

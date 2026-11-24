@@ -421,7 +421,11 @@ Without a company account nothing is sent to customers: there is no fallback to 
   one transaction: a dispatch that went out but could not be recorded answers HTTP 500 with "nicht
   erneut senden", logs an ERROR and counts `billery_mail_dispatch_unrecorded_total` (alert
   `BilleryMailDispatchUnrecorded`); a stop in between shows as a "versendet" log line without
-  its "vermerkt" line ([`ops-gotchas.md`](../operations/ops-gotchas.md#mail)).
+  its "vermerkt" line ([`ops-gotchas.md`](../operations/ops-gotchas.md#mail)). **Known residual
+  risk:** when the server accepted the mail but its answer is lost (a timeout after `DATA`), the
+  delivery counts as failed (reason `timeout`, a WARN line with the document id), nothing is
+  recorded, and the user may send again although the customer has the mail. Accepted: it needs a
+  lost answer at exactly that moment, and the log names the document.
 - The daily limit is claimed before anything is issued or sent.
 
 ### Where mail is triggered
