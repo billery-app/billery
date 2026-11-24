@@ -373,7 +373,9 @@ Without a company account nothing is sent to customers: there is no fallback to 
 - `SmtpTransport` delivers one `MailMessage` through one `SmtpEndpoint` (host, port, security,
   login, sender). A connection per message, 15 s timeout.
 - `MailHostPolicy` decides which servers a company account may name. Self-host and desktop: any
-  (a relay on the same host is normal). Profile `saas`: only public addresses, ports 25 / 465 /
+  (a relay on the same host is normal). Profile `saas`: only public addresses (IPv4 without the
+  private, shared, reserved and documentation ranges; IPv6 by allow-list: global unicast `2000::/3`
+  without `2001::/23`, `2001:db8::/32`, `2002::/16`, `3fff::/20`), ports 25 / 465 /
   587 / 2525 and an encrypted connection, checked when the account is saved **and** on every
   connection by a guarded socket factory, at the moment the socket connects to the resolved
   address (so DNS rebinding cannot reach the operator's network). The factory is put into the

@@ -40,7 +40,19 @@ class MailHostPolicyTest {
         "fe80::1",
         "fd00::1",
         "::ffff:10.0.0.1",
-        "64:ff9b::a00:1"
+        "64:ff9b::a00:1",
+        "192.0.2.10",
+        "198.51.100.10",
+        "203.0.113.10",
+        "2001:db8::1",
+        "3fff::1",
+        "2002:a00:1::1",
+        "2001::1",
+        "2001:2::1",
+        "100::1",
+        "::10.0.0.1",
+        "64:ff9b:1::a00:1",
+        "4000::1"
       })
   void internalAddressesAreNotPublic(String address) throws UnknownHostException {
     assertFalse(MailHostPolicy.isPublic(InetAddress.getByName(address)), address);

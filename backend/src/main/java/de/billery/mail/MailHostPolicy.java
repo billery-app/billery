@@ -137,13 +137,12 @@ public class MailHostPolicy {
           && !(first == 100 && second >= 64 && second <= 127) // carrier-grade NAT
           && !(first == 192 && second == 0 && (b[2] & 0xff) == 0) // IETF protocol assignments
           && !(first == 198 && (second == 18 || second == 19)) // benchmarking
+          && !(first == 192 && second == 0 && (b[2] & 0xff) == 2) // documentation
+          && !(first == 198 && second == 51 && (b[2] & 0xff) == 100) // documentation
+          && !(first == 203 && second == 0 && (b[2] & 0xff) == 113) // documentation
           && first < 240; // reserved and broadcast
     }
     if (address instanceof Inet6Address) {
-      int first = b[0] & 0xff;
-      if ((first & 0xfe) == 0xfc) { // fc00::/7 unique local
-        return false;
-      }
       if (isNat64(b)) { // 64:ff9b::/96 carries an IPv4 address
         try {
           return isPublic(InetAddress.getByAddress(new byte[] {b[12], b[13], b[14], b[15]}));
@@ -151,8 +150,31 @@ public class MailHostPolicy {
           return false;
         }
       }
+      return isGlobalUnicast6(b);
     }
     return true;
+  }
+
+  /**
+   * IPv6 is checked by an allow-list: only global unicast ({@code 2000::/3}), without the IETF
+   * protocol assignments ({@code 2001::/23}: Teredo, benchmarking, ORCHID), the documentation
+   * ranges ({@code 2001:db8::/32}, {@code 3fff::/20}) and 6to4 ({@code 2002::/16}, which embeds an
+   * IPv4 address). Everything outside {@code 2000::/3} (unique local, link-local, discard,
+   * IPv4-compatible, local NAT64 and anything assigned later) is refused.
+   */
+  private static boolean isGlobalUnicast6(byte[] b) {
+    if ((b[0] & 0xe0) != 0x20) {
+      return false;
+    }
+    int first = ((b[0] & 0xff) << 8) | (b[1] & 0xff);
+    int second = ((b[2] & 0xff) << 8) | (b[3] & 0xff);
+    if (first == 0x2002) {
+      return false;
+    }
+    if (first == 0x2001 && (second < 0x0200 || second == 0x0db8)) {
+      return false;
+    }
+    return !(first == 0x3fff && (second & 0xf000) == 0);
   }
 
   private static boolean isNat64(byte[] b) {
