@@ -9,6 +9,7 @@ import de.billery.service.ExportBusyException;
 import de.billery.service.ExportLimitException;
 import de.billery.service.InvalidStatusChangeException;
 import de.billery.service.MailDeliveryException;
+import de.billery.service.MailNotRecordedException;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -172,5 +173,18 @@ public class ApiExceptionHandler {
           .body(Map.of("message", e.getMessage()));
     }
     return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(Map.of("message", e.getMessage()));
+  }
+
+  /**
+   * A mail went out but could not be recorded in the document's history. The message tells the user
+   * not to send it again.
+   *
+   * @param e the failure
+   * @return HTTP 500 with the exception message
+   */
+  @ExceptionHandler(MailNotRecordedException.class)
+  public ResponseEntity<Map<String, String>> handleMailNotRecorded(MailNotRecordedException e) {
+    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+        .body(Map.of("message", e.getMessage()));
   }
 }

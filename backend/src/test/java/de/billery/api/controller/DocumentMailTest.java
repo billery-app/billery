@@ -15,16 +15,19 @@ import de.billery.data.DocumentHistoryEntry;
 import de.billery.data.InvoiceTemplate;
 import de.billery.data.Owner;
 import de.billery.data.TestDatabaseConfig;
+import de.billery.mail.CompanyMailSender;
 import de.billery.mail.CredentialCipher;
 import de.billery.mail.FakeSmtpServer;
 import de.billery.mail.MailHostPolicy;
 import de.billery.mail.MailMetrics;
+import de.billery.repository.DocumentHistoryRepository;
 import de.billery.repository.OwnerRepository;
 import de.billery.service.BadRequestException;
 import de.billery.service.DocumentMailService;
 import de.billery.service.DocumentStateException;
 import de.billery.service.MailAccountService;
 import de.billery.service.MailDeliveryException;
+import de.billery.service.MailNotRecordedException;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -53,6 +56,9 @@ class DocumentMailTest {
 
   private InvoiceController invoices;
   private DocumentMailService mail;
+  private SimpleMeterRegistry meters;
+  private MailMetrics metrics;
+  private CompanyMailSender sender;
   private FakeSmtpServer server;
   private final AtomicBoolean limitOpen = new AtomicBoolean(true);
   private int customerId;
@@ -100,11 +106,11 @@ class DocumentMailTest {
     server = new FakeSmtpServer();
     CredentialCipher cipher = CredentialCipher.withKey(KEY, () -> 1);
     MailHostPolicy policy = new MailHostPolicy(false);
-    MailMetrics metrics = new MailMetrics(new SimpleMeterRegistry());
+    meters = new SimpleMeterRegistry();
+    metrics = new MailMetrics(meters);
+    sender = TestWiring.companyMailSender(cipher, policy, metrics);
     limitOpen.set(true);
-    mail =
-        TestWiring.documentMailService(
-            TestWiring.companyMailSender(cipher, policy, metrics), limitOpen::get);
+    mail = TestWiring.documentMailService(sender, limitOpen::get, metrics);
     TestWiring.mailAccountService(cipher, policy, metrics)
         .create(
             new MailAccountService.AccountInput(
@@ -217,6 +223,34 @@ class DocumentMailTest {
     assertTrue(
         invoices.getHistory(id).stream().noneMatch(h -> "MAIL_SENT".equals(h.action())),
         "a failed dispatch is not in the history");
+  }
+
+  @Test
+  void aMailThatWentOutButCannotBeRecordedSaysSoAndIsCounted() {
+    int id = issue(create(INVOICE)).id();
+    DocumentHistoryRepository failingHistory =
+        new DocumentHistoryRepository(TestWiring.jdbcClient()) {
+          @Override
+          public void log(int invoiceId, String action, String notes) {
+            if (ACTION_MAIL_SENT.equals(action)) {
+              throw new IllegalStateException("database gone");
+            }
+            super.log(invoiceId, action, notes);
+          }
+        };
+    DocumentMailService failing =
+        TestWiring.documentMailService(sender, limitOpen::get, metrics, failingHistory);
+
+    MailNotRecordedException e =
+        assertThrows(
+            MailNotRecordedException.class,
+            () ->
+                failing.send(
+                    id, request(List.of("max@kunde.de"), "Betreff", "Text", false, false)));
+
+    assertEquals(1, server.received().size(), "the mail went out");
+    assertTrue(e.getMessage().contains("nicht erneut senden"), e.getMessage());
+    assertEquals(1.0, meters.get("billery.mail.dispatch.unrecorded").counter().count());
   }
 
   @Test

@@ -36,6 +36,21 @@ public class MailMetrics {
         counter(kind, "failed", reason.label());
       }
     }
+    unrecorded();
+  }
+
+  /**
+   * A mail to a customer went out, but its entry in the document's history could not be written
+   * ({@code billery_mail_dispatch_unrecorded_total}, alert {@code BilleryMailDispatchUnrecorded}).
+   */
+  public void dispatchUnrecorded() {
+    unrecorded().increment();
+  }
+
+  private Counter unrecorded() {
+    return Counter.builder("billery.mail.dispatch.unrecorded")
+        .description("Mails to customers that went out but are missing in the document history")
+        .register(meters);
   }
 
   /**

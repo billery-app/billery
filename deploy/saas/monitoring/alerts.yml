@@ -152,6 +152,18 @@ groups:
           summary: "Most mails to customers fail ({{ $labels.reason }})"
           description: "More mails to customers failed than went out in the last hour. connect / timeout: check that the server may open outgoing connections to ports 465 and 587 (many hosting providers block them by default). auth / rejected: the companies' own settings; they see the error in the send dialog."
 
+      - alert: BilleryMailDispatchUnrecorded
+        # A mail to a customer went out, but writing it into the document's history failed (the
+        # user was told not to send again). The history lacks the entry; an offer may still be a
+        # draft.
+        expr: |
+          sum(increase(billery_mail_dispatch_unrecorded_total{application="billery"}[1h])) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: "A mail to a customer is missing in the document history"
+          description: "The backend log has 'versendet, aber nicht in der Historie vermerkt' with the document id. Check the database; the dispatch can be noted by hand (docs/operations/ops-gotchas.md, Mail)."
+
   - name: billery-host
     # Needs node_exporter on the host (not part of the kit): the volumes the backend does not see,
     # above all the database (when it runs on this server) and the local backups.

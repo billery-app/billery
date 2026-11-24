@@ -155,6 +155,15 @@ Every mail opens its own SMTP connection (no pooling); mail is sent rarely.
   Then every company's test mail fails with "nicht erreichbar" and `BilleryCompanyMailsFailing`
   fires with `reason="connect"`; ask the provider to open 465 and 587. In SaaS a company account
   may only name public servers on 25 / 465 / 587 / 2525 with encryption (`MailHostPolicy`).
+- **Sent but not in the history.** Every mail to a customer writes two INFO lines to the backend
+  log, without addresses: `Mail zu Dokument <id> über Mailkonto <id> versendet` once the server
+  accepted it, `Versand von Dokument <id> vermerkt` once `MAIL_SENT` (and an offer's "Gesendet")
+  is stored. If storing fails, the user is told not to send again, the log has an ERROR
+  `… versendet, aber nicht in der Historie vermerkt` and `billery_mail_dispatch_unrecorded_total`
+  raises `BilleryMailDispatchUnrecorded`. If the backend stopped between the two lines (no ERROR,
+  no counter: it starts at 0 again), only the log shows it: a "versendet" line without its
+  "vermerkt" line, e.g. `grep -hE 'versendet$|vermerkt$' logs/billery*.log` in the `logs` volume after a crash. Note such a
+  dispatch by hand in the incident log; the document itself is complete.
 - **Limits.** SaaS: `BILLERY_CUSTOMER_MAILS_PER_DAY` per company (default 200), a company's own
   value in `tenant.mail_daily_limit` ([`saas-tenant-lifecycle.md`](./saas-tenant-lifecycle.md)).
 

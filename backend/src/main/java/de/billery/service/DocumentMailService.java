@@ -13,6 +13,7 @@ import de.billery.mail.MailAddresses;
 import de.billery.mail.MailAttachment;
 import de.billery.mail.MailException;
 import de.billery.mail.MailMessage;
+import de.billery.mail.MailMetrics;
 import de.billery.pdf.TemplateBasedPdfGenerator;
 import de.billery.repository.CustomerRepository;
 import de.billery.repository.DocumentHistoryRepository;
@@ -63,6 +64,7 @@ public class DocumentMailService {
   private final DocumentStrategyRegistry registry;
   private final CompanyMailSender sender;
   private final CustomerMailLimit limit;
+  private final MailMetrics metrics;
   private final TransactionTemplate transactions;
 
   /**
@@ -169,6 +171,7 @@ public class DocumentMailService {
    * @param registry the status transitions of offers and cost calculations, the document names
    * @param sender delivers through the company's account
    * @param limit the company's daily limit
+   * @param metrics counts dispatches that went out but could not be recorded
    * @param transactions writes history and status together
    */
   public DocumentMailService(
@@ -184,6 +187,7 @@ public class DocumentMailService {
       DocumentStrategyRegistry registry,
       CompanyMailSender sender,
       CustomerMailLimit limit,
+      MailMetrics metrics,
       TransactionTemplate transactions) {
     this.invoices = invoices;
     this.customers = customers;
@@ -197,6 +201,7 @@ public class DocumentMailService {
     this.registry = registry;
     this.sender = sender;
     this.limit = limit;
+    this.metrics = metrics;
     this.transactions = transactions;
   }
 
@@ -292,8 +297,21 @@ public class DocumentMailService {
               : "";
       throw new MailDeliveryException(e.reason().explanation() + hint, e);
     }
+    // The log pair "versendet" / "vermerkt" (no addresses) shows a dispatch that went out but did
+    // not reach the history, also when the backend stopped in between (runbook: ops-gotchas.md).
+    LOG.info("Mail zu Dokument {} über Mailkonto {} versendet", id, account.id());
     Invoice sent = invoice;
-    transactions.executeWithoutResult(status -> recordDispatch(sent, account, message));
+    try {
+      transactions.executeWithoutResult(status -> recordDispatch(sent, account, message));
+    } catch (RuntimeException e) {
+      metrics.dispatchUnrecorded();
+      LOG.error("Mail zu Dokument {} wurde versendet, aber nicht in der Historie vermerkt", id, e);
+      throw new MailNotRecordedException(
+          "Die Mail wurde gesendet, konnte aber nicht in der Historie des Dokuments vermerkt"
+              + " werden. Bitte nicht erneut senden; der Betreiber ist informiert.",
+          e);
+    }
+    LOG.info("Versand von Dokument {} vermerkt", id);
     Invoice after = require(id);
     return new Result(issueNow, after.getFormattedInvoiceNumber(), after.getDocumentStatusId());
   }

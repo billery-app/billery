@@ -298,9 +298,26 @@ public final class TestWiring {
    *
    * @param sender delivers the mails
    * @param limit the daily limit
+   * @param metrics counts unrecorded dispatches
    */
   public static DocumentMailService documentMailService(
-      CompanyMailSender sender, CustomerMailLimit limit) {
+      CompanyMailSender sender, CustomerMailLimit limit, MailMetrics metrics) {
+    return documentMailService(sender, limit, metrics, historyRepository());
+  }
+
+  /**
+   * Returns a new {@link DocumentMailService} with the given history (tests that make it fail).
+   *
+   * @param sender delivers the mails
+   * @param limit the daily limit
+   * @param metrics counts unrecorded dispatches
+   * @param history the document history
+   */
+  public static DocumentMailService documentMailService(
+      CompanyMailSender sender,
+      CustomerMailLimit limit,
+      MailMetrics metrics,
+      DocumentHistoryRepository history) {
     return new DocumentMailService(
         invoiceRepository(),
         customerRepository(),
@@ -310,10 +327,11 @@ public final class TestWiring {
         documentPdfService(),
         eInvoiceService(),
         lifecycleService(),
-        historyRepository(),
+        history,
         new DocumentStrategyRegistry(),
         sender,
         limit,
+        metrics,
         transactions());
   }
 }

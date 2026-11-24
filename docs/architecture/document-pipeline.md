@@ -415,7 +415,11 @@ Without a company account nothing is sent to customers: there is no fallback to 
   mich" is a BCC to the account's own address.
 - After the server accepted the mail, `document_history` gets `MAIL_SENT` (recipients, subject,
   account, attachment names, not the text) and a draft offer or cost calculation becomes `SENT`
-  through the transition table. A failed delivery writes no history.
+  through the transition table. A failed delivery writes no history. Mail and database cannot be
+  one transaction: a dispatch that went out but could not be recorded answers HTTP 500 with "nicht
+  erneut senden", logs an ERROR and counts `billery_mail_dispatch_unrecorded_total` (alert
+  `BilleryMailDispatchUnrecorded`); a stop in between shows as a "versendet" log line without
+  its "vermerkt" line ([`ops-gotchas.md`](../operations/ops-gotchas.md#mail)).
 - The daily limit is claimed before anything is issued or sent.
 
 ### Where mail is triggered
