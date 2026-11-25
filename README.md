@@ -54,15 +54,42 @@ Self-hosted invoicing application for German freelancers and small businesses. M
 - Desktop installers built with Tauri (`scripts/build-desktop.sh`), bundling the backend JAR, a jlink'd JRE and H2
 - REST API with Swagger UI at `/swagger-ui.html` and OpenAPI JSON at `/v3/api-docs`
 
-## Quick start
+## Installation
+
+Billery is published as a ready-made Docker image (`ghcr.io/billery-app/billery`, one tag per
+[release](https://github.com/billery-app/billery/releases), plus `latest`). Nothing has to be
+built: download the Compose file, set two secrets and start it.
+
+**Requirements:** Docker with Compose v2, about 1.5 GB of memory.
 
 ```bash
-cp .env.example .env     # optional: ports, DB passwords, bind address
-docker compose up --build
+mkdir billery && cd billery
+curl -fsSLO https://raw.githubusercontent.com/billery-app/billery/main/deploy/selfhost/docker-compose.yml
+curl -fsSL https://raw.githubusercontent.com/billery-app/billery/main/deploy/selfhost/.env.example -o .env
+
+# in .env: the database password and the key for stored mail passwords
+sed -i "s|^DB_PASSWORD=.*|DB_PASSWORD=$(openssl rand -base64 24)|" .env
+sed -i "s|^BILLERY_SECRETS_KEY=.*|BILLERY_SECRETS_KEY=$(openssl rand -base64 32)|" .env
+
+docker compose up -d
 ```
 
-- App (SPA + API on one origin): `http://localhost:8080`
-- Swagger UI: `http://localhost:8080/swagger-ui.html`
+- App (SPA + API on one origin): `http://localhost:8080`. On the first start a short tour shows
+  the main steps; Einstellungen → Hilfe starts it again.
+- Pin a version for a real install: `BILLERY_VERSION=0.2.0` in `.env`.
+- **Update:** change `BILLERY_VERSION`, then `docker compose pull && docker compose up -d`. The
+  backend migrates the database on start; back up first ([`backup-restore.md`](./docs/operations/backup-restore.md)).
+- Only the image, without Compose: `docker pull ghcr.io/billery-app/billery:latest` (it needs a
+  PostgreSQL 17 database, see [`deployment.md`](./docs/operations/deployment.md)).
+- Keep `BILLERY_SECRETS_KEY` with your other secrets: a new key makes the stored mail passwords
+  unreadable.
+- A public demo instance: [`docs/operations/demo.md`](./docs/operations/demo.md).
+
+**Building from source** (development, or a change of your own): in a clone of this repository,
+`cp .env.example .env`, set `DB_PASSWORD`, then `docker compose up --build`. The root
+`docker-compose.yml` builds the same image from the code.
+
+### Running it safely
 
 The stack brings up PostgreSQL and the backend image, which also serves the built frontend. Self-host mode has no login of its own: it is published on `127.0.0.1` only by default. API writes require a same-origin `Origin` or `Referer`; the backend also sets CSP, nosniff, frame-protection, and HTTPS-only HSTS headers. Behind a TLS proxy, forward the actual `X-Forwarded-Proto` / `-Host` values and keep the backend private. See [`docs/operations/deployment.md`](./docs/operations/deployment.md#behind-a-reverse-proxy) for the browser-auth and proxy requirements. Backend settings are read from environment variables (see `backend/env.example`).
 

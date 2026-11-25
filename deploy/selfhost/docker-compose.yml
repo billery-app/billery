@@ -1,0 +1,119 @@
+# Billery self-host from the released image: nothing to build.
+#
+#   mkdir billery && cd billery
+#   curl -fsSLO https://raw.githubusercontent.com/billery-app/billery/main/deploy/selfhost/docker-compose.yml
+#   curl -fsSL https://raw.githubusercontent.com/billery-app/billery/main/deploy/selfhost/.env.example -o .env
+#   # set DB_PASSWORD (and BILLERY_SECRETS_KEY for mail accounts) in .env
+#   docker compose up -d
+#
+# The app (SPA + API) answers on http://127.0.0.1:8080. It has no login of its own: keep it on
+# loopback and put a reverse proxy with HTTPS (and, on a server, basic_auth) in front of it, see
+# docs/operations/deployment.md. Update: change BILLERY_VERSION, then `docker compose pull &&
+# docker compose up -d`; the backend migrates the database on start.
+#
+# Same services, hardening and limits as the root docker-compose.yml (which builds from source);
+# keep the two in step.
+name: billery
+
+x-logging: &logging
+  # Docker keeps at most 5 x 10 MB of each container's output; without it the log grows forever.
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  postgres:
+    image: postgres:17
+    container_name: billery-db
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    # Only what PostgreSQL needs to initialise and run its data directory.
+    cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETGID, SETUID]
+    mem_limit: ${DB_MEMORY_LIMIT:-512m}
+    pids_limit: 200
+    logging: *logging
+    environment:
+      POSTGRES_DB: billery
+      POSTGRES_USER: billery
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD to a non-default secret before starting}
+    # No published port: only the backend talks to the database.
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - type: tmpfs
+        target: /tmp
+      - type: tmpfs
+        target: /run/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U billery -d billery"]
+      start_period: 10s
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - billery-network
+
+  # The released image: SPA and API on one origin, port 8080.
+  backend:
+    image: ghcr.io/billery-app/billery:${BILLERY_VERSION:-latest}
+    container_name: billery-backend
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    # Writable are only the volumes (uploads, logs) and /tmp.
+    read_only: true
+    cap_drop: [ALL]
+    mem_limit: ${BACKEND_MEMORY_LIMIT:-1g}
+    cpus: ${BACKEND_CPUS:-2}
+    pids_limit: 300
+    tmpfs:
+      - /tmp:size=256m
+    logging: *logging
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: billery
+      DB_USER: billery
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD to a non-default secret before starting}
+      # Only for a frontend on ANOTHER origin; empty = same origin (what a reverse proxy needs).
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
+      # Prometheus metrics on this port inside the network only (never published); -1 = off.
+      BILLERY_METRICS_PORT: ${BILLERY_METRICS_PORT:--1}
+      # Encrypts the passwords of the mail accounts (openssl rand -base64 32). Empty: no mail
+      # password can be stored. Keep it: a new key makes the stored passwords unreadable.
+      BILLERY_SECRETS_KEY: ${BILLERY_SECRETS_KEY:-}
+      # Public demo only (docs/operations/demo.md): banner, tour every session, no mail.
+      BILLERY_DEMO: ${BILLERY_DEMO:-false}
+      # Demo data into an EMPTY database on start. Never for a real install.
+      LOAD_DEMO_DATA: ${LOAD_DEMO_DATA:-false}
+    ports:
+      # Loopback by default: the app has no login of its own, so it must only be reachable
+      # through your proxy. BIND_ADDRESS=0.0.0.0 publishes it on all interfaces (LAN only).
+      - "${BIND_ADDRESS:-127.0.0.1}:${APP_PORT:-8080}:8080"
+    volumes:
+      - uploads:/app/uploads
+      - logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      # Ready, not only alive: the database answers too.
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/api/health/ready"]
+      start_period: 30s
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    networks:
+      - billery-network
+
+volumes:
+  postgres_data:
+  uploads:
+  logs:
+
+networks:
+  billery-network:
+    driver: bridge
