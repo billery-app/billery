@@ -58,6 +58,22 @@ test('the tour leads through its five stations and ends with "Fertig"', async ({
   expect(problems).toEqual([])
 })
 
+test('the last station of the introductory tour leads to the templates tour', async ({ page }) => {
+  const problems = watch(page)
+  await startFromHelp(page)
+  const popover = page.locator('.driver-popover')
+  for (let i = 0; i < STATIONS.length - 1; i++) {
+    await expect(popover.locator('.driver-popover-title')).toHaveText(STATIONS[i].title)
+    await popover.getByRole('button', { name: 'Weiter' }).click()
+  }
+  await popover.getByRole('button', { name: 'Vorlagen-Tour starten' }).click()
+  await expect(popover.locator('.driver-popover-title')).toHaveText('Ihre Dokumentvorlagen')
+  await expect(page).toHaveURL(/\/templates$/)
+  await popover.getByRole('button', { name: 'Überspringen' }).click()
+  await expect(popover).toHaveCount(0)
+  expect(problems).toEqual([])
+})
+
 test('"Überspringen" ends the tour at once', async ({ page }) => {
   const problems = watch(page)
   await startFromHelp(page)

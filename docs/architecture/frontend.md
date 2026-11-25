@@ -67,7 +67,9 @@ once per installation and only while it holds no documents (`GET/PUT /api/tour`,
 endpoint). Einstellungen → Hilfe (`HelpSettings.vue`) starts it by hand and holds the switch
 (self-host / desktop only); the demo banner has "Tour erneut starten". A second tour
 (`TEMPLATE_TOUR_STEPS`, `runTemplateTour`) explains templates and editor in five stations; it
-never starts by itself (Hilfe, "Kurz erklärt" on `/templates`) and stores nothing. Its stations
+never starts by itself (Hilfe, "Kurz erklärt" on `/templates`, and "Vorlagen-Tour starten" in the
+last station of the introductory tour, `followUp` of `startTour`, which ends the first tour as
+seen) and stores nothing. Its stations
 have a `prepare` hook: the editor stations open an invoice template (`data-tour="template-edit"`,
 `data-document-type`), the list stations close the editor through its own "Abbrechen" (which asks
 before discarding changes); the tools station points to the "Werkzeuge" button where the sidebar

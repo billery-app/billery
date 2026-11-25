@@ -97,8 +97,8 @@ export const TOUR_STEPS = [
       title: 'Ausstattung und Amortisation',
       description:
         'Erfassen Sie Geräte und Werkzeuge mit Kaufpreis und verknüpfen Sie sie mit Leistungen: ' +
-        'Billery zeigt, wie weit bezahlte Rechnungen sie schon eingespielt haben. Unter Einstellungen → ' +
-        'Hilfe starten Sie diese Tour erneut oder die Tour zu Vorlagen und Editor.'
+        'Billery zeigt, wie weit bezahlte Rechnungen sie schon eingespielt haben. Wie Ihre Dokumente ' +
+        'aussehen, zeigt die Vorlagen-Tour: gleich hier oder später unter Einstellungen → Hilfe.'
     }
   }
 ]
@@ -213,9 +213,11 @@ function isCurrent(router, target) {
  * @param {Function} [options.onEnd] - called once the tour is finished or skipped
  * @param {Function} [options.createDriver] - driver.js's factory (tests replace it)
  * @param {object[]} [options.steps] - the stations ({@link TOUR_STEPS} or {@link TEMPLATE_TOUR_STEPS})
+ * @param {{label: string, run: Function}} [options.followUp] - a button in the last station that
+ *   ends this tour and starts the next one (the introductory tour leads to the templates tour)
  * @returns {object} the driver.js instance
  */
-export function startTour({ router, onEnd = () => {}, createDriver = driver, steps = TOUR_STEPS }) {
+export function startTour({ router, onEnd = () => {}, createDriver = driver, steps = TOUR_STEPS, followUp = null }) {
   if (active && active.isActive()) {
     return active
   }
@@ -230,7 +232,15 @@ export function startTour({ router, onEnd = () => {}, createDriver = driver, ste
     closeBtnLabel: 'Tour schließen',
     allowClose: true,
     stageRadius: 8,
-    onPopoverRender: popover => addSkipButton(popover, () => tour.destroy()),
+    onPopoverRender: popover => {
+      addSkipButton(popover, () => tour.destroy())
+      if (followUp && tour.getActiveIndex() === steps.length - 1) {
+        addFollowUpButton(popover, followUp.label, () => {
+          tour.destroy() // ends this tour first (records it), so the next one may start
+          followUp.run()
+        })
+      }
+    },
     onNextClick: () => go(tour.getActiveIndex() + 1),
     onPrevClick: () => go(tour.getActiveIndex() - 1),
     onDestroyed: () => {
@@ -292,6 +302,21 @@ function browserStorage(name) {
   } catch {
     return null
   }
+}
+
+/**
+ * The button of the last station that leads to the next tour, left of "Fertig".
+ * @param {{footerButtons: HTMLElement}} popover - driver.js's popover elements
+ * @param {string} label
+ * @param {Function} run
+ */
+function addFollowUpButton(popover, label, run) {
+  const button = document.createElement('button')
+  button.type = 'button'
+  button.className = 'driver-popover-footer-btn billery-tour-follow-up'
+  button.textContent = label
+  button.addEventListener('click', run)
+  popover.footerButtons.prepend(button)
 }
 
 /** Reads a marker; storage can be switched off or full, then the tour behaves as if unset. */
@@ -360,7 +385,8 @@ export function runTour(router, deps = {}) {
   return startTour({
     router,
     createDriver,
-    onEnd: () => recordTourSeen({ localStore, api })
+    onEnd: () => recordTourSeen({ localStore, api }),
+    followUp: { label: 'Vorlagen-Tour starten', run: () => runTemplateTour(router, { createDriver }) }
   })
 }
 
