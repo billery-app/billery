@@ -18,6 +18,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -43,23 +44,29 @@ class ManagedDatabaseTest {
   private static final String SUPERUSER_URL = System.getenv("POSTGRES_TEST_URL");
   private static final String DATABASE = "billery_managed_test";
   private static final String ADMIN = "billery_test_managed_admin";
-  private static final String OWNER_PASSWORD = "owner-pw";
-  private static final String LOGIN_PASSWORD = "login-pw";
+  // Built at run time: throw-away credentials of roles that only live during this test.
+  private static final String OWNER_PASSWORD = UUID.randomUUID().toString();
+  private static final String LOGIN_PASSWORD = UUID.randomUUID().toString();
+  private static final String ADMIN_PASSWORD = UUID.randomUUID().toString();
 
   @BeforeAll
   static void managedDatabase() throws Exception {
     dropEverything();
     superuser(
-        "CREATE ROLE " + ADMIN + " LOGIN PASSWORD 'admin-pw' CREATEROLE CREATEDB NOSUPERUSER",
+        "CREATE ROLE "
+            + ADMIN
+            + " LOGIN PASSWORD '"
+            + ADMIN_PASSWORD
+            + "' CREATEROLE CREATEDB NOSUPERUSER",
         "DO $$ BEGIN IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'billery_app') THEN"
             + " GRANT billery_app TO "
             + ADMIN
             + " WITH ADMIN OPTION, INHERIT FALSE, SET FALSE; END IF; END $$");
-    try (Connection admin = DriverManager.getConnection(url("postgres", ADMIN, "admin-pw"));
+    try (Connection admin = DriverManager.getConnection(url("postgres", ADMIN, ADMIN_PASSWORD));
         Statement stmt = admin.createStatement()) {
       stmt.execute("CREATE DATABASE " + DATABASE);
     }
-    try (Connection admin = DriverManager.getConnection(url(DATABASE, ADMIN, "admin-pw"));
+    try (Connection admin = DriverManager.getConnection(url(DATABASE, ADMIN, ADMIN_PASSWORD));
         Statement stmt = admin.createStatement()) {
       for (String sql : managedRolesScript()) {
         stmt.execute(sql);
@@ -104,18 +111,45 @@ class ManagedDatabaseTest {
                     + " THEN CREATE ROLE billery_app NOLOGIN NOSUPERUSER NOBYPASSRLS; END IF; END $$;");
     List<String> statements = new ArrayList<>();
     StringBuilder current = new StringBuilder();
+    boolean inBody = false;
     for (String line : sql.split("\n")) {
-      if (line.startsWith("--") || line.isBlank()) {
+      if (!inBody && (line.startsWith("--") || line.isBlank())) {
         continue;
       }
       current.append(line).append('\n');
-      if (line.trim().endsWith(";")) {
+      // A DO block's body ($$ … $$) contains semicolons of its own.
+      if ((line.split("\\$\\$", -1).length - 1) % 2 == 1) {
+        inBody = !inBody;
+      }
+      if (!inBody && line.trim().endsWith(";")) {
         statements.add(current.toString());
         current.setLength(0);
       }
     }
     assertTrue(current.toString().isBlank(), "unterminated statement: " + current);
     return statements;
+  }
+
+  @Test
+  void theScriptRefusesAnExistingAppRoleWithMoreRights() throws Exception {
+    String check =
+        managedRolesScript().stream()
+            .filter(statement -> statement.contains("RAISE EXCEPTION"))
+            .findFirst()
+            .orElseThrow();
+    try (Connection admin = DriverManager.getConnection(url(DATABASE, ADMIN, ADMIN_PASSWORD));
+        Statement stmt = admin.createStatement()) {
+      stmt.execute(check); // the plain group role passes
+      superuser("ALTER ROLE billery_app BYPASSRLS");
+      try {
+        SQLException e =
+            org.junit.jupiter.api.Assertions.assertThrows(
+                SQLException.class, () -> stmt.execute(check));
+        assertTrue(e.getMessage().contains("plain NOLOGIN role"), e.getMessage());
+      } finally {
+        superuser("ALTER ROLE billery_app NOBYPASSRLS");
+      }
+    }
   }
 
   @Test

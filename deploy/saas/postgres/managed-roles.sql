@@ -23,6 +23,20 @@ CREATE ROLE billery_owner LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS
 -- from the beginning.
 SELECT 'CREATE ROLE billery_app NOLOGIN NOSUPERUSER NOBYPASSRLS'
   WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'billery_app') \gexec
+-- An existing billery_app (a database server shared with something else) must be the plain group
+-- role, before the login becomes its member: with more rights the login could act as it and get
+-- past row-level security. AppRoleGuard refuses to start then as well; this stops earlier.
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'billery_app'
+               AND (rolsuper OR rolbypassrls OR rolcreaterole OR rolcreatedb OR rolreplication
+                    OR rolcanlogin))
+       OR EXISTS (SELECT 1 FROM pg_auth_members m JOIN pg_roles r ON r.oid = m.member
+                  WHERE r.rolname = 'billery_app') THEN
+        RAISE EXCEPTION 'billery_app exists with attributes or memberships: it must be a plain NOLOGIN role';
+    END IF;
+END
+$$;
 CREATE ROLE billery_login LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS
   PASSWORD :'login_password' IN ROLE billery_app;
 

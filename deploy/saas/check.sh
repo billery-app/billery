@@ -205,7 +205,7 @@ if [[ "$docker_checks" == 1 ]]; then
   if [[ "$login" == "t|f|f" ]]; then ok "billery_login: can log in, no superuser, no BYPASSRLS"; else bad "billery_login attributes (login|super|bypassrls): '${login:-role missing}', expected t|f|f"; fi
   member=$(sql "SELECT count(*) FROM pg_auth_members m JOIN pg_roles r ON r.oid = m.roleid JOIN pg_roles u ON u.oid = m.member WHERE r.rolname = 'billery_app' AND u.rolname = 'billery_login'")
   if [[ "$member" == "1" ]]; then ok "billery_login is a member of billery_app"; else bad "billery_login is not a member of billery_app"; fi
-  owner=$(sql "SELECT rolsuper || '|' || rolbypassrls FROM pg_roles WHERE rolname = 'billery_owner'")
+  owner=$(sql "SELECT rolsuper, rolbypassrls FROM pg_roles WHERE rolname = 'billery_owner'")
   case "$owner" in
     "f|f") ok "billery_owner: no superuser, no BYPASSRLS" ;;
     # Installs from before migration V10 (#38) created it with BYPASSRLS; it is no longer needed.
