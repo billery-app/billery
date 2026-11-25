@@ -55,7 +55,7 @@ describe('SendMailModal', () => {
 
     expect(mailService.draft).toHaveBeenCalledWith(7)
     expect(wrapper.get('[data-testid="send-to"]').element.value).toBe('max@kunde.de')
-    expect(wrapper.get('[data-testid="send-subject"]').element.value).toBe('Rechnung RE-2026-001 von Firma')
+    expect(wrapper.get('#send-subject').text()).toBe('Rechnung RE-2026-001 von Firma')
     expect(wrapper.get('#send-account').element.value).toBe('2')
     expect(wrapper.text()).toContain('Rechnung_RE-2026-001.pdf')
     expect(wrapper.get('[data-testid="send-button"]').text()).toBe('Senden')

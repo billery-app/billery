@@ -21,16 +21,26 @@
       </label>
       <p v-if="error" class="notice notice-error" role="alert">{{ error }}</p>
     </div>
+    <div class="card help-card">
+      <h3 class="help-heading">Vorlagen und Editor</h3>
+      <p class="muted">
+        Fünf Stationen zu Ihren Dokumentvorlagen: neue Vorlage, Standard pro Dokumenttyp, Design und
+        Blöcke, Vorschau mit Platzhaltern, PDF-Vorschau. Die Tour öffnet dafür eine Vorlage im Editor.
+      </p>
+      <div>
+        <button type="button" class="btn btn-secondary" data-testid="help-start-template-tour" @click="startTemplates">Vorlagen-Tour starten</button>
+      </div>
+    </div>
   </section>
 </template>
 
 <script>
 import tourService from '../services/tourService.js'
 import { isSaas, session } from '../services/session.js'
-import { runTour } from '../utils/tour.js'
+import { runTemplateTour, runTour } from '../utils/tour.js'
 
 /**
- * Einstellungen → Hilfe: starts the introductory tour again and, in a self-hosted or desktop
+ * Einstellungen → Hilfe: starts the introductory tour or the templates tour and, in a self-hosted or desktop
  * installation, switches on "show it in every new browser session" (`/api/tour`). The demo shows
  * the tour in every session anyway, and SaaS keeps no tour state on the server.
  */
@@ -63,6 +73,9 @@ export default {
     start() {
       runTour(this.$router)
     },
+    startTemplates() {
+      runTemplateTour(this.$router)
+    },
     async setEverySession(value) {
       this.busy = true
       this.error = null
@@ -79,6 +92,7 @@ export default {
 </script>
 
 <style scoped>
+.settings-section { display: flex; flex-direction: column; gap: var(--space-4); }
 .help-card { display: flex; flex-direction: column; gap: var(--space-4); }
 .help-heading { margin: 0; font-size: 1rem; color: var(--color-text); }
 .muted { margin: 0; color: var(--color-text-muted); }

@@ -406,7 +406,9 @@ Without a company account nothing is sent to customers: there is no fallback to 
   stored in `user_settings` as `mail_<kind>_subject` / `mail_<kind>_text`, defaults in the code),
   with the variables resolved exactly like the PDF's (`TemplateBasedPdfGenerator.resolvePlainText`,
   amounts from `VatCalculator`). For an invoice draft the number variables stay and are filled
-  after issuing; the subject and text the user sends are resolved once more.
+  after issuing; the subject and text the user sends are resolved once more. The settings
+  (Einstellungen → Mail-Einstellungen) and the send dialog edit subject and text with the
+  editor's `VariableTextInput`: placeholders are labelled chips, the stored text keeps `{{name}}`.
 - The attachment is `DocumentPdfService.pdf` (the download's PDF, ZUGFeRD for issued invoices with
   complete data); optionally the XRechnung as XML (refused with the missing fields when
   incomplete).

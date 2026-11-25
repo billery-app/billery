@@ -65,7 +65,13 @@ once per installation and only while it holds no documents (`GET/PUT /api/tour`,
 `TourController`, `user_settings` `tour_seen` / `tour_every_session`), or in every session when
 "Tour bei jedem Start zeigen" is on; **SaaS** once per browser (`localStorage`, there is no tour
 endpoint). Einstellungen → Hilfe (`HelpSettings.vue`) starts it by hand and holds the switch
-(self-host / desktop only); the demo banner has "Tour erneut starten". The texts are constants:
+(self-host / desktop only); the demo banner has "Tour erneut starten". A second tour
+(`TEMPLATE_TOUR_STEPS`, `runTemplateTour`) explains templates and editor in five stations; it
+never starts by itself (Hilfe, "Kurz erklärt" on `/templates`) and stores nothing. Its stations
+have a `prepare` hook: the editor stations open an invoice template (`data-tour="template-edit"`,
+`data-document-type`), the list stations close the editor through its own "Abbrechen" (which asks
+before discarding changes); the tools station points to the "Werkzeuge" button where the sidebar
+is collapsed. The texts are constants:
 driver.js renders them as HTML. In the demo the "Per E-Mail" action and the account form of the
 mail settings are hidden (the server refuses them anyway). The e2e suite marks the tour as seen
 in `e2e/global-setup.js` and tests it in `e2e/tour.spec.js`.
@@ -75,7 +81,7 @@ in `e2e/global-setup.js` and tests it in `e2e/tour.spec.js`.
 - A `<nav class="navbar">` with the app title, the search button (which
   opens `SpotlightSearch.vue`), and links to the main routes
   (`/customers`, `/invoices`, `/articles-services`).
-- An "Einstellungen" `router-link` to `/settings`. The settings view is the single entry point for owner management, templates, and any future settings surface; the navbar has no dropdown. **The overview shows only cards**, grouped (Allgemein, Daten, Weitere Einstellungen); every area is one card. `utils/settingsAreas.js` describes the areas once (title, icon, description, target, `available()` for mode and role, `upcoming` for "Demnächst verfügbar"); the overview (`SettingsView`) and the router guard both use it, so an area that is hidden cannot be opened by its address either (`guardSettingsArea` leads back to `/settings`). A card opens its own view (`/owners`, `/templates`) or a sub-page `/settings/<id>` (`SettingsAreaView`: back link, visible title, the area's component: `account` → `AccountSettings`, `team` → `TeamSettings`, `export` → `GobdExportSettings`, `backup` → `BackupSettings`, `mail` → `MailSettings`: the company's mail accounts and the templates of mails to customers, self-hosted always, in SaaS for owners and admins; `help` → `HelpSettings`: the introductory tour). A new area is an entry in `settingsAreas.js` plus, for a sub-page, a component in `SettingsAreaView` and its id in the router; the card titles are the names the documentation uses ("Einstellungen → Team & Zugriff").
+- An "Einstellungen" `router-link` to `/settings`. The settings view is the single entry point for owner management, templates, and any future settings surface; the navbar has no dropdown. **The overview shows only cards**, grouped (Allgemein, Daten, Weitere Einstellungen); every area is one card. `utils/settingsAreas.js` describes the areas once (title, icon, description, target, `available()` for mode and role, `upcoming` for "Demnächst verfügbar"); the overview (`SettingsView`) and the router guard both use it, so an area that is hidden cannot be opened by its address either (`guardSettingsArea` leads back to `/settings`). A card opens its own view (`/owners`, `/templates`) or a sub-page `/settings/<id>` (`SettingsAreaView`: back link, visible title, the area's component: `account` → `AccountSettings`, `team` → `TeamSettings`, `export` → `GobdExportSettings`, `backup` → `BackupSettings`, `mail` → `MailSettings`: the company's mail accounts and the templates of mails to customers, self-hosted always, in SaaS for owners and admins; `help` → `HelpSettings`: the two tours). Every settings page, the own views `/owners` and `/templates` included, has the shared "‹ Einstellungen" link (`.back-link`, `styles/components.css`, `data-testid="settings-back"`). A new area is an entry in `settingsAreas.js` plus, for a sub-page, a component in `SettingsAreaView` and its id in the router; the card titles are the names the documentation uses ("Einstellungen → Team & Zugriff").
 - An `AccountMenu` at the end of the navbar, only in SaaS mode, with actions only: the tenant
   switcher (more than one company), open invitations to accept, sign-out. Who is signed in, the
   active company and the role are shown in Settings → Konto (`AccountSettings`, every role),

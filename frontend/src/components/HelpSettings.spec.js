@@ -2,11 +2,11 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import HelpSettings from './HelpSettings.vue'
 import tourService from '../services/tourService.js'
-import { runTour } from '../utils/tour.js'
+import { runTemplateTour, runTour } from '../utils/tour.js'
 import { session } from '../services/session.js'
 
 vi.mock('../services/tourService.js', () => ({ default: { state: vi.fn(), save: vi.fn() } }))
-vi.mock('../utils/tour.js', () => ({ runTour: vi.fn() }))
+vi.mock('../utils/tour.js', () => ({ runTour: vi.fn(), runTemplateTour: vi.fn() }))
 
 const router = { push: vi.fn() }
 const mountHelp = () => mount(HelpSettings, { global: { mocks: { $router: router } } })
@@ -26,6 +26,13 @@ describe('HelpSettings', () => {
     const wrapper = mountHelp()
     await wrapper.get('[data-testid="help-start-tour"]').trigger('click')
     expect(runTour).toHaveBeenCalledWith(router)
+  })
+
+  it('starts the templates tour', async () => {
+    const wrapper = mountHelp()
+    await wrapper.get('[data-testid="help-start-template-tour"]').trigger('click')
+    expect(runTemplateTour).toHaveBeenCalledWith(router)
+    expect(runTour).not.toHaveBeenCalled()
   })
 
   it('self-host: shows and stores "Tour bei jedem Start zeigen"', async () => {

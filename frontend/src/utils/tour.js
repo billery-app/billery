@@ -17,6 +17,9 @@ import { isSaas, session } from '../services/session.js'
  *   long been working with the app; with "Tour bei jedem Start zeigen" in every browser session;
  * - **SaaS**: once per browser (`localStorage`); the server keeps no tour state there.
  *
+ * A second, shorter tour ({@link TEMPLATE_TOUR_STEPS}) explains the document templates and the
+ * editor. It never starts by itself: Einstellungen → Hilfe and the templates page start it.
+ *
  * The texts are constants: driver.js writes title and description as HTML, so nothing from the
  * database or the address may ever go into them.
  */
@@ -94,8 +97,97 @@ export const TOUR_STEPS = [
       title: 'Ausstattung und Amortisation',
       description:
         'Erfassen Sie Geräte und Werkzeuge mit Kaufpreis und verknüpfen Sie sie mit Leistungen: ' +
-        'Billery zeigt, wie weit bezahlte Rechnungen sie schon eingespielt haben. Die Tour können Sie jederzeit unter ' +
-        'Einstellungen → Hilfe erneut starten.'
+        'Billery zeigt, wie weit bezahlte Rechnungen sie schon eingespielt haben. Unter Einstellungen → ' +
+        'Hilfe starten Sie diese Tour erneut oder die Tour zu Vorlagen und Editor.'
+    }
+  }
+]
+
+/** The template editor is open (the tour opens it at its third station and closes it again before). */
+function editorOpen() {
+  return Boolean(document.querySelector('.template-editor'))
+}
+
+/**
+ * Closes the template editor when the tour goes back to the template list. With unsaved changes
+ * the editor asks first (its own dialog), so nothing is lost.
+ */
+function closeEditor() {
+  if (editorOpen()) {
+    document.querySelector('[data-tour="editor-cancel"]')?.click()
+  }
+}
+
+/** Opens an invoice template (else the first template) in the editor, unless it is open already. */
+function openEditor() {
+  if (!editorOpen()) {
+    const edit =
+      document.querySelector('[data-tour="template-edit"][data-document-type="1"]') ||
+      document.querySelector('[data-tour="template-edit"]')
+    edit?.click()
+  }
+}
+
+/**
+ * The stations of the templates tour. `prepare` runs before a station is shown: the tour opens
+ * the editor for the editor's stations and closes it for the list's.
+ */
+export const TEMPLATE_TOUR_STEPS = [
+  {
+    route: { path: '/templates' },
+    prepare: closeEditor,
+    element: '[data-tour="template-new"]',
+    popover: {
+      title: 'Ihre Dokumentvorlagen',
+      description:
+        'Vorlagen bestimmen, wie Rechnungen, Angebote und Kostenvoranschläge aussehen. Eine neue ' +
+        'Vorlage beginnt mit einem Stil aus der Galerie oder mit einer Word- bzw. LibreOffice-Datei.'
+    }
+  },
+  {
+    route: { path: '/templates' },
+    prepare: closeEditor,
+    element: '[data-tour="template-card"]',
+    popover: {
+      title: 'Eine Vorlage pro Dokumenttyp',
+      description:
+        'Die Standardvorlage eines Dokumenttyps gilt für alle neuen Dokumente dieses Typs. ' +
+        '„Als Standard“ wechselt sie, „DOCX“ und „ODT“ geben die Texte zum Bearbeiten in Word oder LibreOffice aus.'
+    }
+  },
+  {
+    route: { path: '/templates' },
+    prepare: openEditor,
+    // the open tools; on a narrower screen the button that opens them, on a phone the tabs
+    element: () =>
+      firstVisible('[data-tour="editor-tools"]', '[data-tour="editor-tools-toggle"]', '[data-tour="editor-workspace-tabs"]'),
+    popover: {
+      title: 'Design und Blöcke',
+      description:
+        'In den Werkzeugen stellen Sie unter „Design“ Logo, Farbe, Schrift und Ränder für das ganze Dokument ein. ' +
+        'Unter „Blöcke“ ordnen Sie Absender, Positionen, Summen und Fußzeile per Ziehen an und stellen jeden Block einzeln ein.'
+    }
+  },
+  {
+    route: { path: '/templates' },
+    prepare: openEditor,
+    element: () => firstVisible('[data-tour="editor-preview"]', '[data-tour="editor-workspace-tabs"]'),
+    popover: {
+      title: 'Vorschau und Platzhalter',
+      description:
+        'Die Vorschau zeigt die Vorlage mit Beispieldaten; ein Klick auf einen Block wählt ihn aus. ' +
+        'Texte enthalten Platzhalter wie „Kundenname“ oder „Rechnungsnummer“: mit „+ Platzhalter“ oder @ einfügen.'
+    }
+  },
+  {
+    route: { path: '/templates' },
+    prepare: openEditor,
+    element: '[data-tour="editor-actions"]',
+    popover: {
+      title: 'PDF-Vorschau und Speichern',
+      description:
+        '„PDF-Vorschau“ zeigt das fertige PDF genau so, wie Ihr Kunde es erhält. „Speichern“ übernimmt ' +
+        'die Vorlage, „Abbrechen“ verwirft die Änderungen.'
     }
   }
 ]
@@ -120,13 +212,13 @@ function isCurrent(router, target) {
  * @param {import('vue-router').Router} options.router - opens each station's page
  * @param {Function} [options.onEnd] - called once the tour is finished or skipped
  * @param {Function} [options.createDriver] - driver.js's factory (tests replace it)
+ * @param {object[]} [options.steps] - the stations ({@link TOUR_STEPS} or {@link TEMPLATE_TOUR_STEPS})
  * @returns {object} the driver.js instance
  */
-export function startTour({ router, onEnd = () => {}, createDriver = driver }) {
+export function startTour({ router, onEnd = () => {}, createDriver = driver, steps = TOUR_STEPS }) {
   if (active && active.isActive()) {
     return active
   }
-  const steps = TOUR_STEPS
   const tour = createDriver({
     steps: steps.map(step => ({ element: step.element, popover: step.popover, waitForElement: WAIT_FOR_ELEMENT_MS })),
     popoverClass: 'billery-tour',
@@ -162,6 +254,7 @@ export function startTour({ router, onEnd = () => {}, createDriver = driver }) {
         // a refused navigation leaves the app where it is; the station is still explained
       }
     }
+    if (steps[index].prepare) steps[index].prepare()
     if (tour.isActive()) {
       tour.moveTo(index)
     } else {
@@ -269,6 +362,16 @@ export function runTour(router, deps = {}) {
     createDriver,
     onEnd: () => recordTourSeen({ localStore, api })
   })
+}
+
+/**
+ * Starts the templates tour (Einstellungen → Hilfe, the templates page). It stores nothing: it
+ * never starts by itself.
+ * @param {import('vue-router').Router} router
+ * @param {object} [deps] - the driver factory (tests replace it)
+ */
+export function runTemplateTour(router, deps = {}) {
+  return startTour({ router, createDriver: deps.createDriver, steps: TEMPLATE_TOUR_STEPS })
 }
 
 /**

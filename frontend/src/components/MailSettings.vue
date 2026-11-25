@@ -103,9 +103,8 @@
       <h3 class="mail-heading">Vorlagen für Mails an Kunden</h3>
       <p class="muted">
         Betreff und Text, mit denen der Versanddialog beginnt; Sie können beides vor dem Senden
-        ändern. Platzhalter wie <code v-pre>{{rechnungsnummer}}</code>, <code v-pre>{{kunde}}</code>,
-        <code v-pre>{{betrag}}</code>, <code v-pre>{{faelligkeitsdatum}}</code> und
-        <code v-pre>{{firma}}</code> werden beim Senden ersetzt.
+        ändern. Platzhalter wie Rechnungsnummer, Kundenname oder Betrag fügen Sie mit
+        „+ Platzhalter“ oder @ ein; sie werden beim Senden durch die Werte des Dokuments ersetzt.
       </p>
       <div class="kinds" role="tablist" aria-label="Dokumentart">
         <button
@@ -119,13 +118,25 @@
         >{{ kind.label }}</button>
       </div>
       <form v-if="templates[activeKind]" class="template-form" data-testid="mail-template-form" @submit.prevent="saveTemplates">
+        <!-- chips instead of {{braces}}, like the template editor; the stored text keeps {{name}} -->
         <div class="form-group">
-          <label for="mail-template-subject">Betreff</label>
-          <input id="mail-template-subject" v-model="templates[activeKind].subject" class="form-control" maxlength="200" />
+          <span class="field-label" aria-hidden="true">Betreff</span>
+          <VariableTextInput
+            id="mail-template-subject"
+            :key="`subject-${activeKind}`"
+            v-model="templates[activeKind].subject"
+            label="Betreff"
+          />
         </div>
         <div class="form-group">
-          <label for="mail-template-text">Text</label>
-          <textarea id="mail-template-text" v-model="templates[activeKind].text" class="form-control" rows="9"></textarea>
+          <span class="field-label" aria-hidden="true">Text</span>
+          <VariableTextInput
+            id="mail-template-text"
+            :key="`text-${activeKind}`"
+            v-model="templates[activeKind].text"
+            label="Text"
+            multiline
+          />
         </div>
         <div class="form-actions">
           <button type="submit" class="btn btn-primary" :disabled="busy">Vorlagen speichern</button>
@@ -137,6 +148,7 @@
 
 <script>
 import mailService from '../services/mailService.js'
+import VariableTextInput from './editor/VariableTextInput.vue'
 import { session } from '../services/session.js'
 
 /** The kinds of document with a mail template of their own, in display order. */
@@ -174,6 +186,7 @@ function emptyForm() {
  */
 export default {
   name: 'MailSettings',
+  components: { VariableTextInput },
   data() {
     return {
       accounts: [],
@@ -334,7 +347,7 @@ export default {
   gap: var(--space-2) var(--space-3);
 }
 .form-group { display: flex; flex-direction: column; gap: var(--space-1); margin: 0; }
-.form-group label { font-weight: var(--font-weight-medium); color: var(--color-text); }
+.form-group label, .form-group .field-label { font-weight: var(--font-weight-medium); color: var(--color-text); }
 .inline-check { display: flex; gap: var(--space-1); align-items: center; font-weight: normal !important; font-size: 0.92em; }
 .form-actions { display: flex; gap: var(--space-2); flex-wrap: wrap; }
 .kinds { display: flex; flex-wrap: wrap; gap: var(--space-1); }

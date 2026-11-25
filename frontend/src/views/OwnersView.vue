@@ -1,5 +1,6 @@
 <template>
   <div class="owners">
+    <router-link to="/settings" class="back-link" data-testid="settings-back">‹ Einstellungen</router-link>
     <h1>Inhaber-Verwaltung</h1>
     <div class="filters">
       <input v-model="searchQuery" type="text" placeholder="Suchen..." class="search-input" />

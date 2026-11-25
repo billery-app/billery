@@ -11,6 +11,7 @@
  *   .settings-section > .section-title   a titled section of the settings page
  *   .status + .paid | .sent | …   document status pill
  *   .modal-backdrop > .modal-panel (+ -sm / -lg)   modal shell with .form-group / .form-actions
+ *   .back-link            "‹ Einstellungen" above the title of a settings page
  */
 
 /* ---- buttons --------------------------------------------------------------------------- */
@@ -350,4 +351,18 @@
   .modal-panel .form-actions button {
     min-height: 42px;
   }
+}
+
+/* "‹ Einstellungen" above the title of every settings page (sub-pages, Inhaber, Vorlagen) */
+.back-link {
+  display: inline-block;
+  margin-bottom: 6px;
+  color: var(--color-text-muted);
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.back-link:hover {
+  color: var(--color-primary);
+  text-decoration: underline;
 }

@@ -27,19 +27,19 @@
         <span v-else class="doc-specific-badge" title="Diese Vorlage gilt nur für ein Dokument">Nur für dieses Dokument</span>
       </div>
 
-      <div class="header-actions">
+      <div class="header-actions" data-tour="editor-actions">
         <button type="button" class="btn-icon" :disabled="!history.canUndo.value" title="Rückgängig (Strg+Z)" aria-label="Rückgängig" @click="undo">↶</button>
         <button type="button" class="btn-icon" :disabled="!history.canRedo.value" title="Wiederholen (Strg+Y)" aria-label="Wiederholen" @click="redo">↷</button>
         <span class="header-divider"></span>
         <button type="button" class="btn btn-outline" :disabled="pdfLoading || validation.errors.length > 0" title="So sieht das fertige PDF aus" @click="openPdfPreview">
           {{ pdfLoading ? 'PDF wird erstellt …' : 'PDF-Vorschau' }}
         </button>
-        <button type="button" class="btn btn-secondary" @click="handleCancelRequest">Abbrechen</button>
+        <button type="button" class="btn btn-secondary" data-tour="editor-cancel" @click="handleCancelRequest">Abbrechen</button>
         <button type="button" class="btn btn-primary" :disabled="!canSave" :title="saveHint" @click="saveTemplate">Speichern</button>
       </div>
     </header>
 
-    <div class="mobile-workspace-tabs" role="tablist" aria-label="Editorbereich">
+    <div class="mobile-workspace-tabs" data-tour="editor-workspace-tabs" role="tablist" aria-label="Editorbereich">
       <button
         type="button"
         role="tab"
@@ -77,7 +77,7 @@
       }"
     >
       <!-- Left: simple design controls or the block structure -->
-      <aside id="template-editor-tools" class="editor-sidebar" role="tabpanel" aria-label="Werkzeuge" tabindex="-1">
+      <aside id="template-editor-tools" class="editor-sidebar" data-tour="editor-tools" role="tabpanel" aria-label="Werkzeuge" tabindex="-1">
         <div class="sidebar-tabs" role="tablist">
           <button
             type="button"
@@ -127,12 +127,13 @@
       </aside>
 
       <!-- Center: the page -->
-      <main id="template-editor-preview" class="preview-pane" role="tabpanel" aria-label="Vorschau" tabindex="-1">
+      <main id="template-editor-preview" class="preview-pane" data-tour="editor-preview" role="tabpanel" aria-label="Vorschau" tabindex="-1">
         <div class="preview-toolbar">
           <div class="preview-context">
             <button
               type="button"
               class="toolbar-toggle"
+              data-tour="editor-tools-toggle"
               :aria-expanded="toolsOpen"
               aria-controls="template-editor-tools"
               @click="toolsOpen = !toolsOpen"
