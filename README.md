@@ -60,7 +60,9 @@ Billery is published as a ready-made Docker image (`ghcr.io/billery-app/billery`
 [release](https://github.com/billery-app/billery/releases), plus `latest`). Nothing has to be
 built: download the Compose file, set two secrets and start it.
 
-**Requirements:** Docker with Compose v2, about 1.5 GB of memory.
+**Requirements:** Docker Engine 28 or newer with Compose v2, about 1.5 GB of memory. Older
+engines let hosts in the same local network reach ports published on `127.0.0.1`, and the app has
+no login of its own.
 
 ```bash
 mkdir billery && cd billery

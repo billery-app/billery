@@ -31,6 +31,12 @@ Two `docker-compose.yml` files exist:
 
 ## Quick start (Docker)
 
+**Docker Engine 28 or newer.** Before 28.0.0 a port published on `127.0.0.1` (the default
+`BIND_ADDRESS`) could be reached from other hosts in the same layer-2 network; the self-host app
+has no login, so on such an engine those hosts could read and change every document. Check with
+`docker version --format '{{.Server.Version}}'`; where an update is not possible, block the port in
+the host firewall for everything but loopback.
+
 **From the released image** (no build): `deploy/selfhost/docker-compose.yml` with
 `deploy/selfhost/.env.example` pulls `ghcr.io/billery-app/billery:${BILLERY_VERSION}`; the steps are
 in the [README](../../README.md#installation). Same services, hardening and limits as the root
