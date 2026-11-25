@@ -1,13 +1,19 @@
 <template>
   <div class="templates-view">
     <header class="view-header">
-      <h1>Dokumentvorlagen</h1>
+      <div class="view-title">
+        <router-link to="/settings" class="back-link" data-testid="settings-back">‹ Einstellungen</router-link>
+        <h1>Dokumentvorlagen</h1>
+      </div>
       <div class="header-actions">
+        <button type="button" class="btn btn-secondary" data-testid="templates-tour" @click="startTemplateTour">
+          Kurz erklärt
+        </button>
         <label class="toggle">
           <input type="checkbox" v-model="showDocumentSpecific" @change="loadTemplates" />
           <span>Dokument-spezifische Vorlagen anzeigen</span>
         </label>
-        <button @click="showStartModal = true" class="btn btn-primary">
+        <button @click="showStartModal = true" class="btn btn-primary" data-tour="template-new">
           + Neue Vorlage
         </button>
       </div>
@@ -18,6 +24,7 @@
         v-for="template in templates"
         :key="template.id"
         class="template-card"
+        data-tour="template-card"
         :class="{ 'is-default': template.isDefault, 'is-document-specific': template.documentSpecific }"
       >
         <button type="button" class="thumb-button" :title="`${template.name} bearbeiten`" @click="editTemplate(template)">
@@ -46,7 +53,7 @@
         </div>
 
         <div class="template-actions">
-          <button @click="editTemplate(template)" class="btn btn-small btn-primary">
+          <button @click="editTemplate(template)" class="btn btn-small btn-primary" data-tour="template-edit" :data-document-type="template.documentTypeId">
             Bearbeiten
           </button>
           <button
@@ -118,6 +125,8 @@
 
 <script>
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { runTemplateTour } from '../utils/tour.js'
 import TemplateEditor from '../components/TemplateEditor.vue'
 import TemplateStartModal from '../components/template/TemplateStartModal.vue'
 import TemplateThumbnail from '../components/template/TemplateThumbnail.vue'
@@ -294,7 +303,12 @@ export default {
 
     onMounted(loadTemplates)
 
+    const router = useRouter()
+    /** "Kurz erklärt": the tour through templates and editor (utils/tour.js). */
+    const startTemplateTour = () => runTemplateTour(router)
+
     return {
+      startTemplateTour,
       editingTemplate,
       showCreateEditor,
       showStartModal,

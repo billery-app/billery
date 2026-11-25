@@ -17,8 +17,8 @@
         <form v-else class="send-form" @submit.prevent="send">
           <p v-if="draft.needsIssue" class="notice notice-warning" data-testid="needs-issue">
             Die Rechnung ist ein Entwurf. Beim Senden wird sie ausgestellt: Sie erhält ihre Nummer
-            und kann danach nicht mehr geändert werden. Platzhalter wie
-            <code v-pre>{{rechnungsnummer}}</code> werden dabei ausgefüllt.
+            und kann danach nicht mehr geändert werden. Platzhalter wie die Rechnungsnummer werden
+            dabei ausgefüllt.
           </p>
           <div class="form-group">
             <label for="send-account">Absender</label>
@@ -36,13 +36,14 @@
             <label for="send-cc">Kopie (CC)</label>
             <input id="send-cc" v-model="form.cc" class="form-control" type="text" autocomplete="off" placeholder="optional, mehrere mit Komma trennen" />
           </div>
+          <!-- chips for what is still a placeholder (the number of a draft), like the mail templates -->
           <div class="form-group">
-            <label for="send-subject">Betreff</label>
-            <input id="send-subject" v-model="form.subject" class="form-control" maxlength="200" data-testid="send-subject" />
+            <span class="field-label" aria-hidden="true">Betreff</span>
+            <VariableTextInput id="send-subject" v-model="form.subject" label="Betreff" data-testid="send-subject" />
           </div>
           <div class="form-group">
-            <label for="send-text">Text</label>
-            <textarea id="send-text" v-model="form.text" class="form-control" rows="10"></textarea>
+            <span class="field-label" aria-hidden="true">Text</span>
+            <VariableTextInput id="send-text" v-model="form.text" label="Text" multiline data-testid="send-text" />
           </div>
           <p class="muted">Anhang: {{ attachmentLabel }}</p>
           <label v-if="draft.xrechnungPossible" class="inline-check">
@@ -75,6 +76,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import mailService, { splitAddresses } from '../services/mailService.js'
+import VariableTextInput from './editor/VariableTextInput.vue'
 import { activeRole, isSaas } from '../services/session.js'
 
 /**
@@ -179,7 +181,7 @@ async function send() {
 .send-mail-backdrop { z-index: var(--z-modal-nested); }
 .send-form { display: flex; flex-direction: column; gap: var(--space-2); }
 .form-group { display: flex; flex-direction: column; gap: var(--space-1); margin: 0; }
-.form-group label { font-weight: var(--font-weight-medium); color: var(--color-text); }
+.form-group label, .form-group .field-label { font-weight: var(--font-weight-medium); color: var(--color-text); }
 .inline-check { display: flex; gap: var(--space-2); align-items: center; }
 .form-actions { display: flex; gap: var(--space-2); flex-wrap: wrap; margin-top: var(--space-2); }
 .muted { color: var(--color-text-muted); font-size: 0.92em; margin: 0; }

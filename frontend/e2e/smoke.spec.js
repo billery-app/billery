@@ -130,6 +130,13 @@ test('the settings cards lead to their pages and back', async ({ page }) => {
   await expect(page.getByTestId('mail-account-form')).toBeVisible()
   await expect(page.getByTestId('mail-template-form')).toBeVisible()
   await page.getByTestId('settings-back').click()
+  // the two cards with views of their own lead back the same way
+  for (const card of ['owners', 'templates']) {
+    await page.getByTestId(`settings-card-${card}`).click()
+    await expect(page).toHaveURL(new RegExp(`/${card}$`))
+    await page.getByTestId('settings-back').click()
+    await expect(page).toHaveURL(/\/settings$/)
+  }
   // an area that does not apply here (self-hosted: no team) leads back to the overview
   await page.goto('/settings/team')
   await expect(page).toHaveURL(/\/settings$/)

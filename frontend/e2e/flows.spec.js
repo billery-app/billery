@@ -167,7 +167,7 @@ test('a customer and an invoice go through the whole lifecycle in the browser', 
     mailAccountId = (await account.json()).id
     await bar.getByRole('button', { name: 'Per E-Mail' }).click()
     const dialog = page.getByTestId('send-mail')
-    expect(await dialog.getByTestId('send-subject').inputValue()).toContain(invoiceNumber)
+    await expect(dialog.locator('#send-subject')).toContainText(invoiceNumber)
     await dialog.locator('#send-account').selectOption({ label: `${MARKER} Konto – rechnung@example.invalid` })
     await dialog.getByTestId('send-button').click()
     await expect(page.getByTestId('mail-notice')).toHaveText(`An kundin-${STAMP}@example.invalid gesendet.`)

@@ -65,19 +65,6 @@ export default {
   color: var(--color-text);
 }
 
-.back-link {
-  display: inline-block;
-  margin-bottom: 6px;
-  color: var(--color-text-muted);
-  text-decoration: none;
-  font-size: 0.9rem;
-}
-
-.back-link:hover {
-  color: var(--color-primary);
-  text-decoration: underline;
-}
-
 @media (max-width: 600px) {
   .settings-view { padding: 12px; }
 }

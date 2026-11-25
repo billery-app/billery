@@ -49,7 +49,7 @@ frontend/
     ├── README.md            # this file
     ├── smoke.spec.js        # main screens, template editor PDF preview, document view (action bar, lifecycle strip, "Mehr" menu) + customer search
     ├── flows.spec.js        # core write flows: customer and invoice through the forms, issue, partial and full payment, send by mail, cancel, GoBD export; offer accepted
-    ├── tour.spec.js         # the introductory tour started under Einstellungen → Hilfe: five stations, "Überspringen"
+    ├── tour.spec.js         # the introductory tour (Einstellungen → Hilfe): five stations, "Überspringen"; the templates tour opens and closes the editor
     ├── global-setup.js      # marks the tour as seen (PUT /api/tour), so it does not start by itself over the screens
     ├── dashboard.spec.js    # / renders, period selector visible
     └── invoices.spec.js     # /invoices renders + create/delete a draft via the API

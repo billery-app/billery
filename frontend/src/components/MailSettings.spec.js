@@ -120,7 +120,9 @@ describe('MailSettings', () => {
     mailService.saveTemplates.mockResolvedValue(TEMPLATES)
     const wrapper = await mounted()
     await wrapper.findAll('[role="tab"]').find(b => b.text() === 'Angebot').trigger('click')
-    await wrapper.get('#mail-template-subject').setValue('Unser Angebot')
+    const subject = wrapper.get('#mail-template-subject')
+    subject.element.textContent = 'Unser Angebot'
+    await subject.trigger('input')
     await wrapper.get('[data-testid="mail-template-form"]').trigger('submit')
     await flushPromises()
     expect(mailService.saveTemplates).toHaveBeenCalledWith(
@@ -145,5 +147,13 @@ describe('MailSettings', () => {
     const wrapper = await mounted()
     expect(wrapper.find('[data-testid="mail-demo"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="mail-account-form"]').exists()).toBe(true)
+  })
+
+  it('shows the placeholders of the templates as chips, never as {{braces}}', async () => {
+    const wrapper = await mounted()
+    const subject = wrapper.get('#mail-template-subject')
+    expect(subject.findAll('.var-chip').map(chip => chip.text())).toEqual(['Rechnungsnummer'])
+    expect(subject.text()).not.toContain('{{')
+    expect(wrapper.get('[data-testid="mail-template-form"]').text()).toContain('+ Platzhalter')
   })
 })

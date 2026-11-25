@@ -2,10 +2,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   BROWSER_MARKER,
   SESSION_MARKER,
+  TEMPLATE_TOUR_STEPS,
   TOUR_STEPS,
   firstVisible,
   maybeStartTour,
   recordTourSeen,
+  runTemplateTour,
   runTour,
   shouldStartTour,
   startTour
@@ -313,6 +315,54 @@ describe('runTour and maybeStartTour', () => {
     expect(await maybeStartTour(fakeRouter(), { ...deps, api: api() })).toBe(true)
     await flush()
     expect(fake.calls).toEqual([['drive', 0]])
+    fake.instance.destroy()
+  })
+})
+
+describe('the templates tour', () => {
+  it('has five stations on the templates page, the last three in the editor', () => {
+    expect(TEMPLATE_TOUR_STEPS).toHaveLength(5)
+    TEMPLATE_TOUR_STEPS.forEach(step => {
+      expect(step.route).toEqual({ path: '/templates' })
+      expect(step.popover.description).not.toMatch(/[<>]/)
+    })
+  })
+
+  it('opens the first template in the editor and closes it again when going back', async () => {
+    document.body.innerHTML = '<button data-tour="template-edit"></button>'
+    const edit = document.querySelector('[data-tour="template-edit"]')
+    const opened = vi.fn(() => {
+      document.body.insertAdjacentHTML(
+        'beforeend',
+        '<div class="template-editor"><button data-tour="editor-cancel"></button></div>'
+      )
+      document.querySelector('[data-tour="editor-cancel"]').addEventListener('click', () => {
+        document.querySelector('.template-editor').remove()
+      })
+    })
+    edit.addEventListener('click', opened)
+
+    const fake = fakeDriver()
+    runTemplateTour(fakeRouter('/settings/help'), { createDriver: fake.create })
+    await flush()
+    expect(document.querySelector('.template-editor')).toBeNull()
+
+    fake.config.onNextClick()
+    await flush()
+    fake.config.onNextClick() // third station: the editor
+    await flush()
+    expect(opened).toHaveBeenCalledOnce()
+    expect(document.querySelector('.template-editor')).not.toBeNull()
+
+    fake.config.onNextClick() // still the editor: not opened twice
+    await flush()
+    expect(opened).toHaveBeenCalledOnce()
+
+    fake.config.onPrevClick()
+    await flush()
+    fake.config.onPrevClick() // back to the list: the editor closes
+    await flush()
+    expect(document.querySelector('.template-editor')).toBeNull()
     fake.instance.destroy()
   })
 })
