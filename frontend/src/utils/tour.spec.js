@@ -319,6 +319,39 @@ describe('runTour and maybeStartTour', () => {
   })
 })
 
+describe('from the introductory tour to the templates tour', () => {
+  it('offers "Vorlagen-Tour starten" in the last station only, which ends the first tour and starts the second', async () => {
+    const fake = fakeDriver()
+    const server = api()
+    runTour(fakeRouter('/'), { sessionStore: memoryStore(), localStore: memoryStore(), api: server, createDriver: fake.create })
+    await flush()
+    const render = () => {
+      const footer = document.createElement('div')
+      const footerButtons = document.createElement('div')
+      footer.appendChild(footerButtons)
+      fake.config.onPopoverRender({ footer, footerButtons })
+      return footerButtons.querySelector('.billery-tour-follow-up')
+    }
+    expect(render()).toBeNull()
+
+    for (let i = 0; i < TOUR_STEPS.length - 1; i++) {
+      fake.config.onNextClick()
+      await flush()
+    }
+    const followUp = render()
+    expect(followUp.textContent).toBe('Vorlagen-Tour starten')
+
+    const introConfig = fake.config
+    followUp.click()
+    await flush()
+    expect(server.save).toHaveBeenCalledWith({ seen: true }) // the first tour counts as seen
+    expect(fake.config).not.toBe(introConfig) // a new tour was created …
+    expect(fake.config.steps).toHaveLength(TEMPLATE_TOUR_STEPS.length) // … the templates tour
+    expect(fake.calls.at(-1)).toEqual(['drive', 0])
+    fake.instance.destroy()
+  })
+})
+
 describe('the templates tour', () => {
   it('has five stations on the templates page, the last three in the editor', () => {
     expect(TEMPLATE_TOUR_STEPS).toHaveLength(5)
