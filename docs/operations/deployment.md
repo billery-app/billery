@@ -31,7 +31,18 @@ Two `docker-compose.yml` files exist:
 
 ## Quick start (Docker)
 
-From the repo root:
+**Docker Engine 28 or newer.** Before 28.0.0 a port published on `127.0.0.1` (the default
+`BIND_ADDRESS`) could be reached from other hosts in the same layer-2 network; the self-host app
+has no login, so on such an engine those hosts could read and change every document. Check with
+`docker version --format '{{.Server.Version}}'`; where an update is not possible, block the port in
+the host firewall for everything but loopback.
+
+**From the released image** (no build): `deploy/selfhost/docker-compose.yml` with
+`deploy/selfhost/.env.example` pulls `ghcr.io/billery-app/billery:${BILLERY_VERSION}`; the steps are
+in the [README](../../README.md#installation). Same services, hardening and limits as the root
+Compose file below, which builds the image from source; keep the two in step.
+
+**From source**, from the repo root:
 
 ```bash
 cp .env.example .env
@@ -50,10 +61,8 @@ login of its own**. The SaaS build instead uses OIDC access tokens in the
 `Authorization` header; the SPA keeps them in memory and does not use
 cookie/session authentication.
 
-To run a released image instead of building one, replace the `build:` block of the `backend` service
-by `image: ghcr.io/billery-app/billery:<version>` (pin the version, or the digest from the GitHub release)
-(if the package is private, `docker login ghcr.io` with a token that has `read:packages` first). The image is the
-one that was scanned before the release ([`supply-chain.md`](./supply-chain.md)).
+A released image is the one that was scanned before the release ([`supply-chain.md`](./supply-chain.md));
+pin the version in `BILLERY_VERSION`, or the digest from the GitHub release.
 
 For a one-off build:
 
