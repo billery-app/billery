@@ -241,7 +241,7 @@ or a role with `BYPASSRLS`; PostgreSQL skips the policies for those. Use two acc
 
 | Account | Used by | Needs |
 |---------|---------|-------|
-| Migration role (`DB_MIGRATION_USER` / `DB_MIGRATION_PASSWORD`) | Flyway, once at start | owns the tables; may create roles (`V2__tenant_isolation.sql` creates `billery_app`) |
+| Migration role (`DB_MIGRATION_USER` / `DB_MIGRATION_PASSWORD`) | Flyway, once at start | owns the tables, no `BYPASSRLS` needed (row-level security is not forced); creates `billery_app` if the role is missing (`V2__tenant_isolation.sql`), otherwise needs no `CREATEROLE`. On a managed PostgreSQL: `deploy/saas/postgres/managed-roles.sql` |
 | Application login (`DB_USER` / `DB_PASSWORD`) | the running backend | a plain login role that is a **member of `billery_app`**, no superuser, no `BYPASSRLS` |
 
 The kit in [`deploy/saas/`](../../deploy/saas/) creates all of it for you ([`saas-deployment.md`](./saas-deployment.md)):

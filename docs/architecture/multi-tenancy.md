@@ -98,8 +98,13 @@ policy, so a new table cannot be forgotten.
 
 ### Database roles
 
-- **Migration role** (table owner): runs Flyway. It bypasses RLS and is never used
-  by the running application.
+- **Migration role** (table owner, `billery_owner`): runs Flyway. Row-level security is
+  enabled but not forced (SaaS `V10__rls_not_forced.sql`, #38), so the owner is not bound by
+  the policies and can migrate and `pg_dump` all tenants without `BYPASSRLS`, which only a
+  superuser can grant and managed PostgreSQL offerings (Scaleway, OVHcloud, Aiven) do not have.
+  It is never used by the running application. `ManagedDatabaseTest` runs the whole schema with
+  an admin that only has `CREATEROLE` / `CREATEDB` and an owner without `BYPASSRLS`
+  (`deploy/saas/postgres/managed-roles.sql`).
 - **Application role** (`NOSUPERUSER NOBYPASSRLS`, not the owner): the only role the
   backend connects with. If the application ran as the owner, RLS would be silently
   skipped. A test connects as the application role and proves tenant A cannot see
@@ -109,7 +114,9 @@ policy, so a new table cannot be forgotten.
   role membership except `billery_app` (which has none of these attributes either), no
   table owned by it or by `billery_app`, and acting as itself (`current_user = session_user`, so `RESET ROLE` gains
   nothing). It is an allow-list on purpose: every further privilege that reaches past RLS
-  is refused without being named. Otherwise the backend refuses to start.
+  is refused without being named. Otherwise the backend refuses to start. Without `FORCE`
+  this guard is the boundary between the application and the owner's unrestricted view, so
+  its tests stay complete.
 
 ## Request flow (SaaS)
 

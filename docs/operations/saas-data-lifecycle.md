@@ -49,7 +49,7 @@ What the application reads from a token is listed in
 | Who | What | How | Trace |
 |-----|------|-----|-------|
 | Members of a tenant | that tenant's data, by role: a reader only reads, the team and the log are for owners and administrators | the application; every request checks the membership in the database | `document_history` (who changed which document), `tenant_audit` (team changes). **Reading and exporting leave no trace** |
-| The application's database login (`billery_login`) | only the rows of the tenant of the current request | row-level security, forced | none needed |
+| The application's database login (`billery_login`) | only the rows of the tenant of the current request | row-level security (it is not the owner; `AppRoleGuard`) | none needed |
 | The operator with access to the host or to the database as `billery_owner` / `billery_admin` | **everything of every tenant:** database, uploaded files, logs, local backups | shell, `psql` | none in the application. Keep your own record (below) |
 | Whoever holds the private backup key | every backup, so every tenant | `restore.sh` | none |
 | Hosting provider | the disks of the server | their infrastructure | their terms |
