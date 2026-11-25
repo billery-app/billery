@@ -131,7 +131,7 @@ class TenantIsolationTest {
   }
 
   @Test
-  void everyTableWithATenantColumnHasForcedRowLevelSecurityAndAPolicy() throws SQLException {
+  void everyTableWithATenantColumnHasRowLevelSecurityAndAPolicy() throws SQLException {
     List<String> unprotected =
         queryAdmin(
             "SELECT c.relname FROM pg_class c"
@@ -140,12 +140,21 @@ class TenantIsolationTest {
                 + "   SELECT 1 FROM information_schema.columns col"
                 + "   WHERE col.table_schema = 'public' AND col.table_name = c.relname"
                 + "     AND col.column_name = 'tenant_id')"
-                + " AND (NOT c.relrowsecurity OR NOT c.relforcerowsecurity"
+                + " AND (NOT c.relrowsecurity"
                 + "      OR NOT EXISTS (SELECT 1 FROM pg_policies p"
                 + "                     WHERE p.schemaname = 'public' AND p.tablename = c.relname))"
                 + " ORDER BY c.relname");
-    assertTrue(
-        unprotected.isEmpty(), "tenant tables without forced RLS and a policy: " + unprotected);
+    assertTrue(unprotected.isEmpty(), "tenant tables without RLS and a policy: " + unprotected);
+    // Not forced (V10, #38): FORCE would bind the owner, which then needs BYPASSRLS, and that only
+    // a superuser can grant (managed PostgreSQL has none). The application login is never the
+    // owner (AppRoleGuard), so the policies bind it all the same.
+    assertEquals(
+        List.of(),
+        queryAdmin(
+            "SELECT c.relname FROM pg_class c"
+                + " JOIN pg_namespace n ON n.oid = c.relnamespace AND n.nspname = 'public'"
+                + " WHERE c.relforcerowsecurity ORDER BY c.relname"),
+        "tables with FORCE ROW LEVEL SECURITY: enable row-level security without FORCE");
     assertEquals(
         List.of("tenant_create", "tenant_visibility"),
         queryAdmin(

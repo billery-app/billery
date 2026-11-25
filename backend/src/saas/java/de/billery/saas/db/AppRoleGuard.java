@@ -15,12 +15,13 @@ import org.springframework.stereotype.Component;
  * Refuses to start the SaaS backend unless its database role is exactly what the tenant isolation
  * relies on: a plain login role that is a member of {@code billery_app} and nothing else.
  *
- * <p>The isolation is forced row-level security, and many privileges reach past it: a superuser or
- * {@code BYPASSRLS} skips every policy, {@code REPLICATION} can read every change through logical
+ * <p>The isolation is row-level security, and many privileges reach past it: a superuser or {@code
+ * BYPASSRLS} skips every policy, {@code REPLICATION} can read every change through logical
  * decoding, {@code CREATEROLE} and the predefined {@code pg_*} roles open further ways, a role that
- * owns a table can switch the policies off, and a member of any such role may switch to it with
- * {@code SET ROLE}. Instead of forbidding these one by one, the guard allows only the expected
- * shape and refuses everything else:
+ * owns a table is not bound by the policies at all (they are not forced, V10, so the migration
+ * account needs no {@code BYPASSRLS}) and can switch them off, and a member of any such role may
+ * switch to it with {@code SET ROLE}. Instead of forbidding these one by one, the guard allows only
+ * the expected shape and refuses everything else:
  *
  * <ul>
  *   <li>the role has no attribute besides {@code LOGIN} / {@code INHERIT} (no {@code SUPERUSER},

@@ -104,7 +104,7 @@ safety=$(grep -n 'Safety backup' <<< "$applied" | cut -d: -f1)
 [[ -n "$stopped" && -n "$safety" && "$stopped" -lt "$safety" ]] || fail "the safety backup ran while the backend could still write"
 [[ "$(sql 'SELECT count(*) FROM customer')" == "$before" ]] || fail "the customers did not come back"
 [[ "$(sql "SELECT tableowner FROM pg_tables WHERE tablename = 'customer'")" == billery_owner ]] || fail "the tables changed their owner"
-[[ "$(sql "SELECT relforcerowsecurity FROM pg_class WHERE relname = 'customer'")" == t ]] || fail "the row-level security did not come back"
+[[ "$(sql "SELECT relrowsecurity FROM pg_class WHERE relname = 'customer'")" == t ]] || fail "the row-level security did not come back"
 for _ in $(seq 1 60); do
   [[ "$(docker inspect --format '{{.State.Health.Status}}' "$backend" 2> /dev/null)" == healthy ]] && break
   sleep 3

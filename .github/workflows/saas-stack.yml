@@ -157,7 +157,9 @@ jobs:
           ./check.sh | tee "$RUNNER_TEMP/check.out"
           # A database query that fails inside check.sh only gives a warning; the success line of the
           # tenant-table check has to be there, so the query is proven to work on the real schema.
-          grep -q '^ok    all [0-9]* tables with a tenant_id have row-level security enabled and forced' "$RUNNER_TEMP/check.out"
+          grep -q '^ok    all [0-9]* tables with a tenant_id have row-level security enabled and a policy' "$RUNNER_TEMP/check.out"
+          # A fresh install has no BYPASSRLS on the owner (#38).
+          grep -q '^ok    billery_owner: no superuser, no BYPASSRLS' "$RUNNER_TEMP/check.out"
 
       - name: check.sh with an access token
         working-directory: deploy/saas

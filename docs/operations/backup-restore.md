@@ -18,8 +18,9 @@ from the backend's bucket, read with the backend's own `BILLERY_FILES_S3_*` sett
 means the AWS default credentials of the host), and `restore.sh` makes the bucket equal to the
 archive again (`rclone sync`: objects that are not in the archive are removed). The store must be
 reachable from the host, or from `BACKUP_NETWORK`. An external database is dumped as
-`DB_MIGRATION_USER`, which must be able to read every tenant (`BYPASSRLS`, or the owner of the
-tables without forced row-level security). On Supabase the role `postgres` can.
+`DB_MIGRATION_USER`, which must be able to read every tenant: the owner of the tables can, since
+row-level security is not forced (V10); `BYPASSRLS` is not needed. On Supabase the role `postgres`
+can too.
 
 A managed database does not replace this. Supabase keeps no backups on the Free plan and none of
 the uploaded files, and a copy at another provider also survives losing the account.

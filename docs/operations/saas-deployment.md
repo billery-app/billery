@@ -34,7 +34,7 @@ The application stores no passwords. It knows the provider through `BILLERY_SECU
 | Role | Used by | Attributes |
 |------|---------|------------|
 | `billery_admin` | the init script and the backup | bootstrap superuser, never the application |
-| `billery_owner` | Flyway at start (`DB_MIGRATION_USER`) | owns the tables, no superuser, `BYPASSRLS` (row-level security is forced even on the owner) |
+| `billery_owner` | Flyway at start (`DB_MIGRATION_USER`) | owns the tables, no superuser, no `BYPASSRLS`: row-level security is enabled but not forced (V10), so the owner is not bound by it |
 | `billery_login` | the running application (`DB_USER`) | member of `billery_app`, no superuser, **no** `BYPASSRLS`: row-level security binds it |
 
 The backend checks this at every start (`AppRoleGuard`) and accepts **only** this shape: `DB_USER`
@@ -46,6 +46,23 @@ acts as the role it signed in as (no `options=-c role=…` in `DB_URL`, no `ALTE
 Anything else stops the start with the reasons, because row-level security could otherwise be
 skipped without any error. Typical cause: `DB_USER` set to the migration account; a monitoring
 role or other extra grant on `billery_login` is refused too (give it to a separate login).
+
+**Installations from before V10** (#38) created `billery_owner` with `BYPASSRLS`, which it no longer
+needs once the backend has started with V10 (row-level security is then no longer forced):
+`ALTER ROLE billery_owner NOBYPASSRLS;` as `billery_admin`. Do it in this order, never before the
+upgrade: with forced row-level security and without `BYPASSRLS`, the owner's retention function
+`prune_sign_in_log()` would silently delete nothing. `check.sh` warns while the attribute is set.
+
+**Managed PostgreSQL** (Scaleway, OVHcloud, Aiven, …: an admin user that is no superuser). Create
+the empty database with the provider, then run [`postgres/managed-roles.sql`](../../deploy/saas/postgres/managed-roles.sql)
+once with psql as the provider's admin (connection with `sslmode=verify-full`). It creates the same
+three roles as `10-roles.sh` and gives `billery_owner` `CREATE` on schema `public`; the admin itself
+is never configured in the backend (its `CREATEROLE` / `CREATEDB` would sit in the container). Point
+`DB_URL` at the database (with `sslmode=verify-full`), `DB_MIGRATION_USER` at `billery_owner` and
+`DB_USER` at `billery_login`, and leave out the kit's `postgres` service. Checked by
+`ManagedDatabaseTest`; on the provider itself, check once that the login gets no further attributes
+or memberships (`AppRoleGuard` names them at start). Backups: `backup.sh` dumps as
+`DB_MIGRATION_USER`, which reads every tenant without `BYPASSRLS`.
 
 ## What you need
 
@@ -112,7 +129,7 @@ The first start creates the schema; the application is healthy after about a min
 ```
 
 It prints `ok`, `warn` and `FAIL` lines and exits non-zero on a failure. It checks the containers, the
-database roles, that row-level security binds the application role and that every table with a `tenant_id` has it enabled, forced and a policy, that the **backend** can fetch the
+database roles, that row-level security binds the application role and that every table with a `tenant_id` has it enabled and a policy, that the **backend** can fetch the
 provider's discovery document and keys and that the issuer string matches exactly, and the public URL: health,
 mode `saas`, **no data without a token (401)**, no open API documentation, the security headers, HTTPS.
 

@@ -205,21 +205,36 @@ if [[ "$docker_checks" == 1 ]]; then
   if [[ "$login" == "t|f|f" ]]; then ok "billery_login: can log in, no superuser, no BYPASSRLS"; else bad "billery_login attributes (login|super|bypassrls): '${login:-role missing}', expected t|f|f"; fi
   member=$(sql "SELECT count(*) FROM pg_auth_members m JOIN pg_roles r ON r.oid = m.roleid JOIN pg_roles u ON u.oid = m.member WHERE r.rolname = 'billery_app' AND u.rolname = 'billery_login'")
   if [[ "$member" == "1" ]]; then ok "billery_login is a member of billery_app"; else bad "billery_login is not a member of billery_app"; fi
-  owner=$(sql "SELECT rolsuper FROM pg_roles WHERE rolname = 'billery_owner'")
-  if [[ "$owner" == "f" ]]; then ok "billery_owner is not a superuser"; else bad "billery_owner: '${owner:-role missing}' (expected f)"; fi
+  # Any other member of billery_app inherits the table privileges and can choose its tenant itself
+  # (app.tenant_id is a session setting): only billery_login may be one.
+  others=$(sql "SELECT coalesce(string_agg(u.rolname, ',' ORDER BY u.rolname), '') FROM pg_auth_members m JOIN pg_roles r ON r.oid = m.roleid JOIN pg_roles u ON u.oid = m.member WHERE r.rolname = 'billery_app' AND u.rolname <> 'billery_login'")
+  if [[ -z "$others" ]]; then ok "billery_app has no member besides billery_login"; else bad "further members of billery_app (they could read every tenant): $others"; fi
+  # Who may connect to the database at all: the owner, the login and superusers. PUBLIC must not.
+  # An empty ACL means the default, in which PUBLIC may connect: acldefault() fills it in.
+  connect=$(sql "SELECT coalesce(string_agg(CASE WHEN a.grantee = 0 THEN 'PUBLIC' ELSE r.rolname END, ',' ORDER BY 1), '') FROM pg_database d CROSS JOIN LATERAL aclexplode(coalesce(d.datacl, acldefault('d', d.datdba))) a LEFT JOIN pg_roles r ON r.oid = a.grantee WHERE d.datname = current_database() AND a.privilege_type = 'CONNECT' AND (a.grantee = 0 OR (r.rolname NOT IN ('billery_owner', 'billery_login') AND NOT r.rolsuper))")
+  if [[ -z "$connect" ]]; then ok "only billery_owner, billery_login and superusers may connect"; else warn "further roles may connect to the database: $connect (REVOKE CONNECT unless intended)"; fi
+  owner=$(sql "SELECT rolsuper, rolbypassrls FROM pg_roles WHERE rolname = 'billery_owner'")
+  case "$owner" in
+    "f|f") ok "billery_owner: no superuser, no BYPASSRLS" ;;
+    # Installs from before migration V10 (#38) created it with BYPASSRLS; it is no longer needed.
+    "f|t") warn "billery_owner still has BYPASSRLS, which it no longer needs: ALTER ROLE billery_owner NOBYPASSRLS (saas-deployment.md)" ;;
+    *) bad "billery_owner (super|bypassrls): '${owner:-role missing}', expected f|f" ;;
+  esac
+  # Row-level security is enabled but not forced (V10): FORCE would bind the owner, which then
+  # needs BYPASSRLS. The application login is never the owner, so the policies bind it.
   table=$(sql "SELECT pg_get_userbyid(relowner), relrowsecurity, relforcerowsecurity FROM pg_class WHERE relname = 'customer' AND relkind = 'r'")
-  if [[ "$table" == "billery_owner|t|t" ]]; then
-    ok "customer: owned by billery_owner, row-level security enabled and forced"
+  if [[ "$table" == "billery_owner|t|f" ]]; then
+    ok "customer: owned by billery_owner, row-level security enabled"
   elif [[ -z "$table" ]]; then
     warn "no customer table yet: the application has not migrated the schema (start it, then run this again)"
   else
-    bad "customer (owner|rls|forced): '$table', expected billery_owner|t|t"
+    bad "customer (owner|rls|forced): '$table', expected billery_owner|t|f"
   fi
   # Not only customer: every table that carries a tenant_id must have row-level security enabled and
-  # forced, and at least one policy. A table added later without them would be readable across tenants.
+  # at least one policy. A table added later without them would be readable across tenants.
   protection=$(sql "SELECT count(*) || '|' || coalesce(string_agg(relname, ',' ORDER BY relname) FILTER (WHERE NOT protected), '')
     FROM (SELECT c.relname,
-                 (c.relrowsecurity AND c.relforcerowsecurity
+                 (c.relrowsecurity
                   AND EXISTS (SELECT 1 FROM pg_policy p WHERE p.polrelid = c.oid)) AS protected
           FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
           WHERE n.nspname = 'public' AND c.relkind = 'r'
@@ -233,9 +248,9 @@ if [[ "$docker_checks" == 1 ]]; then
   elif [[ "$tenant_tables" == "0" ]]; then
     warn "no table with a tenant_id yet: the schema is not migrated"
   elif [[ -z "$unprotected" ]]; then
-    ok "all $tenant_tables tables with a tenant_id have row-level security enabled and forced, and a policy"
+    ok "all $tenant_tables tables with a tenant_id have row-level security enabled and a policy"
   else
-    bad "tables with a tenant_id but no enabled, forced row-level security and policy: $unprotected"
+    bad "tables with a tenant_id but no enabled row-level security and policy: $unprotected"
   fi
   # Closed companies are purged by hand after their export window (saas-data-lifecycle.md); this
   # is the reminder. Only ids, no company data.

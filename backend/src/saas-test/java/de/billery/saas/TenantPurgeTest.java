@@ -26,26 +26,30 @@ class TenantPurgeTest {
 
   private static final String ADMIN_URL = System.getenv("POSTGRES_TEST_URL");
 
-  private static final List<String> TENANT_TABLES =
-      List.of(
-          "payment",
-          "document_history",
-          "invoice_item",
-          "invoice_period",
-          "invoice",
-          "service",
-          "article",
-          "equipment",
-          "customer",
-          "invoice_template",
-          "document_number_series",
-          "user_settings",
-          "mail_account",
-          "owner",
-          "tenant_invitation",
-          "tenant_member",
-          "tenant_audit",
-          "sign_in_log");
+  /**
+   * Every table of schema public with a {@code tenant_id} column, read from the catalog: a new
+   * tenant table is covered without being added here. Without FORCE (V10, #38) the session tenant
+   * that {@code purge_tenant} sets is no second safety net for the owner any more, so a table the
+   * purge misses must fail this test ({@link #theFixtureFillsEveryTenantTable} makes sure every
+   * table has rows to purge).
+   */
+  private static List<String> tenantTables() throws SQLException {
+    List<String> tables = new java.util.ArrayList<>();
+    try (Connection conn = DriverManager.getConnection(ADMIN_URL);
+        Statement stmt = conn.createStatement();
+        ResultSet rs =
+            stmt.executeQuery(
+                "SELECT c.table_name FROM information_schema.columns c"
+                    + " JOIN information_schema.tables t ON t.table_schema = c.table_schema"
+                    + "   AND t.table_name = c.table_name AND t.table_type = 'BASE TABLE'"
+                    + " WHERE c.table_schema = 'public' AND c.column_name = 'tenant_id'"
+                    + " ORDER BY c.table_name")) {
+      while (rs.next()) {
+        tables.add(rs.getString(1));
+      }
+    }
+    return tables;
+  }
 
   @BeforeAll
   static void prepare() throws SQLException {
@@ -226,7 +230,7 @@ class TenantPurgeTest {
 
   private static int rows(int tenant) throws SQLException {
     int total = count("SELECT COUNT(*) FROM tenant WHERE id = " + tenant);
-    for (String table : TENANT_TABLES) {
+    for (String table : tenantTables()) {
       total += count("SELECT COUNT(*) FROM " + table + " WHERE tenant_id = " + tenant);
     }
     return total;
@@ -245,6 +249,18 @@ class TenantPurgeTest {
         1, count("SELECT COUNT(*) FROM app_user"), "users stay: they may be members elsewhere");
     assertEquals(
         1, count("SELECT COUNT(*) FROM customer WHERE tenant_id = 6"), "bystander data readable");
+  }
+
+  @Test
+  void theFixtureFillsEveryTenantTable() throws SQLException {
+    List<String> empty = new java.util.ArrayList<>();
+    for (String table : tenantTables()) {
+      if (count("SELECT COUNT(*) FROM " + table + " WHERE tenant_id = 6") == 0) {
+        empty.add(table);
+      }
+    }
+    assertEquals(
+        List.of(), empty, "tenant tables without fixture rows (add them to populate()): " + empty);
   }
 
   @Test

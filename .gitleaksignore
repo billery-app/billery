@@ -7,3 +7,6 @@
 61d446df038592f5542554c249785d62c6a7007b:frontend/src/services/desktopToken.spec.js:generic-api-key:16
 a6618cc6ab0cf526173e7964e732314a57e843f3:frontend/src/services/desktopToken.spec.js:generic-api-key:11
 a6618cc6ab0cf526173e7964e732314a57e843f3:frontend/src/services/desktopToken.spec.js:generic-api-key:16
+# Throw-away test passwords in commit c077e04 of PR #40 (the test builds them at run time since):
+c077e040db570458fdaed38b50e2e894b6140feb:backend/src/saas-test/java/de/billery/saas/db/ManagedDatabaseTest.java:hashicorp-tf-password:46
+c077e040db570458fdaed38b50e2e894b6140feb:backend/src/saas-test/java/de/billery/saas/db/ManagedDatabaseTest.java:hashicorp-tf-password:47

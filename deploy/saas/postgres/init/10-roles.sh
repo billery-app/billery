@@ -2,10 +2,10 @@
 # Runs once, on the first start of an empty database (the PostgreSQL image executes everything in
 # /docker-entrypoint-initdb.d then). Creates the roles the SaaS application needs:
 #
-#   billery_owner  owns the database and the tables, runs Flyway; no superuser. BYPASSRLS, because
-#                  FORCE ROW LEVEL SECURITY binds even the table owner: without it a migration that
-#                  changes rows of a tenant table would fail or silently change nothing (the test
-#                  suite migrates as a superuser, which hides this). It is only used by Flyway at
+#   billery_owner  owns the database and the tables, runs Flyway; no superuser, no BYPASSRLS: row-level
+#                  security is not forced (migration V10, #38), so the owner is not bound by the
+#                  policies and can migrate and pg_dump all tenants. A managed PostgreSQL, whose admin
+#                  is no superuser, uses the same roles (../managed-roles.sql). It is only used by Flyway at
 #                  start (docs/architecture/multi-tenancy.md: the migration role bypasses RLS).
 #   billery_app    NOLOGIN group role that the migration grants the table privileges to
 #   billery_login  what the application connects as: member of billery_app, no superuser, no
@@ -26,7 +26,7 @@ psql -v ON_ERROR_STOP=1 \
   -v login_password="$BILLERY_LOGIN_PASSWORD" \
   -v dbname="$POSTGRES_DB" \
   --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<'SQL'
-CREATE ROLE billery_owner LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE BYPASSRLS PASSWORD :'owner_password';
+CREATE ROLE billery_owner LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS PASSWORD :'owner_password';
 CREATE ROLE billery_app NOLOGIN NOSUPERUSER NOBYPASSRLS;
 CREATE ROLE billery_login LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS
   PASSWORD :'login_password' IN ROLE billery_app;
