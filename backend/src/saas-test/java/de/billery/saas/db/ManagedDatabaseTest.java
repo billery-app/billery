@@ -164,6 +164,8 @@ class ManagedDatabaseTest {
     superuser("REVOKE billery_app FROM billery_login GRANTED BY " + ADMIN);
     try (Connection admin = DriverManager.getConnection(url(DATABASE, ADMIN, ADMIN_PASSWORD));
         Statement stmt = admin.createStatement()) {
+      // The check is a statement of the repository's own managed-roles.sql, not input.
+      /* nosemgrep: java.lang.security.audit.sqli.jdbc-sqli.jdbc-sqli */
       stmt.execute(check); // the plain group role without members passes
 
       superuser("ALTER ROLE billery_app BYPASSRLS");
@@ -186,8 +188,10 @@ class ManagedDatabaseTest {
   }
 
   private static void assertRefused(Statement stmt, String check) {
+    // The check is a statement of the repository's own managed-roles.sql, not input.
     SQLException e =
         org.junit.jupiter.api.Assertions.assertThrows(
+            /* nosemgrep: java.lang.security.audit.sqli.jdbc-sqli.jdbc-sqli */
             SQLException.class, () -> stmt.execute(check));
     assertTrue(e.getMessage().contains("without members"), e.getMessage());
   }
