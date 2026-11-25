@@ -25,15 +25,23 @@ SELECT 'CREATE ROLE billery_app NOLOGIN NOSUPERUSER NOBYPASSRLS'
   WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'billery_app') \gexec
 -- An existing billery_app (a database server shared with something else) must be the plain group
 -- role, before the login becomes its member: with more rights the login could act as it and get
--- past row-level security. AppRoleGuard refuses to start then as well; this stops earlier.
+-- past row-level security (AppRoleGuard refuses to start then as well; this stops earlier). It must
+-- have no members either: a member inherits the table privileges and can set app.tenant_id itself,
+-- so it could read every tenant once it may connect. The login is created after this check, so any
+-- member here (other than the admin running this) is someone else's.
 DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'billery_app'
                AND (rolsuper OR rolbypassrls OR rolcreaterole OR rolcreatedb OR rolreplication
                     OR rolcanlogin))
        OR EXISTS (SELECT 1 FROM pg_auth_members m JOIN pg_roles r ON r.oid = m.member
-                  WHERE r.rolname = 'billery_app') THEN
-        RAISE EXCEPTION 'billery_app exists with attributes or memberships: it must be a plain NOLOGIN role';
+                  WHERE r.rolname = 'billery_app')
+       -- The admin running this script is left out: PostgreSQL 16+ makes the creator of a role
+       -- its member (with ADMIN OPTION), and the admin may do everything anyway.
+       OR EXISTS (SELECT 1 FROM pg_auth_members m JOIN pg_roles g ON g.oid = m.roleid
+                  JOIN pg_roles u ON u.oid = m.member
+                  WHERE g.rolname = 'billery_app' AND u.rolname <> current_user) THEN
+        RAISE EXCEPTION 'billery_app exists with attributes, memberships or members: it must be a plain NOLOGIN role without members';
     END IF;
 END
 $$;

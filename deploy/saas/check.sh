@@ -205,6 +205,13 @@ if [[ "$docker_checks" == 1 ]]; then
   if [[ "$login" == "t|f|f" ]]; then ok "billery_login: can log in, no superuser, no BYPASSRLS"; else bad "billery_login attributes (login|super|bypassrls): '${login:-role missing}', expected t|f|f"; fi
   member=$(sql "SELECT count(*) FROM pg_auth_members m JOIN pg_roles r ON r.oid = m.roleid JOIN pg_roles u ON u.oid = m.member WHERE r.rolname = 'billery_app' AND u.rolname = 'billery_login'")
   if [[ "$member" == "1" ]]; then ok "billery_login is a member of billery_app"; else bad "billery_login is not a member of billery_app"; fi
+  # Any other member of billery_app inherits the table privileges and can choose its tenant itself
+  # (app.tenant_id is a session setting): only billery_login may be one.
+  others=$(sql "SELECT coalesce(string_agg(u.rolname, ',' ORDER BY u.rolname), '') FROM pg_auth_members m JOIN pg_roles r ON r.oid = m.roleid JOIN pg_roles u ON u.oid = m.member WHERE r.rolname = 'billery_app' AND u.rolname <> 'billery_login'")
+  if [[ -z "$others" ]]; then ok "billery_app has no member besides billery_login"; else bad "further members of billery_app (they could read every tenant): $others"; fi
+  # Who may connect to the database at all: the owner, the login and superusers. PUBLIC must not.
+  connect=$(sql "SELECT coalesce(string_agg(CASE WHEN a.grantee = 0 THEN 'PUBLIC' ELSE r.rolname END, ',' ORDER BY 1), '') FROM pg_database d CROSS JOIN LATERAL aclexplode(d.datacl) a LEFT JOIN pg_roles r ON r.oid = a.grantee WHERE d.datname = current_database() AND a.privilege_type = 'CONNECT' AND (a.grantee = 0 OR (r.rolname NOT IN ('billery_owner', 'billery_login') AND NOT r.rolsuper))")
+  if [[ -z "$connect" ]]; then ok "only billery_owner, billery_login and superusers may connect"; else warn "further roles may connect to the database: $connect (REVOKE CONNECT unless intended)"; fi
   owner=$(sql "SELECT rolsuper, rolbypassrls FROM pg_roles WHERE rolname = 'billery_owner'")
   case "$owner" in
     "f|f") ok "billery_owner: no superuser, no BYPASSRLS" ;;

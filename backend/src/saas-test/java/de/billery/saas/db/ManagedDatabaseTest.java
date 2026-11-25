@@ -49,9 +49,28 @@ class ManagedDatabaseTest {
   private static final String LOGIN_PASSWORD = UUID.randomUUID().toString();
   private static final String ADMIN_PASSWORD = UUID.randomUUID().toString();
 
+  /** The members of {@code billery_app} other than the roles of this class. */
+  private static final String MEMBERS_OF_APP_ROLE =
+      "SELECT u.rolname FROM pg_auth_members m JOIN pg_roles g ON g.oid = m.roleid"
+          + " JOIN pg_roles u ON u.oid = m.member WHERE g.rolname = 'billery_app'"
+          + " AND u.rolname NOT IN ('billery_login', '"
+          + ADMIN
+          + "')";
+
+  /**
+   * Members of {@code billery_app} in the shared test cluster (the login of the other test
+   * classes): a managed database has none, and the script refuses one. Taken out for this class,
+   * given back afterwards.
+   */
+  private static final List<String> OTHER_MEMBERS = new ArrayList<>();
+
   @BeforeAll
   static void managedDatabase() throws Exception {
     dropEverything();
+    OTHER_MEMBERS.addAll(superuser1(MEMBERS_OF_APP_ROLE));
+    for (String member : OTHER_MEMBERS) {
+      superuser("REVOKE billery_app FROM " + member);
+    }
     superuser(
         "CREATE ROLE "
             + ADMIN
@@ -92,6 +111,9 @@ class ManagedDatabaseTest {
     TenantContext.clear();
     TestDatabaseConfig.resetDatabaseConfig();
     dropEverything();
+    for (String member : OTHER_MEMBERS) {
+      superuser("GRANT billery_app TO " + member);
+    }
   }
 
   /** The SQL file of the runbook, with the psql variables and meta-commands filled in. */
@@ -131,25 +153,43 @@ class ManagedDatabaseTest {
   }
 
   @Test
-  void theScriptRefusesAnExistingAppRoleWithMoreRights() throws Exception {
+  void theScriptRefusesAnExistingAppRoleWithMoreRightsOrMembers() throws Exception {
     String check =
         managedRolesScript().stream()
             .filter(statement -> statement.contains("RAISE EXCEPTION"))
             .findFirst()
             .orElseThrow();
+    // The check runs before the login exists: take this class's login out while it runs.
+    // PostgreSQL 16+ keeps the grantor of a membership: the admin granted this one.
+    superuser("REVOKE billery_app FROM billery_login GRANTED BY " + ADMIN);
     try (Connection admin = DriverManager.getConnection(url(DATABASE, ADMIN, ADMIN_PASSWORD));
         Statement stmt = admin.createStatement()) {
-      stmt.execute(check); // the plain group role passes
+      stmt.execute(check); // the plain group role without members passes
+
       superuser("ALTER ROLE billery_app BYPASSRLS");
       try {
-        SQLException e =
-            org.junit.jupiter.api.Assertions.assertThrows(
-                SQLException.class, () -> stmt.execute(check));
-        assertTrue(e.getMessage().contains("plain NOLOGIN role"), e.getMessage());
+        assertRefused(stmt, check);
       } finally {
         superuser("ALTER ROLE billery_app NOBYPASSRLS");
       }
+
+      superuser(
+          "CREATE ROLE billery_test_foreign NOLOGIN", "GRANT billery_app TO billery_test_foreign");
+      try {
+        assertRefused(stmt, check);
+      } finally {
+        superuser("DROP ROLE billery_test_foreign");
+      }
+    } finally {
+      superuser("GRANT billery_app TO billery_login");
     }
+  }
+
+  private static void assertRefused(Statement stmt, String check) {
+    SQLException e =
+        org.junit.jupiter.api.Assertions.assertThrows(
+            SQLException.class, () -> stmt.execute(check));
+    assertTrue(e.getMessage().contains("without members"), e.getMessage());
   }
 
   @Test
@@ -251,6 +291,18 @@ class ManagedDatabaseTest {
     }
   }
 
+  private static List<String> superuser1(String sql) throws SQLException {
+    List<String> values = new ArrayList<>();
+    try (Connection conn = DriverManager.getConnection(SUPERUSER_URL);
+        Statement stmt = conn.createStatement();
+        ResultSet rs = stmt.executeQuery(sql)) {
+      while (rs.next()) {
+        values.add(rs.getString(1));
+      }
+    }
+    return values;
+  }
+
   private static void owner(String... statements) throws SQLException {
     try (Connection conn =
             DriverManager.getConnection(url(DATABASE, "billery_owner", OWNER_PASSWORD));
@@ -277,6 +329,7 @@ class ManagedDatabaseTest {
   private static void dropEverything() throws SQLException {
     superuser(
         "DROP DATABASE IF EXISTS " + DATABASE + " WITH (FORCE)",
+        "DROP ROLE IF EXISTS billery_test_foreign",
         "DROP ROLE IF EXISTS billery_login",
         "DROP ROLE IF EXISTS billery_owner",
         "DROP ROLE IF EXISTS " + ADMIN);
