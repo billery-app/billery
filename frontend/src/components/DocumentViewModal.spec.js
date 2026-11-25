@@ -459,6 +459,15 @@ describe('DocumentViewModal — sending by mail', () => {
     session.mode = 'selfhost'
     session.memberships = []
     session.activeTenantId = null
+    session.demo = false
+  })
+
+  it('hides the mail action in the public demo (its server refuses it)', async () => {
+    session.demo = true
+    const wrapper = await open(INVOICE, SENT)
+
+    expect(documentActions(wrapper)).not.toContain('Per E-Mail')
+    session.demo = false
   })
 
   it('hides the mail action from a reader in SaaS', async () => {

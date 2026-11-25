@@ -1,5 +1,6 @@
 package de.billery.api.controller;
 
+import de.billery.config.DemoMode;
 import de.billery.service.MailAccountService;
 import de.billery.service.MailTemplateService;
 import de.billery.tenant.ManagerAccess;
@@ -29,17 +30,24 @@ public class MailController {
   private final MailAccountService accounts;
   private final MailTemplateService templates;
   private final ManagerAccess managers;
+  private final DemoMode demo;
 
   /**
    * @param accounts the SMTP accounts
    * @param templates subject and text per kind of document
    * @param managers who may change them
+   * @param demo the public demo, which offers no mail accounts (any visitor could make the server
+   *     connect to any host)
    */
   public MailController(
-      MailAccountService accounts, MailTemplateService templates, ManagerAccess managers) {
+      MailAccountService accounts,
+      MailTemplateService templates,
+      ManagerAccess managers,
+      DemoMode demo) {
     this.accounts = accounts;
     this.templates = templates;
     this.managers = managers;
+    this.demo = demo;
   }
 
   /**
@@ -88,6 +96,7 @@ public class MailController {
   public ResponseEntity<MailAccountService.AccountView> create(
       @RequestBody MailAccountService.AccountInput input) {
     managers.requireManager();
+    demo.refuse("Der Mailversand");
     return ResponseEntity.status(HttpStatus.CREATED).body(accounts.create(input));
   }
 
@@ -102,6 +111,7 @@ public class MailController {
   public ResponseEntity<MailAccountService.AccountView> update(
       @PathVariable int id, @RequestBody MailAccountService.AccountInput input) {
     managers.requireManager();
+    demo.refuse("Der Mailversand");
     MailAccountService.AccountView updated = accounts.update(id, input);
     return updated == null ? ResponseEntity.notFound().build() : ResponseEntity.ok(updated);
   }
@@ -143,6 +153,7 @@ public class MailController {
   @PostMapping("/accounts/{id}/test")
   public ResponseEntity<Void> test(@PathVariable int id) {
     managers.requireManager();
+    demo.refuse("Der Mailversand");
     return accounts.test(id)
         ? ResponseEntity.noContent().build()
         : ResponseEntity.notFound().build();

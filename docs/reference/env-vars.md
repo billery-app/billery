@@ -167,6 +167,7 @@ Read by `config/AppConfig.java` and `data/DatabaseInitializer.java`.
 |----------|---------|-------|
 | `FILES_PATH` | `./uploads` (relative to the JVM working directory) | Upload directory (logos), served under `/uploads/**`. The PDF renderer reads logos from here directly (it loads no other files and nothing from the network). The Docker image sets `/app/uploads` (mount the `uploads` volume); the desktop shell sets `<app-data>/files`. |
 | `LOAD_DEMO_DATA` | `false` | `true` loads `dummies.sql` (100 customers, 1 420 documents, number-series counters) into a database without customers on startup. Development only: never set it for a real install. |
+| `BILLERY_DEMO` | `false` | Self-host only: `true` runs the instance as a **public demo** (`config/DemoMode`, `billery.demo`). `GET /api/config` answers `demo: true`; the SPA shows the demo banner ("Tour erneut starten") and starts the introductory tour in every new browser session; mail accounts, test mails and mail to customers are refused (409, the SPA hides them). Operating a demo: [`docs/operations/demo.md`](../operations/demo.md). Never set it for a real install. |
 
 ## Desktop shell (set by `app-desktop/src/lib.rs`, not by hand)
 

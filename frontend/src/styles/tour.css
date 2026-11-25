@@ -1,0 +1,86 @@
+/*
+ * The introductory tour (utils/tour.js, driver.js) in the design system's colours and type.
+ * driver.js's own stylesheet is loaded first; these rules only override its look.
+ */
+.driver-popover.billery-tour {
+  font-family: var(--font-family);
+  color: var(--color-text);
+  background-color: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
+  padding: var(--space-5);
+  min-width: 260px;
+  max-width: min(360px, calc(100vw - 32px));
+}
+
+.driver-popover.billery-tour .driver-popover-title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  padding-right: var(--space-6);
+}
+
+.driver-popover.billery-tour .driver-popover-description {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-strong);
+}
+
+.driver-popover.billery-tour .driver-popover-progress-text {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.driver-popover.billery-tour .driver-popover-close-btn {
+  color: var(--color-text-subtle);
+}
+
+.driver-popover.billery-tour .driver-popover-close-btn:hover,
+.driver-popover.billery-tour .driver-popover-close-btn:focus-visible {
+  color: var(--color-text);
+}
+
+.driver-popover.billery-tour .driver-popover-footer {
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.driver-popover.billery-tour .driver-popover-footer-btn {
+  font-family: var(--font-family);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-strong);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  padding: var(--space-1) var(--space-3);
+}
+
+.driver-popover.billery-tour .driver-popover-footer-btn:hover {
+  background-color: var(--color-surface-subtle);
+}
+
+.driver-popover.billery-tour .driver-popover-footer-btn:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.driver-popover.billery-tour .driver-popover-next-btn {
+  color: var(--color-on-primary);
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.driver-popover.billery-tour .driver-popover-next-btn:hover {
+  background-color: var(--color-primary-hover);
+}
+
+/* "Tour überspringen": a quiet text button left of the navigation */
+.driver-popover.billery-tour .billery-tour-skip {
+  border-color: transparent;
+  color: var(--color-text-muted);
+  padding-left: 0;
+}
+
+.driver-popover.billery-tour .billery-tour-skip:hover {
+  background-color: transparent;
+  color: var(--color-text);
+  text-decoration: underline;
+}

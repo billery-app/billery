@@ -3,7 +3,7 @@
     <h1 class="nav-destination-page-title">Kundenverwaltung</h1>
     <div class="filters">
       <input v-model="searchQuery" type="text" placeholder="Suchen..." class="search-input" />
-      <button @click="openCreateModal" class="btn btn-primary">Neuer Kunde</button>
+      <button @click="openCreateModal" class="btn btn-primary" data-tour="customer-new">Neuer Kunde</button>
     </div>
     <div v-if="loading" class="loading">Lade Kunden...</div>
     <div v-if="error" class="error">{{ error }}</div>

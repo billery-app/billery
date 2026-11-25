@@ -313,7 +313,7 @@ import { isInvoiceOverdue, isDraft, isOpenInvoice, isCancelled, DRAFT, SENT, CAN
 import { isInvoice, isCreditNote } from '../data/documentTypes.js'
 import { chargesVat, legalNote, formatRate } from '../utils/vat.js'
 import SendMailModal from './SendMailModal.vue'
-import { activeRole, isSaas } from '../services/session.js'
+import { activeRole, isSaas, session } from '../services/session.js'
 
 const { documentLabel, statusText, statusClass, statusOptions: getStatusOptions } = useDocumentType()
 
@@ -571,7 +571,8 @@ function resetFooter() {
 }
 
 /** A reader may look at documents but not send them (SaaS); everybody else may. */
-const canSendMail = computed(() => !!doc.value && !(isSaas() && activeRole() === 'READER'))
+// not for readers (SaaS) and not in the public demo, whose server refuses mail to customers
+const canSendMail = computed(() => !!doc.value && !session.demo && !(isSaas() && activeRole() === 'READER'))
 
 /**
  * After a dispatch: reload the document (an invoice draft is issued now, an offer "Gesendet") and

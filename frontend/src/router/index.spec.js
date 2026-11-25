@@ -71,6 +71,18 @@ describe('createAppRouter', () => {
       expect(router.currentRoute.value.path).toBe('/settings')
     })
 
+    it('opens the help (the tour) in every mode', async () => {
+      const router = createAppRouter()
+      await router.push('/settings/help')
+      expect(router.currentRoute.value.path).toBe('/settings/help')
+      session.mode = 'saas'
+      session.memberships = [{ tenantId: 1, tenantName: 'Eins GmbH', role: 'READER' }]
+      session.activeTenantId = 1
+      await router.push('/settings')
+      await router.push('/settings/help')
+      expect(router.currentRoute.value.path).toBe('/settings/help')
+    })
+
     it('opens the backup in the desktop app', async () => {
       session.desktop = true
       const router = createAppRouter()

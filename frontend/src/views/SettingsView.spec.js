@@ -76,8 +76,7 @@ describe('SettingsView', () => {
     const wrapper = mountWithRouter()
     const upcoming = wrapper.findAll('.settings-card.is-disabled')
     expect(upcoming.map(card => card.find('.card-title').text())).toEqual([
-      'Benutzer & Profil Demnächst verfügbar',
-      'Hilfe Demnächst verfügbar'
+      'Benutzer & Profil Demnächst verfügbar'
     ])
     upcoming.forEach(card => {
       expect(card.attributes('aria-disabled')).toBe('true')

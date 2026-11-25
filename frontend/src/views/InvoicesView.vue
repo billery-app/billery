@@ -4,6 +4,7 @@
       <button
         v-for="tab in documentTypeTabs"
         :key="tab.key"
+        :data-tour="`doc-tab-${tab.key}`"
         :class="['tab-btn', { active: documentTypeTab === tab.key }]"
         :aria-pressed="documentTypeTab === tab.key"
         @click="switchDocumentTypeTab(tab.key)"
@@ -13,6 +14,7 @@
       <span>Dokumenttyp</span>
       <select
         id="mobile-document-type"
+        data-tour="doc-type-picker"
         data-testid="mobile-document-type"
         :value="documentTypeTab"
         @change="switchDocumentTypeTab($event.target.value)"
@@ -37,7 +39,7 @@
       <select v-model="selectedFilter" class="filter-select">
         <option v-for="opt in filterOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
       </select>
-      <button v-if="!showArchived" @click="openCreateModal" class="btn btn-primary">{{ newButtonLabel }}</button>
+      <button v-if="!showArchived" @click="openCreateModal" class="btn btn-primary" data-tour="document-new">{{ newButtonLabel }}</button>
     </div>
     <div v-if="loading" class="loading">Lade Rechnungen...</div>
     <div v-if="error" class="error">{{ error }}</div>

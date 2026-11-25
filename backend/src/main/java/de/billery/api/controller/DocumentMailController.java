@@ -1,5 +1,6 @@
 package de.billery.api.controller;
 
+import de.billery.config.DemoMode;
 import de.billery.service.DocumentMailService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -14,12 +15,15 @@ import org.springframework.web.bind.annotation.RestController;
 public class DocumentMailController {
 
   private final DocumentMailService mail;
+  private final DemoMode demo;
 
   /**
    * @param mail prepares and sends the mail
+   * @param demo the public demo, which sends no mail
    */
-  public DocumentMailController(DocumentMailService mail) {
+  public DocumentMailController(DocumentMailService mail, DemoMode demo) {
     this.mail = mail;
+    this.demo = demo;
   }
 
   /**
@@ -43,6 +47,7 @@ public class DocumentMailController {
   @PostMapping
   public DocumentMailService.Result send(
       @PathVariable int id, @RequestBody DocumentMailService.Request request) {
+    demo.refuse("Der Mailversand");
     return mail.send(id, request);
   }
 }

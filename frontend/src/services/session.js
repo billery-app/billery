@@ -5,6 +5,8 @@ import { reactive } from 'vue'
  *
  * - `mode`: `selfhost` (no sign-in, the default) or `saas` (OIDC sign-in, several tenants)
  * - `desktop`: the desktop app (Tauri, H2 file database): shows the backup settings
+ * - `demo`: a public demo (`BILLERY_DEMO=true`): shows the demo banner, starts the tour in every
+ *   browser session and hides the mail dispatch, which the server refuses there
  * - `status`: `loading` while the sign-in runs, `ready` when the app may show its pages,
  *   `no-tenant` when the user is signed in but belongs to no tenant yet
  * - `user`: `{ id, email }` of the signed-in user (SaaS only)
@@ -18,6 +20,7 @@ import { reactive } from 'vue'
 export const session = reactive({
   mode: 'selfhost',
   desktop: false,
+  demo: false,
   status: 'loading',
   user: null,
   memberships: [],

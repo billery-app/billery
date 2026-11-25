@@ -49,6 +49,8 @@ frontend/
     ├── README.md            # this file
     ├── smoke.spec.js        # main screens, template editor PDF preview, document view (action bar, lifecycle strip, "Mehr" menu) + customer search
     ├── flows.spec.js        # core write flows: customer and invoice through the forms, issue, partial and full payment, send by mail, cancel, GoBD export; offer accepted
+    ├── tour.spec.js         # the introductory tour started under Einstellungen → Hilfe: five stations, "Überspringen"
+    ├── global-setup.js      # marks the tour as seen (PUT /api/tour), so it does not start by itself over the screens
     ├── dashboard.spec.js    # / renders, period selector visible
     └── invoices.spec.js     # /invoices renders + create/delete a draft via the API
 ```
@@ -72,6 +74,10 @@ The suite works on an empty database (that is what CI has):
   `E2E_SMTP_PORT`, default 1025) and is skipped without one:
   `docker run --rm -p 127.0.0.1:1025:1025 -p 127.0.0.1:8025:8025 axllent/mailpit:v1.21.0`,
   then `E2E_MAILPIT_URL=http://127.0.0.1:8025`.
+
+Before the specs, `global-setup.js` marks the introductory tour as seen on the target
+instance (`PUT /api/tour`; a SaaS backend answers 404, which is ignored), so it does not start
+by itself and cover the screens; `tour.spec.js` starts it by hand.
 
 Write requests send the app's own `Origin` header; the backend rejects writes
 without it (CSRF protection). An interrupted run against a dev database may
