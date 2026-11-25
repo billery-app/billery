@@ -91,7 +91,9 @@ services:
       LOAD_DEMO_DATA: ${LOAD_DEMO_DATA:-false}
     ports:
       # Loopback by default: the app has no login of its own, so it must only be reachable
-      # through your proxy. BIND_ADDRESS=0.0.0.0 publishes it on all interfaces (LAN only).
+      # through your proxy (with HTTPS and an access control such as basic_auth).
+      # BIND_ADDRESS=0.0.0.0 publishes it on EVERY interface of the host: whoever reaches the host
+      # reaches the app without a login. Only on a host that a firewall keeps off the internet.
       - "${BIND_ADDRESS:-127.0.0.1}:${APP_PORT:-8080}:8080"
     volumes:
       - uploads:/app/uploads
