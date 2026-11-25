@@ -2,6 +2,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import MailSettings from './MailSettings.vue'
 import mailService from '../services/mailService.js'
+import { session } from '../services/session.js'
 
 vi.mock('../services/mailService.js', () => ({
   default: {
@@ -125,5 +126,24 @@ describe('MailSettings', () => {
     expect(mailService.saveTemplates).toHaveBeenCalledWith(
       expect.objectContaining({ offer: { subject: 'Unser Angebot', text: '' } })
     )
+  })
+
+  it('demo: says the mail dispatch is off and offers no account form, the templates stay', async () => {
+    session.demo = true
+    mailService.accounts.mockResolvedValue([])
+    try {
+      const wrapper = await mounted()
+      expect(wrapper.find('[data-testid="mail-demo"]').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="mail-account-form"]').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="mail-template-form"]').exists()).toBe(true)
+    } finally {
+      session.demo = false
+    }
+  })
+
+  it('outside the demo there is no demo notice', async () => {
+    const wrapper = await mounted()
+    expect(wrapper.find('[data-testid="mail-demo"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="mail-account-form"]').exists()).toBe(true)
   })
 })

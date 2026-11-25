@@ -11,6 +11,8 @@ import { defineConfig, devices } from '@playwright/test'
  */
 export default defineConfig({
   testDir: './e2e',
+  // marks the introductory tour as seen, so it does not cover the screens (see the file)
+  globalSetup: './e2e/global-setup.js',
   timeout: 30_000,
   expect: { timeout: 5_000 },
   fullyParallel: true,

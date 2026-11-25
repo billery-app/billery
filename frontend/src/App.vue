@@ -12,7 +12,7 @@
           <kbd>⌘K</kbd>
         </button>
       </div>
-      <div class="nav-links">
+      <div class="nav-links" data-tour="nav">
         <router-link to="/" class="nav-dashboard-link">Dashboard</router-link>
         <router-link to="/customers">Kunden</router-link>
         <router-link to="/invoices">Dokumente</router-link>
@@ -21,7 +21,7 @@
       </div>
       <AccountMenu v-if="session.mode === 'saas' && session.status === 'ready'" />
     </nav>
-    <nav class="mobile-bottom-nav" aria-label="Hauptnavigation mobil">
+    <nav class="mobile-bottom-nav" data-tour="nav-mobile" aria-label="Hauptnavigation mobil">
       <router-link to="/" exact-active-class="router-link-exact-active" class="mobile-nav-link" aria-label="Dashboard">
         <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
         <span>Start</span>
@@ -43,6 +43,10 @@
         <span>Einstell.</span>
       </router-link>
     </nav>
+    <div v-if="session.demo" class="demo-banner" role="note" data-testid="demo-banner">
+      <span><strong>Demo</strong> – die Daten werden regelmäßig zurückgesetzt. Bitte keine echten Daten eingeben.</span>
+      <button type="button" class="btn btn-secondary btn-small" data-testid="demo-tour" @click="startTour">Tour erneut starten</button>
+    </div>
     <main>
       <NoTenantNotice v-if="session.status === 'no-tenant'" />
       <router-view v-else />
@@ -56,6 +60,7 @@ import SpotlightSearch from './components/SpotlightSearch.vue'
 import AccountMenu from './components/AccountMenu.vue'
 import NoTenantNotice from './components/NoTenantNotice.vue'
 import { session } from './services/session.js'
+import { maybeStartTour, runTour } from './utils/tour.js'
 
 export default {
   name: 'App',
@@ -68,11 +73,20 @@ export default {
   },
   mounted() {
     window.addEventListener('keydown', this.handleKeydown)
+    // the introductory tour starts by itself on the first visit (rules in utils/tour.js)
+    this.$router
+      .isReady()
+      .then(() => maybeStartTour(this.$router))
+      .catch(error => console.warn('Tour not started', error))
   },
   beforeUnmount() {
     window.removeEventListener('keydown', this.handleKeydown)
   },
   methods: {
+    /** "Tour erneut starten" in the demo banner. */
+    startTour() {
+      runTour(this.$router)
+    },
     handleKeydown(e) {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault()
@@ -127,6 +141,20 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   background: var(--color-nav-kbd);
   border-radius: 4px;
   font-family: inherit;
+}
+
+.demo-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2) var(--space-4);
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-warning-soft);
+  color: var(--color-warning-text);
+  border-bottom: 1px solid var(--color-warning-border);
+  font-size: var(--font-size-sm);
+  text-align: center;
 }
 
 .app > main { width: 100%; max-width: 1600px; min-width: 0; margin: 0 auto; }

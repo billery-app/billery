@@ -5,6 +5,7 @@
       <span>Katalogbereich</span>
       <select
         id="mobile-catalog-section"
+        data-tour="catalog-picker"
         data-testid="mobile-catalog-section"
         :value="activeTab"
         @change="activeTab = $event.target.value"
@@ -14,10 +15,10 @@
         <option value="equipment">Ausstattung</option>
       </select>
     </label>
-    <div class="catalog-section-tabs" role="group" aria-label="Katalogbereich">
+    <div class="catalog-section-tabs" data-tour="catalog-tabs" role="group" aria-label="Katalogbereich">
       <button type="button" :class="['tab-btn', { active: activeTab === 'articles' }]" :aria-pressed="activeTab === 'articles'" @click="activeTab = 'articles'">Artikel</button>
       <button type="button" :class="['tab-btn', { active: activeTab === 'services' }]" :aria-pressed="activeTab === 'services'" @click="activeTab = 'services'">Leistungen</button>
-      <button type="button" :class="['tab-btn', { active: activeTab === 'equipment' }]" :aria-pressed="activeTab === 'equipment'" @click="activeTab = 'equipment'">Ausstattung</button>
+      <button type="button" :class="['tab-btn', { active: activeTab === 'equipment' }]" :aria-pressed="activeTab === 'equipment'" data-tour="catalog-equipment" @click="activeTab = 'equipment'">Ausstattung</button>
     </div>
     <div class="filters">
       <input v-model="searchQuery" type="text" placeholder="Suchen..." class="search-input" />
@@ -300,7 +301,10 @@ export default {
     }
   },
   mounted() {
-    this.loadItems()
+    // a changed section loads through the `activeTab` watcher
+    if (!this.applyTabQuery()) {
+      this.loadItems()
+    }
     if (this.$route.query.create === 'true') {
       this.openCreateModal()
     }
@@ -316,6 +320,10 @@ export default {
   watch: {
     activeTab() {
       this.loadItems()
+    },
+    // `?tab=equipment` opens that section, also when the page is already open (the tour does that)
+    '$route.query.tab'() {
+      this.applyTabQuery()
     }
   },
   computed: {
@@ -357,6 +365,18 @@ export default {
     }
   },
   methods: {
+    /**
+     * Opens the section named by `?tab=` (articles, services, equipment); anything else is ignored.
+     * @returns {boolean} whether the section changed
+     */
+    applyTabQuery() {
+      const tab = this.$route.query.tab
+      if (['articles', 'services', 'equipment'].includes(tab) && tab !== this.activeTab) {
+        this.activeTab = tab
+        return true
+      }
+      return false
+    },
     async loadItems() {
       this.loading = true
       try {

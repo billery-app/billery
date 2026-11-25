@@ -14,6 +14,7 @@ import { findArea } from '../utils/settingsAreas.js'
 import AccountSettings from '../components/AccountSettings.vue'
 import BackupSettings from '../components/BackupSettings.vue'
 import GobdExportSettings from '../components/GobdExportSettings.vue'
+import HelpSettings from '../components/HelpSettings.vue'
 import MailSettings from '../components/MailSettings.vue'
 import TeamSettings from '../components/TeamSettings.vue'
 
@@ -23,7 +24,8 @@ const COMPONENTS = {
   team: TeamSettings,
   export: GobdExportSettings,
   backup: BackupSettings,
-  mail: MailSettings
+  mail: MailSettings,
+  help: HelpSettings
 }
 
 /**

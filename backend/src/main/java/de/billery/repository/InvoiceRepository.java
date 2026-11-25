@@ -969,4 +969,16 @@ public class InvoiceRepository extends BaseRepository {
     }
     return base.getId();
   }
+
+  /**
+   * Tells whether any document exists (the tour starts by itself only in an installation without
+   * documents, so it does not appear in existing installations after an update).
+   *
+   * @return true if at least one document is stored
+   */
+  public boolean hasDocuments() {
+    return run(
+        "hasDocuments",
+        () -> jdbc.sql("SELECT COUNT(*) FROM invoice").query(Long.class).single() > 0);
+  }
 }

@@ -49,6 +49,7 @@ Self-hosted invoicing application for German freelancers and small businesses. M
 - Web stack: Spring Boot 4.1 (Java 25) backend, Vue 3 (Vite) frontend
 - PostgreSQL 17 in production, H2 for the self-contained desktop mode
 - Docker Compose stack (root) and a database-only Compose file
+- Short introductory tour (five stations, skippable, again under Einstellungen → Hilfe) and a public demo mode (`BILLERY_DEMO=true`, see `docs/operations/demo.md`)
 - Optional Tauri 2 desktop shell (`app-desktop/`) that talks to the backend
 - Desktop installers built with Tauri (`scripts/build-desktop.sh`), bundling the backend JAR, a jlink'd JRE and H2
 - REST API with Swagger UI at `/swagger-ui.html` and OpenAPI JSON at `/v3/api-docs`

@@ -94,10 +94,10 @@ export const SETTINGS_GROUPS = [
       },
       {
         id: 'help',
-        upcoming: true,
+        to: '/settings/help',
         icon: '❓',
         title: 'Hilfe',
-        description: 'Dokumentation, FAQ und Über diese Version'
+        description: 'Einführungstour starten und wiederholen'
       }
     ]
   }

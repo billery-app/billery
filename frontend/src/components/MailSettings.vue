@@ -3,6 +3,10 @@
     <div class="card mail-card">
       <p v-if="error" class="notice notice-error" role="alert">{{ error }}</p>
       <p v-if="notice" class="notice notice-success" role="status">{{ notice }}</p>
+      <p v-if="demo" class="notice notice-warning" data-testid="mail-demo">
+        In der Demo ist der Mailversand abgeschaltet: Mailkonten können nicht angelegt werden. Die
+        Vorlagen für Ihre Mails können Sie trotzdem ausprobieren.
+      </p>
       <p v-if="loaded && !passwordsStorable" class="notice notice-warning" data-testid="no-secrets-key">
         Passwörter können hier nicht gespeichert werden: Der Betreiber hat keinen Schlüssel dafür
         eingerichtet (<code>BILLERY_SECRETS_KEY</code>). Konten ohne Anmeldung funktionieren trotzdem.
@@ -38,7 +42,7 @@
       </div>
       <p v-else-if="loaded" class="muted" data-testid="no-mail-accounts">Noch kein Mailkonto eingerichtet.</p>
 
-      <form class="account-form" data-testid="mail-account-form" @submit.prevent="save">
+      <form v-if="!demo" class="account-form" data-testid="mail-account-form" @submit.prevent="save">
         <h4 class="mail-subheading">{{ form.id ? `Konto „${form.originalName}“ bearbeiten` : 'Neues Mailkonto' }}</h4>
         <div class="form-grid">
           <div class="form-group">
@@ -133,6 +137,7 @@
 
 <script>
 import mailService from '../services/mailService.js'
+import { session } from '../services/session.js'
 
 /** The kinds of document with a mail template of their own, in display order. */
 const KINDS = [
@@ -182,6 +187,12 @@ export default {
       error: null,
       notice: null,
       form: emptyForm()
+    }
+  },
+  computed: {
+    /** The public demo: its server refuses mail accounts and mail to customers. */
+    demo() {
+      return session.demo
     }
   },
   async mounted() {
