@@ -1,11 +1,11 @@
 <template>
   <div class="customer-detail">
     <div class="header">
-      <button class="btn btn-secondary" @click="goBack">← Zurück</button>
-      <h1>Kundendetails</h1>
+      <button class="btn btn-secondary" @click="goBack">{{ $t('customerDetail.back') }}</button>
+      <h1>{{ $t('customerDetail.title') }}</h1>
     </div>
 
-    <div v-if="loading" class="loading">Lade Kundendaten...</div>
+    <div v-if="loading" class="loading">{{ $t('customerDetail.loading') }}</div>
     <div v-if="error" class="error">{{ error }}</div>
 
     <div v-if="customer && !loading" class="content">
@@ -14,98 +14,98 @@
         <h2>{{ customer.firstName }} {{ customer.lastName }}</h2>
         <div class="info-grid">
           <div class="info-item">
-            <label>Adresse:</label>
+            <label>{{ $t('customerDetail.address') }}</label>
             <span>{{ customer.street }} {{ customer.houseNumber }}, {{ customer.postalCode }} {{ customer.city }}</span>
           </div>
           <div class="info-item">
-            <label>Telefon:</label>
+            <label>{{ $t('customerDetail.phone') }}</label>
             <span>{{ customer.phone || '-' }}</span>
           </div>
           <div class="info-item">
-            <label>Email:</label>
+            <label>{{ $t('customerDetail.email') }}</label>
             <span>{{ customer.email || '-' }}</span>
           </div>
           <div class="info-item">
-            <label>USt-IdNr. / Steuernummer:</label>
+            <label>{{ $t('customerDetail.taxId') }}</label>
             <span>{{ customer.taxId || '-' }}</span>
           </div>
           <div v-if="customer.buyerReference" class="info-item">
-            <label>Leitweg-ID / Käuferreferenz:</label>
+            <label>{{ $t('customerDetail.buyerReference') }}</label>
             <span>{{ customer.buyerReference }}</span>
           </div>
           <div v-if="customer.note" class="info-item full-width">
-            <label>Notiz:</label>
+            <label>{{ $t('customerDetail.note') }}</label>
             <span>{{ customer.note }}</span>
           </div>
         </div>
         <div class="actions">
-          <button class="btn btn-primary" @click="editCustomer">Bearbeiten</button>
-          <button class="btn btn-success" @click="createInvoice">Neue Rechnung</button>
-          <button class="btn btn-secondary" @click="createOffer">Neues Angebot</button>
-          <button class="btn btn-secondary" @click="createCostCalculation">Neuer Kostenvoranschlag</button>
+          <button class="btn btn-primary" @click="editCustomer">{{ $t('common.edit') }}</button>
+          <button class="btn btn-success" @click="createInvoice">{{ $t('dashboard.quick.invoice') }}</button>
+          <button class="btn btn-secondary" @click="createOffer">{{ $t('dashboard.quick.offer') }}</button>
+          <button class="btn btn-secondary" @click="createCostCalculation">{{ $t('dashboard.quick.costCalculation') }}</button>
         </div>
       </div>
 
       <!-- Statistics -->
       <div class="stats-grid">
         <div class="card stat-card">
-          <h3>Gesamtumsatz</h3>
+          <h3>{{ $t('customerDetail.revenue') }}</h3>
           <p class="stat-value">{{ formatCurrency(totalRevenue) }}</p>
         </div>
         <div class="card stat-card">
-          <h3>Offener Betrag</h3>
+          <h3>{{ $t('customerDetail.open') }}</h3>
           <p class="stat-value" :class="{ 'negative': openAmount > 0 }">{{ formatCurrency(openAmount) }}</p>
         </div>
         <div class="card stat-card">
-          <h3>Anzahl Rechnungen</h3>
+          <h3>{{ $t('customerDetail.invoiceCount') }}</h3>
           <p class="stat-value">{{ invoiceCount }}</p>
         </div>
         <div class="card stat-card">
-          <h3>Anzahl Angebote</h3>
+          <h3>{{ $t('customerDetail.offerCount') }}</h3>
           <p class="stat-value">{{ offerCount }}</p>
         </div>
         <div class="card stat-card">
-          <h3>Anzahl Kostenvoranschläge</h3>
+          <h3>{{ $t('customerDetail.calculationCount') }}</h3>
           <p class="stat-value">{{ costCalcCount }}</p>
         </div>
       </div>
 
       <!-- Documents Section -->
         <div class="card documents-section">
-        <h2>Dokumente</h2>
+        <h2>{{ $t('nav.documents') }}</h2>
         <div class="tabs">
           <button 
             :class="['tab-btn', { active: activeTab === 'invoices' }]" 
             @click="activeTab = 'invoices'"
           >
-            Rechnungen ({{ trueInvoices.length }})
+            {{ $t('search.invoices', { count: trueInvoices.length }) }}
           </button>
           <button 
             :class="['tab-btn', { active: activeTab === 'offers' }]" 
             @click="activeTab = 'offers'"
           >
-            Angebote ({{ offers.length }})
+            {{ $t('search.offers', { count: offers.length }) }}
           </button>
           <button 
             :class="['tab-btn', { active: activeTab === 'costCalculations' }]" 
             @click="activeTab = 'costCalculations'"
           >
-            Kostenvoranschläge ({{ costCalculations.length }})
+            {{ $t('search.calculations', { count: costCalculations.length }) }}
           </button>
         </div>
 
         <!-- Invoices Tab -->
         <div v-if="activeTab === 'invoices'" class="tab-content">
-          <div v-if="trueInvoices.length" class="table-scroll" role="region" aria-label="Rechnungstabelle" tabindex="0">
+          <div v-if="trueInvoices.length" class="table-scroll" role="region" :aria-label="$t('customerDetail.invoiceTable')" tabindex="0">
           <table class="data-table">
             <thead>
               <tr>
-                <th>Rechnungs-Nr</th>
-                <th>Datum</th>
-                <th>Fällig</th>
-                <th>Netto</th>
-                <th>Brutto</th>
-                <th>Status</th>
+                <th>{{ $t('documents.columns.invoiceNumber') }}</th>
+                <th>{{ $t('documents.columns.date') }}</th>
+                <th>{{ $t('dashboard.columns.due') }}</th>
+                <th>{{ $t('documents.columns.net') }}</th>
+                <th>{{ $t('documents.columns.gross') }}</th>
+                <th>{{ $t('documents.columns.status') }}</th>
               </tr>
             </thead>
             <tbody>
@@ -114,7 +114,7 @@
                 :key="invoice.id"
                 class="clickable-row"
                 tabindex="0"
-                :aria-label="`${invoice.invoiceNumber || 'Rechnung'} ansehen und Aktionen öffnen`"
+                :aria-label="$t('documents.open', { number: invoice.invoiceNumber || $t('dashboard.invoice') })"
                 @click="viewInvoice(invoice)"
                 @keydown.enter.prevent="viewInvoice(invoice)"
                 @keydown.space.prevent="viewInvoice(invoice)"
@@ -133,21 +133,21 @@
             </tbody>
           </table>
           </div>
-          <div v-else class="empty-state">Keine Rechnungen vorhanden</div>
+          <div v-else class="empty-state">{{ $t('customerDetail.noInvoices') }}</div>
         </div>
 
         <!-- Offers Tab -->
         <div v-if="activeTab === 'offers'" class="tab-content">
-          <div v-if="offers.length" class="table-scroll" role="region" aria-label="Angebotstabelle" tabindex="0">
+          <div v-if="offers.length" class="table-scroll" role="region" :aria-label="$t('customerDetail.offerTable')" tabindex="0">
           <table class="data-table">
             <thead>
               <tr>
-                <th>Angebots-Nr</th>
-                <th>Datum</th>
-                <th>Gültig bis</th>
-                <th>Netto</th>
-                <th>Brutto</th>
-                <th>Status</th>
+                <th>{{ $t('customerDetail.offerNumber') }}</th>
+                <th>{{ $t('documents.columns.date') }}</th>
+                <th>{{ $t('documents.columns.validUntil') }}</th>
+                <th>{{ $t('documents.columns.net') }}</th>
+                <th>{{ $t('documents.columns.gross') }}</th>
+                <th>{{ $t('documents.columns.status') }}</th>
               </tr>
             </thead>
             <tbody>
@@ -156,7 +156,7 @@
                 :key="offer.id"
                 class="clickable-row"
                 tabindex="0"
-                :aria-label="`${offer.invoiceNumber || 'Angebot'} ansehen und Aktionen öffnen`"
+                :aria-label="$t('documents.open', { number: offer.invoiceNumber || $t('search.offer') })"
                 @click="viewInvoice(offer)"
                 @keydown.enter.prevent="viewInvoice(offer)"
                 @keydown.space.prevent="viewInvoice(offer)"
@@ -175,21 +175,21 @@
             </tbody>
           </table>
           </div>
-          <div v-else class="empty-state">Keine Angebote vorhanden</div>
+          <div v-else class="empty-state">{{ $t('customerDetail.noOffers') }}</div>
         </div>
 
         <!-- Cost Calculations Tab -->
         <div v-if="activeTab === 'costCalculations'" class="tab-content">
-          <div v-if="costCalculations.length" class="table-scroll" role="region" aria-label="Kostenvoranschlagstabelle" tabindex="0">
+          <div v-if="costCalculations.length" class="table-scroll" role="region" :aria-label="$t('customerDetail.calculationTable')" tabindex="0">
           <table class="data-table">
             <thead>
               <tr>
-                <th>KV-Nummer</th>
-                <th>Datum</th>
-                <th>Gültig bis</th>
-                <th>Netto</th>
-                <th>Brutto</th>
-                <th>Status</th>
+                <th>{{ $t('customerDetail.calculationNumber') }}</th>
+                <th>{{ $t('documents.columns.date') }}</th>
+                <th>{{ $t('documents.columns.validUntil') }}</th>
+                <th>{{ $t('documents.columns.net') }}</th>
+                <th>{{ $t('documents.columns.gross') }}</th>
+                <th>{{ $t('documents.columns.status') }}</th>
               </tr>
             </thead>
             <tbody>
@@ -198,7 +198,7 @@
                 :key="calc.id"
                 class="clickable-row"
                 tabindex="0"
-                :aria-label="`${calc.invoiceNumber || 'Kostenvoranschlag'} ansehen und Aktionen öffnen`"
+                :aria-label="$t('documents.open', { number: calc.invoiceNumber || $t('search.calculation') })"
                 @click="viewInvoice(calc)"
                 @keydown.enter.prevent="viewInvoice(calc)"
                 @keydown.space.prevent="viewInvoice(calc)"
@@ -217,7 +217,7 @@
             </tbody>
           </table>
           </div>
-          <div v-else class="empty-state">Keine Kostenvoranschläge vorhanden</div>
+          <div v-else class="empty-state">{{ $t('customerDetail.noCalculations') }}</div>
         </div>
       </div>
     </div>
@@ -358,7 +358,7 @@ export default {
         this.articles = articlesResponse.data
         this.services = servicesResponse.data
       } catch (err) {
-        this.error = 'Fehler beim Laden der Daten: ' + err.message
+        this.error = this.$t('customerDetail.loadFailed', { reason: err.message })
       } finally {
         this.loading = false
       }
@@ -421,7 +421,7 @@ export default {
         this.documentToConvert = null
         this.loadData()
       } catch (err) {
-        this.error = 'Fehler beim Umwandeln: ' + err.message
+        this.error = this.$t('documents.convertFailed', { reason: err.message })
       }
     },
     formatDate(date) {

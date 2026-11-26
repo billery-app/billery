@@ -1,6 +1,7 @@
 package de.billery.api.controller;
 
 import de.billery.config.AppConfig;
+import de.billery.config.AppVersion;
 import de.billery.config.DemoMode;
 import de.billery.data.Database;
 import de.billery.desktop.BackupLocations;
@@ -20,24 +21,28 @@ public class ClientConfigController {
 
   private final Environment environment;
   private final DemoMode demo;
+  private final AppVersion version;
 
   /**
    * @param environment tells whether the Spring profile {@code desktop} is active
    * @param demo whether this is the public demo ({@code BILLERY_DEMO})
+   * @param version the released version of this build
    */
-  public ClientConfigController(Environment environment, DemoMode demo) {
+  public ClientConfigController(Environment environment, DemoMode demo, AppVersion version) {
     this.environment = environment;
     this.demo = demo;
+    this.version = version;
   }
 
   /**
    * Returns the operating mode.
    *
-   * @return {@code {"mode": "selfhost", "desktop": true|false, "demo": true|false}}; {@code demo}
-   *     is the public demo (banner, tour in every session, mail switched off); {@code desktop}
-   *     tells the SPA to show the desktop-only settings (backups): the Spring profile {@code
-   *     desktop} with an H2 file database (the end-to-end tests run the profile on an in-memory
-   *     database) and the window token of the Tauri shell ({@code DESKTOP_UI_TOKEN})
+   * @return {@code {"mode": "selfhost", "desktop": true|false, "demo": true|false, "version":
+   *     "0.2.0"|"dev"}}; {@code demo} is the public demo (banner, tour in every session, mail
+   *     switched off); {@code desktop} tells the SPA to show the desktop-only settings (backups):
+   *     the Spring profile {@code desktop} with an H2 file database (the end-to-end tests run the
+   *     profile on an in-memory database) and the window token of the Tauri shell ({@code
+   *     DESKTOP_UI_TOKEN})
    */
   @GetMapping("/api/config")
   public Map<String, Object> config() {
@@ -45,6 +50,14 @@ public class ClientConfigController {
         environment.matchesProfiles("desktop")
             && BackupLocations.forDatabase(Database.getUrl(), AppConfig.FILES_PATH) != null
             && !environment.getProperty("DESKTOP_UI_TOKEN", "").isEmpty();
-    return Map.of("mode", "selfhost", "desktop", desktopBackups, "demo", demo.isActive());
+    return Map.of(
+        "mode",
+        "selfhost",
+        "desktop",
+        desktopBackups,
+        "demo",
+        demo.isActive(),
+        "version",
+        version.version());
   }
 }

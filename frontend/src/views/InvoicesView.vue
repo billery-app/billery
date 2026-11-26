@@ -1,6 +1,6 @@
 <template>
   <div class="invoices">
-    <div class="doc-type-tabs" role="group" aria-label="Dokumenttyp">
+    <div class="doc-type-tabs" role="group" :aria-label="$t('documents.type')">
       <button
         v-for="tab in documentTypeTabs"
         :key="tab.key"
@@ -11,7 +11,7 @@
       >{{ tab.label }}</button>
     </div>
     <label class="mobile-doc-type-picker" for="mobile-document-type">
-      <span>Dokumenttyp</span>
+      <span>{{ $t('documents.type') }}</span>
       <select
         id="mobile-document-type"
         data-tour="doc-type-picker"
@@ -24,16 +24,16 @@
     </label>
     <h1 class="page-heading nav-destination-page-title">
       <span class="page-heading-desktop">{{ pageTitle }}</span>
-      <span class="page-heading-mobile">Dokumente</span>
+      <span class="page-heading-mobile">{{ $t('nav.documents') }}</span>
     </h1>
     <div class="tabs">
-      <button :class="['tab-btn', { active: !showArchived }]" @click="showArchived = false">Aktiv</button>
-      <button :class="['tab-btn', { active: showArchived }]" @click="showArchived = true">Archiv</button>
+      <button :class="['tab-btn', { active: !showArchived }]" @click="showArchived = false">{{ $t('documents.active') }}</button>
+      <button :class="['tab-btn', { active: showArchived }]" @click="showArchived = true">{{ $t('documents.archive') }}</button>
     </div>
     <div class="filters">
-      <input v-model="searchQuery" type="text" placeholder="Suchen..." class="search-input" />
+      <input v-model="searchQuery" type="text" :placeholder="$t('common.search')" class="search-input" />
       <select v-model="selectedYear" class="year-select">
-        <option value="">Alle Jahre</option>
+        <option value="">{{ $t('documents.allYears') }}</option>
         <option v-for="year in availableYears" :key="year" :value="year">{{ year }}</option>
       </select>
       <select v-model="selectedFilter" class="filter-select">
@@ -41,19 +41,19 @@
       </select>
       <button v-if="!showArchived" class="btn btn-primary" data-tour="document-new" @click="openCreateModal">{{ newButtonLabel }}</button>
     </div>
-    <div v-if="loading" class="loading">Lade Rechnungen...</div>
+    <div v-if="loading" class="loading">{{ $t('documents.loading') }}</div>
     <div v-if="error" class="error">{{ error }}</div>
-    <div v-if="invoices.length" class="table-scroll" role="region" aria-label="Dokumententabelle" tabindex="0">
+    <div v-if="invoices.length" class="table-scroll" role="region" :aria-label="$t('documents.tableLabel')" tabindex="0">
     <table class="data-table">
       <thead>
         <tr>
-          <th>{{ isInvoiceTab ? 'Rechnungs-Nr' : 'Nummer' }}</th>
-          <th>Kunde</th>
-          <th>Datum</th>
-          <th>{{ isInvoiceTab ? 'Fällig' : 'Gültig bis' }}</th>
-          <th>Netto</th>
-          <th>Brutto</th>
-          <th>Status</th>
+          <th>{{ isInvoiceTab ? $t('documents.columns.invoiceNumber') : $t('documents.columns.number') }}</th>
+          <th>{{ $t('dashboard.columns.customer') }}</th>
+          <th>{{ $t('documents.columns.date') }}</th>
+          <th>{{ isInvoiceTab ? $t('dashboard.columns.due') : $t('documents.columns.validUntil') }}</th>
+          <th>{{ $t('documents.columns.net') }}</th>
+          <th>{{ $t('documents.columns.gross') }}</th>
+          <th>{{ $t('documents.columns.status') }}</th>
         </tr>
       </thead>
       <tbody>
@@ -62,7 +62,7 @@
           :key="invoice.id"
           :class="[{ archived: invoice.archived, 'overdue-row': invoice.documentTypeId === INVOICE && isInvoiceOverdue(invoice) }, 'clickable-row']"
           tabindex="0"
-          :aria-label="`${invoice.invoiceNumber || 'Entwurf'} ansehen und Aktionen öffnen`"
+          :aria-label="$t('documents.open', { number: invoice.invoiceNumber || $t('documents.draft') })"
           @click="viewInvoice(invoice)"
           @keydown.enter.prevent="viewInvoice(invoice)"
           @keydown.space.prevent="viewInvoice(invoice)"
@@ -82,10 +82,10 @@
       </tbody>
     </table>
     </div>
-    <nav v-if="total > pageSize" class="pager" aria-label="Seiten" data-testid="pager">
-      <button class="btn btn-small btn-secondary" :disabled="page === 0 || loading" @click="goToPage(page - 1)">Zurück</button>
-      <span class="pager-info" data-testid="pager-info">Seite {{ page + 1 }} von {{ pageCount }} · {{ total }} Dokumente</span>
-      <button class="btn btn-small btn-secondary" :disabled="page + 1 >= pageCount || loading" @click="goToPage(page + 1)">Weiter</button>
+    <nav v-if="total > pageSize" class="pager" :aria-label="$t('common.pages')" data-testid="pager">
+      <button class="btn btn-small btn-secondary" :disabled="page === 0 || loading" @click="goToPage(page - 1)">{{ $t('common.previous') }}</button>
+      <span class="pager-info" data-testid="pager-info">{{ $t('documents.pager', { page: page + 1, pages: pageCount, total }) }}</span>
+      <button class="btn btn-small btn-secondary" :disabled="page + 1 >= pageCount || loading" @click="goToPage(page + 1)">{{ $t('common.next') }}</button>
     </nav>
     <div v-if="!invoices.length && !loading" class="no-data">
       {{ emptyStateMessage }}
@@ -362,7 +362,7 @@ export default {
         await this.refreshSelectedInvoice(items)
       } catch (err) {
         if (request === this.listRequest) {
-          this.error = 'Fehler beim Laden der Dokumente: ' + err.message
+          this.error = this.$t('documents.loadFailed', { reason: err.message })
         }
       }
     },
@@ -391,7 +391,7 @@ export default {
         this.editingInvoice = response.data
         this.showModal = true
       } catch (err) {
-        this.error = 'Fehler beim Laden: ' + err.message
+        this.error = this.$t('common.loadFailed', { reason: err.message })
       }
     },
     async loadInvoiceForView(id) {
@@ -399,7 +399,7 @@ export default {
         const response = await invoiceAPI.getInvoice(id)
         this.viewInvoice(response.data)
       } catch (err) {
-        this.error = 'Fehler beim Laden: ' + err.message
+        this.error = this.$t('common.loadFailed', { reason: err.message })
       }
     },
     onInvoiceCreated() {
@@ -412,13 +412,13 @@ export default {
       this.loadInvoices()
     },
     async deleteInvoice(id) {
-      if (!confirm('Wirklich löschen?')) return
+      if (!confirm(this.$t('common.confirmDelete'))) return
       try {
         await invoiceAPI.deleteInvoice(id)
         if (this.selectedInvoiceId === id) this.showInvoiceModal = false
         this.loadInvoices()
       } catch (err) {
-        this.error = 'Fehler beim Löschen: ' + err.message
+        this.error = this.$t('common.deleteFailed', { reason: err.message })
       }
     },
     async archiveInvoice(id) {
@@ -427,7 +427,7 @@ export default {
         if (this.selectedInvoiceId === id) this.showInvoiceModal = false
         this.loadInvoices()
       } catch (err) {
-        this.error = 'Fehler beim Archivieren: ' + err.message
+        this.error = this.$t('documents.archiveFailed', { reason: err.message })
       }
     },
     async unarchiveInvoice(id) {
@@ -436,7 +436,7 @@ export default {
         if (this.selectedInvoiceId === id) this.showInvoiceModal = false
         this.loadInvoices()
       } catch (err) {
-        this.error = 'Fehler beim Wiederherstellen: ' + err.message
+        this.error = this.$t('documents.restoreFailed', { reason: err.message })
       }
     },
     viewInvoice(invoice) {
@@ -499,7 +499,7 @@ export default {
         this.documentToConvert = null
         this.loadInvoices()
       } catch (err) {
-        this.error = 'Fehler beim Umwandeln: ' + err.message
+        this.error = this.$t('documents.convertFailed', { reason: err.message })
       }
     },
     async downloadPdf(id) {
@@ -523,7 +523,7 @@ export default {
         await invoiceAPI.updateInvoiceStatus(id, statusId)
         this.loadInvoices()
       } catch (err) {
-        this.error = 'Fehler beim Status-Update: ' + err.message
+        this.error = this.$t('documents.statusFailed', { reason: err.message })
       }
     },
     isDraft(statusId) { return _isDraft(statusId) },

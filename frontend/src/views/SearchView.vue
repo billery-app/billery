@@ -1,32 +1,32 @@
 <template>
   <div class="search-view">
-    <h1>Suche</h1>
+    <h1>{{ $t('nav.search') }}</h1>
     <div class="search-box">
       <input
         v-model="query"
         type="text"
-        placeholder="Suchbegriff eingeben..."
+        :placeholder="$t('search.placeholder')"
         class="search-input"
         @input="debouncedSearch"
       />
     </div>
 
-    <div v-if="loading" class="loading">Suche läuft...</div>
+    <div v-if="loading" class="loading">{{ $t('search.running') }}</div>
     <div v-if="error" class="error">{{ error }}</div>
 
     <div v-if="hasSearched && !loading" class="results">
-      <div v-if="hasNoResults" class="no-results">Keine Ergebnisse gefunden für "{{ lastQuery }}"</div>
+      <div v-if="hasNoResults" class="no-results">{{ $t('spotlight.noResults', { query: lastQuery }) }}</div>
 
       <div v-if="result.customers?.length" class="result-section">
-        <h2>Kunden ({{ result.customers.length }})</h2>
-        <div class="table-scroll" role="region" aria-label="Suchergebnisse Kunden" tabindex="0">
+        <h2>{{ $t('search.customers', { count: result.customers.length }) }}</h2>
+        <div class="table-scroll" role="region" :aria-label="$t('search.resultsLabel', { kind: $t('nav.customers') })" tabindex="0">
         <table class="data-table">
           <thead>
             <tr>
-              <th>Name</th>
-              <th>Adresse</th>
-              <th>Telefon</th>
-              <th>Email</th>
+              <th>{{ $t('common.columns.name') }}</th>
+              <th>{{ $t('common.columns.address') }}</th>
+              <th>{{ $t('common.columns.phone') }}</th>
+              <th>{{ $t('common.columns.email') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -35,7 +35,7 @@
               :key="'c-' + c.id"
               class="clickable-row"
               tabindex="0"
-              :aria-label="`Kunde ${c.firstName} ${c.lastName} ansehen`"
+              :aria-label="$t('search.openCustomer', { name: `${c.firstName} ${c.lastName}` })"
               @click="goToCustomer(c.id)"
               @keydown.enter.prevent="goToCustomer(c.id)"
               @keydown.space.prevent="goToCustomer(c.id)"
@@ -51,16 +51,16 @@
       </div>
 
       <div v-if="result.articles?.length" class="result-section">
-        <h2>Artikel ({{ result.articles.length }})</h2>
-        <div class="table-scroll" role="region" aria-label="Suchergebnisse Artikel" tabindex="0">
+        <h2>{{ $t('search.articles', { count: result.articles.length }) }}</h2>
+        <div class="table-scroll" role="region" :aria-label="$t('search.resultsLabel', { kind: $t('catalog.articles') })" tabindex="0">
         <table class="data-table">
           <thead>
             <tr>
-              <th>Name</th>
-              <th>Verkaufspreis</th>
-              <th>Einkaufspreis</th>
-              <th>Einheit</th>
-              <th>Beschreibung</th>
+              <th>{{ $t('common.columns.name') }}</th>
+              <th>{{ $t('catalog.columns.salesPrice') }}</th>
+              <th>{{ $t('catalog.columns.purchasePrice') }}</th>
+              <th>{{ $t('catalog.columns.unit') }}</th>
+              <th>{{ $t('catalog.columns.description') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -69,7 +69,7 @@
               :key="'a-' + a.id"
               class="clickable-row"
               tabindex="0"
-              :aria-label="`Artikel ${a.name} bearbeiten`"
+              :aria-label="$t('catalog.editArticle', { name: a.name })"
               @click="goToCatalogItem(a.id, 'article')"
               @keydown.enter.prevent="goToCatalogItem(a.id, 'article')"
               @keydown.space.prevent="goToCatalogItem(a.id, 'article')"
@@ -86,15 +86,15 @@
       </div>
 
       <div v-if="result.services?.length" class="result-section">
-        <h2>Dienstleistungen ({{ result.services.length }})</h2>
-        <div class="table-scroll" role="region" aria-label="Suchergebnisse Dienstleistungen" tabindex="0">
+        <h2>{{ $t('search.services', { count: result.services.length }) }}</h2>
+        <div class="table-scroll" role="region" :aria-label="$t('search.resultsLabel', { kind: $t('catalog.services') })" tabindex="0">
         <table class="data-table">
           <thead>
             <tr>
-              <th>Name</th>
-              <th>Preis</th>
-              <th>Einheit</th>
-              <th>Beschreibung</th>
+              <th>{{ $t('common.columns.name') }}</th>
+              <th>{{ $t('catalog.columns.unitPrice') }}</th>
+              <th>{{ $t('catalog.columns.unit') }}</th>
+              <th>{{ $t('catalog.columns.description') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -103,7 +103,7 @@
               :key="'s-' + s.id"
               class="clickable-row"
               tabindex="0"
-              :aria-label="`Leistung ${s.name} bearbeiten`"
+              :aria-label="$t('catalog.editService', { name: s.name })"
               @click="goToCatalogItem(s.id, 'service')"
               @keydown.enter.prevent="goToCatalogItem(s.id, 'service')"
               @keydown.space.prevent="goToCatalogItem(s.id, 'service')"
@@ -119,17 +119,17 @@
       </div>
 
       <div v-if="result.invoices?.length" class="result-section">
-        <h2>Rechnungen ({{ result.invoices.length }})</h2>
-        <div class="table-scroll" role="region" aria-label="Suchergebnisse Rechnungen" tabindex="0">
+        <h2>{{ $t('search.invoices', { count: result.invoices.length }) }}</h2>
+        <div class="table-scroll" role="region" :aria-label="$t('search.resultsLabel', { kind: $t('search.kinds.invoices') })" tabindex="0">
         <table class="data-table">
           <thead>
             <tr>
-              <th>Nr.</th>
-              <th>Kunde</th>
-              <th>Datum</th>
-              <th>Fällig</th>
-              <th>Betrag</th>
-              <th>Status</th>
+              <th>{{ $t('dashboard.columns.number') }}</th>
+              <th>{{ $t('dashboard.columns.customer') }}</th>
+              <th>{{ $t('documents.columns.date') }}</th>
+              <th>{{ $t('dashboard.columns.due') }}</th>
+              <th>{{ $t('dashboard.columns.amount') }}</th>
+              <th>{{ $t('documents.columns.status') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -138,7 +138,7 @@
               :key="'inv-' + inv.id"
               class="clickable-row"
               tabindex="0"
-              :aria-label="`${inv.documentNumber || 'Rechnung'} ansehen`"
+              :aria-label="$t('dashboard.openInvoice', { number: inv.documentNumber || $t('dashboard.invoice') })"
               @click="goToInvoice(inv.id, 'invoice')"
               @keydown.enter.prevent="goToInvoice(inv.id, 'invoice')"
               @keydown.space.prevent="goToInvoice(inv.id, 'invoice')"
@@ -156,17 +156,17 @@
       </div>
 
       <div v-if="result.offers?.length" class="result-section">
-        <h2>Angebote ({{ result.offers.length }})</h2>
-        <div class="table-scroll" role="region" aria-label="Suchergebnisse Angebote" tabindex="0">
+        <h2>{{ $t('search.offers', { count: result.offers.length }) }}</h2>
+        <div class="table-scroll" role="region" :aria-label="$t('search.resultsLabel', { kind: $t('search.kinds.offers') })" tabindex="0">
         <table class="data-table">
           <thead>
             <tr>
-              <th>Nr.</th>
-              <th>Kunde</th>
-              <th>Datum</th>
-              <th>Gültig bis</th>
-              <th>Betrag</th>
-              <th>Status</th>
+              <th>{{ $t('dashboard.columns.number') }}</th>
+              <th>{{ $t('dashboard.columns.customer') }}</th>
+              <th>{{ $t('documents.columns.date') }}</th>
+              <th>{{ $t('documents.columns.validUntil') }}</th>
+              <th>{{ $t('dashboard.columns.amount') }}</th>
+              <th>{{ $t('documents.columns.status') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -175,7 +175,7 @@
               :key="'off-' + off.id"
               class="clickable-row"
               tabindex="0"
-              :aria-label="`${off.documentNumber || 'Angebot'} ansehen`"
+              :aria-label="$t('dashboard.openInvoice', { number: off.documentNumber || $t('search.offer') })"
               @click="goToInvoice(off.id, 'offer')"
               @keydown.enter.prevent="goToInvoice(off.id, 'offer')"
               @keydown.space.prevent="goToInvoice(off.id, 'offer')"
@@ -193,16 +193,16 @@
       </div>
 
       <div v-if="result.calculations?.length" class="result-section">
-        <h2>Kostenvoranschläge ({{ result.calculations.length }})</h2>
-        <div class="table-scroll" role="region" aria-label="Suchergebnisse Kostenvoranschläge" tabindex="0">
+        <h2>{{ $t('search.calculations', { count: result.calculations.length }) }}</h2>
+        <div class="table-scroll" role="region" :aria-label="$t('search.resultsLabel', { kind: $t('search.kinds.calculations') })" tabindex="0">
         <table class="data-table">
           <thead>
             <tr>
-              <th>Nr.</th>
-              <th>Kunde</th>
-              <th>Datum</th>
-              <th>Betrag</th>
-              <th>Status</th>
+              <th>{{ $t('dashboard.columns.number') }}</th>
+              <th>{{ $t('dashboard.columns.customer') }}</th>
+              <th>{{ $t('documents.columns.date') }}</th>
+              <th>{{ $t('dashboard.columns.amount') }}</th>
+              <th>{{ $t('documents.columns.status') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -211,7 +211,7 @@
               :key="'calc-' + calc.id"
               class="clickable-row"
               tabindex="0"
-              :aria-label="`${calc.documentNumber || 'Kostenvoranschlag'} ansehen`"
+              :aria-label="$t('dashboard.openInvoice', { number: calc.documentNumber || $t('search.calculation') })"
               @click="goToInvoice(calc.id, 'costCalculation')"
               @keydown.enter.prevent="goToInvoice(calc.id, 'costCalculation')"
               @keydown.space.prevent="goToInvoice(calc.id, 'costCalculation')"
@@ -229,7 +229,7 @@
     </div>
 
     <div v-if="!hasSearched && !loading" class="initial-state">
-      <p>Geben Sie einen Suchbegriff ein, um Kunden, Artikel, Dienstleistungen und Dokumente zu finden.</p>
+      <p>{{ $t('search.hint') }}</p>
     </div>
   </div>
 </template>
@@ -292,7 +292,7 @@ export default {
         this.result = response.data
         this.hasSearched = true
       } catch (err) {
-        this.error = 'Suche fehlgeschlagen: ' + err.message
+        this.error = this.$t('search.failed', { reason: err.message })
       } finally {
         this.loading = false
       }

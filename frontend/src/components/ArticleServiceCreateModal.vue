@@ -3,84 +3,84 @@
     <div class="modal-panel">
       <h2>{{ modalTitle }}</h2>
       <div v-if="!isEditMode" class="tabs">
-        <button :class="['tab', activeTab === 'article' ? 'active' : '']" @click="activeTab = 'article'">Artikel</button>
-        <button :class="['tab', activeTab === 'service' ? 'active' : '']" @click="activeTab = 'service'">Leistung</button>
+        <button :class="['tab', activeTab === 'article' ? 'active' : '']" @click="activeTab = 'article'">{{ $t('itemForm.article') }}</button>
+        <button :class="['tab', activeTab === 'service' ? 'active' : '']" @click="activeTab = 'service'">{{ $t('catalog.columns.service') }}</button>
       </div>
       <form @submit.prevent="submit">
         <template v-if="activeTab === 'article'">
           <div class="form-group">
-            <label>Name:</label>
+            <label>{{ $t('catalog.form.name') }}</label>
             <input v-model="articleForm.name" required />
           </div>
           <div class="form-group">
-            <label>Beschreibung:</label>
+            <label>{{ $t('itemForm.description') }}</label>
             <textarea v-model="articleForm.description"></textarea>
           </div>
           <div class="form-group">
-            <label>Einheit:</label>
-            <input v-model="articleForm.unit" placeholder="z.B. Stk, kg, m" />
+            <label>{{ $t('itemForm.unit') }}</label>
+            <input v-model="articleForm.unit" :placeholder="$t('itemForm.articleUnitPlaceholder')" />
           </div>
           <div class="form-group">
-            <label>Einkaufspreis:</label>
+            <label>{{ $t('itemForm.purchasePrice') }}</label>
             <input v-model="articleForm.purchasePrice" type="number" step="0.01" />
           </div>
           <div class="form-group">
-            <label>Verkaufspreis:</label>
+            <label>{{ $t('itemForm.salesPrice') }}</label>
             <input v-model="articleForm.salesPrice" type="number" step="0.01" required />
           </div>
           <div class="form-group">
-            <label>USt.-Satz (Standard für neue Positionen):</label>
+            <label>{{ $t('itemForm.taxRate') }}</label>
             <select v-model.number="articleForm.taxRate" data-testid="article-tax-rate">
               <option v-for="rate in VAT_RATES" :key="rate" :value="rate">{{ rate }} %</option>
             </select>
           </div>
           <div class="form-group">
-            <label>Notiz (intern, erscheint nicht auf Dokumenten):</label>
+            <label>{{ $t('itemForm.note') }}</label>
             <textarea v-model="articleForm.note" data-testid="article-note"></textarea>
           </div>
         </template>
         <template v-if="activeTab === 'service'">
           <div class="form-group">
-            <label>Name:</label>
+            <label>{{ $t('catalog.form.name') }}</label>
             <input v-model="serviceForm.name" required />
           </div>
           <div class="form-group">
-            <label>Beschreibung:</label>
+            <label>{{ $t('itemForm.description') }}</label>
             <textarea v-model="serviceForm.description"></textarea>
           </div>
           <div class="form-group">
-            <label>Stundensatz:</label>
+            <label>{{ $t('itemForm.hourlyRate') }}</label>
             <input v-model="serviceForm.hourlyRate" type="number" step="0.01" required />
           </div>
           <div class="form-group">
-            <label>Einheit:</label>
-            <input v-model="serviceForm.unit" placeholder="z.B. Std, h" />
+            <label>{{ $t('itemForm.unit') }}</label>
+            <input v-model="serviceForm.unit" :placeholder="$t('itemForm.serviceUnitPlaceholder')" />
           </div>
           <div class="form-group">
-            <label>USt.-Satz (Standard für neue Positionen):</label>
+            <label>{{ $t('itemForm.taxRate') }}</label>
             <select v-model.number="serviceForm.taxRate" data-testid="service-tax-rate">
               <option v-for="rate in VAT_RATES" :key="rate" :value="rate">{{ rate }} %</option>
             </select>
           </div>
           <div class="form-group">
-            <label>Verknüpfter Artikel:</label>
+            <label>{{ $t('itemForm.linkedArticle') }}</label>
             <select v-model="serviceForm.articleId">
-              <option value="">Kein Artikel</option>
+              <option value="">{{ $t('itemForm.noArticle') }}</option>
               <option v-for="a in articles" :key="a.id" :value="a.id">{{ a.name }}</option>
             </select>
           </div>
           <div class="form-group">
-            <label>Verknüpfte Ausstattung:</label>
+            <label>{{ $t('itemForm.linkedEquipment') }}</label>
             <select v-model="serviceForm.equipmentId">
-              <option :value="null">Keine Ausstattung</option>
+              <option :value="null">{{ $t('itemForm.noEquipment') }}</option>
               <option v-for="eq in equipmentList" :key="eq.id" :value="eq.id">{{ eq.name }}</option>
             </select>
           </div>
         </template>
         <div class="form-actions">
-          <button type="submit" class="btn btn-primary">Speichern</button>
-          <button v-if="isEditMode && showDeleteAction" type="button" class="btn btn-danger" @click="emit('delete', { id: item.id, itemType })">Löschen</button>
-          <button type="button" class="btn btn-secondary" @click="cancel">Abbrechen</button>
+          <button type="submit" class="btn btn-primary">{{ $t('common.save') }}</button>
+          <button v-if="isEditMode && showDeleteAction" type="button" class="btn btn-danger" @click="emit('delete', { id: item.id, itemType })">{{ $t('common.delete') }}</button>
+          <button type="button" class="btn btn-secondary" @click="cancel">{{ $t('common.cancel') }}</button>
         </div>
       </form>
     </div>
@@ -89,9 +89,12 @@
 
 <script setup>
 import { ref, watch, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import articleAPI from '../services/articleService.js'
 import equipmentAPI from '../services/equipmentService.js'
 import { VAT_RATES } from '../utils/vat.js'
+
+const { t } = useI18n()
 
 const props = defineProps({
   visible: Boolean,
@@ -117,9 +120,9 @@ const activeTab = ref('article')
 
 const modalTitle = computed(() => {
   if (isEditMode.value) {
-    return props.itemType === 'article' ? 'Artikel bearbeiten' : 'Leistung bearbeiten'
+    return props.itemType === 'article' ? t('itemForm.editArticle') : t('itemForm.editService')
   }
-  return 'Neuer Artikel / Leistung'
+  return t('itemForm.new')
 })
 
 const articleForm = ref({
@@ -214,7 +217,7 @@ async function submit() {
     cancel()
   } catch (error) {
     console.error('Failed to save:', error)
-    alert('Fehler beim Speichern')
+    alert(t('itemForm.saveFailed'))
   }
 }
 </script>

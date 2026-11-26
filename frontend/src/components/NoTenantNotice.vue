@@ -1,32 +1,34 @@
 <template>
   <section class="no-tenant" aria-labelledby="no-tenant-title">
-    <h1 id="no-tenant-title">Willkommen bei Billery</h1>
+    <h1 id="no-tenant-title">{{ $t('tour.intro.welcome.title') }}</h1>
     <p class="lead">
-      Sie sind angemeldet<span v-if="session.user"> als <strong>{{ session.user.email }}</strong></span>,
-      gehören aber noch zu keinem Unternehmen.
+      <template v-if="session.user">
+        {{ $t('noTenant.signedInAs') }} <strong>{{ session.user.email }}</strong>{{ $t('noTenant.noCompanyAfterName') }}
+      </template>
+      <template v-else>{{ $t('noTenant.noCompany') }}</template>
     </p>
 
     <div v-if="session.invitations.length" class="card panel" data-testid="invitations">
-      <h2>Einladungen</h2>
+      <h2>{{ $t('account.invitations') }}</h2>
       <ul>
         <li v-for="invitation in session.invitations" :key="invitation.id">
           <span><strong>{{ invitation.tenantName }}</strong> <span class="badge badge-neutral">{{ roleLabel(invitation.role) }}</span></span>
-          <button type="button" class="btn btn-primary btn-small" :disabled="busy" @click="accept(invitation)">Annehmen</button>
+          <button type="button" class="btn btn-primary btn-small" :disabled="busy" @click="accept(invitation)">{{ $t('account.accept') }}</button>
         </li>
       </ul>
     </div>
 
     <form class="card panel" data-testid="create-tenant" @submit.prevent="create">
-      <h2>Unternehmen anlegen</h2>
+      <h2>{{ $t('noTenant.create') }}</h2>
       <div class="form-group">
-        <label for="tenant-name">Name des Unternehmens</label>
+        <label for="tenant-name">{{ $t('noTenant.name') }}</label>
         <input id="tenant-name" v-model="name" class="form-control" type="text" maxlength="255" autocomplete="organization" />
       </div>
-      <button type="submit" class="btn btn-primary" :disabled="busy || !name.trim()">Anlegen</button>
+      <button type="submit" class="btn btn-primary" :disabled="busy || !name.trim()">{{ $t('noTenant.createButton') }}</button>
     </form>
 
     <p v-if="error" class="notice-error" role="alert">{{ error }}</p>
-    <button type="button" class="btn btn-secondary link" @click="signOut">Abmelden</button>
+    <button type="button" class="btn btn-secondary link" @click="signOut">{{ $t('account.signOut') }}</button>
   </section>
 </template>
 
@@ -55,7 +57,7 @@ export default {
       try {
         await action()
       } catch (error) {
-        this.error = error.message || 'Das ging leider schief.'
+        this.error = error.message || this.$t('common.failed')
         this.busy = false
       }
     },

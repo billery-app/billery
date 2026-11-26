@@ -1,24 +1,24 @@
 <template>
   <div class="owners">
     <router-link to="/settings" class="back-link" data-testid="settings-back">{{ $t('settings.back') }}</router-link>
-    <h1>Inhaber-Verwaltung</h1>
+    <h1>{{ $t('owners.title') }}</h1>
     <div class="filters">
-      <input v-model="searchQuery" type="text" placeholder="Suchen..." class="search-input" />
+      <input v-model="searchQuery" type="text" :placeholder="$t('common.search')" class="search-input" />
       <!-- One owner per company (the database refuses a second): offered only while there is none. -->
-      <button v-if="!loading && !owners.length" class="btn btn-primary" @click="openCreateModal">Neuer Inhaber</button>
+      <button v-if="!loading && !owners.length" class="btn btn-primary" @click="openCreateModal">{{ $t('owners.new') }}</button>
     </div>
-    <div v-if="loading" class="loading">Lade Inhaber...</div>
+    <div v-if="loading" class="loading">{{ $t('owners.loading') }}</div>
     <div v-if="error" class="error">{{ error }}</div>
-    <div v-if="filteredOwners.length" class="table-scroll" role="region" aria-label="Inhabertabelle" tabindex="0">
+    <div v-if="filteredOwners.length" class="table-scroll" role="region" :aria-label="$t('owners.tableLabel')" tabindex="0">
     <table class="data-table">
       <thead>
         <tr>
-          <th>ID</th>
-          <th>Name</th>
-          <th>Firma</th>
-          <th>Adresse</th>
-          <th>Telefon</th>
-          <th>Email</th>
+          <th>{{ $t('common.columns.id') }}</th>
+          <th>{{ $t('common.columns.name') }}</th>
+          <th>{{ $t('common.columns.company') }}</th>
+          <th>{{ $t('common.columns.address') }}</th>
+          <th>{{ $t('common.columns.phone') }}</th>
+          <th>{{ $t('common.columns.email') }}</th>
         </tr>
       </thead>
       <tbody>
@@ -27,7 +27,7 @@
           :key="owner.id"
           class="clickable-row"
           tabindex="0"
-          :aria-label="`Inhaber ${owner.firstName} ${owner.lastName} bearbeiten`"
+          :aria-label="$t('owners.edit', { name: `${owner.firstName} ${owner.lastName}` })"
           @click="editOwner(owner)"
           @keydown.enter.prevent="editOwner(owner)"
           @keydown.space.prevent="editOwner(owner)"
@@ -42,7 +42,7 @@
       </tbody>
     </table>
     </div>
-    <p v-else-if="!loading" class="no-data">Keine Inhaber vorhanden.</p>
+    <p v-else-if="!loading" class="no-data">{{ $t('owners.empty') }}</p>
     <OwnerModal
       v-model:visible="showModal"
       :owner="editingOwner"
@@ -96,7 +96,7 @@ export default {
         const response = await ownerAPI.getOwners()
         this.owners = response.data
       } catch (err) {
-        this.error = 'Fehler beim Laden: ' + err.message
+        this.error = this.$t('common.loadFailed', { reason: err.message })
       } finally {
         this.loading = false
       }
@@ -119,14 +119,14 @@ export default {
       this.loadOwners()
     },
     async deleteOwner(id) {
-      if (!confirm('Wirklich löschen?')) return
+      if (!confirm(this.$t('common.confirmDelete'))) return
       try {
         await ownerAPI.deleteOwner(id)
         this.showModal = false
         this.editingOwner = null
         this.loadOwners()
       } catch (err) {
-        this.error = 'Fehler beim Löschen: ' + err.message
+        this.error = this.$t('common.deleteFailed', { reason: err.message })
       }
     }
   }

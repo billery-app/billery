@@ -2,23 +2,21 @@
   <section class="settings-section" data-testid="gobd-export">
     <div class="card export-panel">
       <p class="export-description">
-        Alle ausgestellten Rechnungen und Stornorechnungen eines Zeitraums mit Positionen,
-        Zahlungen und Änderungsprotokoll als ZIP – für die Betriebsprüfung (§ 147 Abs. 6 AO)
-        oder die Steuerberatung. Enthält CSV-Dateien mit Beschreibung (index.xml).
+        {{ $t('gobd.description') }}
       </p>
       <div class="export-row">
-        <label>Von <input v-model="exportFrom" type="date" data-testid="export-from" /></label>
-        <label>Bis <input v-model="exportTo" type="date" data-testid="export-to" /></label>
+        <label>{{ $t('gobd.from') }} <input v-model="exportFrom" type="date" data-testid="export-from" /></label>
+        <label>{{ $t('gobd.to') }} <input v-model="exportTo" type="date" data-testid="export-to" /></label>
         <label class="export-check">
           <input v-model="exportDocuments" type="checkbox" />
-          PDFs und E-Rechnungen beilegen
+          {{ $t('gobd.withFiles') }}
         </label>
         <button
           class="btn btn-primary"
           :disabled="exporting || !exportFrom || !exportTo"
           data-testid="export-button"
           @click="runExport"
-        >{{ exporting ? 'Exportiere…' : 'Export herunterladen' }}</button>
+        >{{ exporting ? $t('gobd.exporting') : $t('gobd.download') }}</button>
       </div>
       <p v-if="exportError" class="export-error">{{ exportError }}</p>
     </div>
@@ -49,7 +47,7 @@ export default {
     /** Downloads the GoBD export ZIP for the chosen period. */
     async runExport() {
       if (this.exportFrom > this.exportTo) {
-        this.exportError = 'Das Startdatum liegt nach dem Enddatum.'
+        this.exportError = this.$t('gobd.datesReversed')
         return
       }
       this.exporting = true
@@ -59,7 +57,7 @@ export default {
         const zip = new Blob([response.data], { type: 'application/zip' })
         // The server streams the archive; one that broke off on the way is not the export.
         if (!(await isCompleteZip(zip))) {
-          this.exportError = 'Der Export ist unvollständig angekommen (Verbindungsabbruch oder Export zu groß). Bitte erneut versuchen, den Zeitraum verkleinern oder ohne Belegdateien exportieren.'
+          this.exportError = this.$t('gobd.incomplete')
           return
         }
         const url = window.URL.createObjectURL(zip)
@@ -71,7 +69,7 @@ export default {
         document.body.removeChild(a)
         window.URL.revokeObjectURL(url)
       } catch (err) {
-        this.exportError = 'Export fehlgeschlagen: ' + err.message
+        this.exportError = this.$t('gobd.failed', { reason: err.message })
       } finally {
         this.exporting = false
       }

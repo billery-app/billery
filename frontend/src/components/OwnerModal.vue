@@ -1,83 +1,83 @@
 <template>
   <div v-if="visible" class="modal-backdrop" @click.self="cancel">
     <div class="modal-panel modal-panel-lg">
-      <h2>{{ isEditMode ? 'Inhaber bearbeiten' : 'Neuer Inhaber' }}</h2>
+      <h2>{{ isEditMode ? $t('ownerForm.edit') : $t('owners.new') }}</h2>
       <form @submit.prevent="submit">
         <div class="form-row">
           <div class="form-group">
-            <label for="owner-firstName">Vorname:</label>
+            <label for="owner-firstName">{{ $t('form.firstName') }}</label>
             <input id="owner-firstName" v-model="form.firstName" name="firstName" autocomplete="given-name" required />
           </div>
           <div class="form-group">
-            <label for="owner-lastName">Nachname:</label>
+            <label for="owner-lastName">{{ $t('form.lastName') }}</label>
             <input id="owner-lastName" v-model="form.lastName" name="lastName" autocomplete="family-name" required />
           </div>
         </div>
         <div class="form-row">
           <div class="form-group">
-            <label for="owner-companyName">Firmenname:</label>
+            <label for="owner-companyName">{{ $t('ownerForm.companyName') }}</label>
             <input id="owner-companyName" v-model="form.companyName" name="companyName" autocomplete="organization" />
           </div>
           <div class="form-group">
-            <label for="owner-companyType">Firmenart (z.B. GmbH):</label>
+            <label for="owner-companyType">{{ $t('ownerForm.companyType') }}</label>
             <input id="owner-companyType" v-model="form.companyType" name="companyType" autocomplete="off" />
           </div>
         </div>
         <div class="form-row">
           <div class="form-group">
-            <label for="owner-street">Straße:</label>
+            <label for="owner-street">{{ $t('form.street') }}</label>
             <input id="owner-street" v-model="form.street" name="street" autocomplete="address-line1" @change="splitStreetAndNumber(form)" />
           </div>
           <div class="form-group small">
-            <label for="owner-houseNumber">Hausnr.:</label>
+            <label for="owner-houseNumber">{{ $t('form.houseNumber') }}</label>
             <input id="owner-houseNumber" v-model="form.houseNumber" name="houseNumber" autocomplete="off" inputmode="numeric" type="number" />
           </div>
         </div>
         <div class="form-row">
           <div class="form-group small">
-            <label for="owner-postalCode">PLZ:</label>
+            <label for="owner-postalCode">{{ $t('form.postalCode') }}</label>
             <input id="owner-postalCode" v-model="form.postalCode" name="postalCode" autocomplete="postal-code" inputmode="numeric" />
           </div>
           <div class="form-group">
-            <label for="owner-city">Ort:</label>
+            <label for="owner-city">{{ $t('form.city') }}</label>
             <input id="owner-city" v-model="form.city" name="city" autocomplete="address-level2" />
           </div>
         </div>
         <div class="form-row">
           <div class="form-group">
-            <label for="owner-phone">Telefon:</label>
+            <label for="owner-phone">{{ $t('customerDetail.phone') }}</label>
             <input id="owner-phone" v-model="form.phone" name="phone" autocomplete="tel" type="tel" />
           </div>
           <div class="form-group">
-            <label for="owner-email">Email:</label>
+            <label for="owner-email">{{ $t('customerDetail.email') }}</label>
             <input id="owner-email" v-model="form.email" name="email" autocomplete="email" type="email" />
           </div>
         </div>
         <div class="form-row">
           <div class="form-group">
-            <label for="owner-url">Website:</label>
+            <label for="owner-url">{{ $t('ownerForm.website') }}</label>
             <input id="owner-url" v-model="form.url" name="url" autocomplete="url" inputmode="url" />
           </div>
           <div class="form-group">
-            <label for="owner-taxId">Steuer-ID:</label>
+            <label for="owner-taxId">{{ $t('ownerForm.taxId') }}</label>
             <input id="owner-taxId" v-model="form.taxId" name="taxId" autocomplete="off" />
           </div>
         </div>
         <div class="form-group">
-          <label for="owner-iban">IBAN:</label>
+          <label for="owner-iban">{{ $t('ownerForm.iban') }}</label>
           <input id="owner-iban" v-model="form.iban" name="iban" autocomplete="off" />
         </div>
         <div class="form-group toggle-group">
           <label class="toggle-label">
             <input v-model="form.isSmallBusiness" type="checkbox" />
             <span class="toggle-switch"></span>
-            Kleinunternehmer gemäß § 19 UStG (keine Umsatzsteuer)
+            {{ $t('ownerForm.smallBusiness') }}
           </label>
         </div>
         <div class="form-actions">
-          <button type="submit" class="btn btn-primary">Speichern</button>
-          <button v-if="isEditMode && showDeleteAction" type="button" class="btn btn-danger" @click="emit('delete', owner.id)">Löschen</button>
-          <button type="button" class="btn btn-secondary" @click="cancel">Abbrechen</button>
+          <button type="submit" class="btn btn-primary">{{ $t('common.save') }}</button>
+          <button v-if="isEditMode && showDeleteAction" type="button" class="btn btn-danger" @click="emit('delete', owner.id)">{{ $t('common.delete') }}</button>
+          <button type="button" class="btn btn-secondary" @click="cancel">{{ $t('common.cancel') }}</button>
         </div>
       </form>
     </div>
@@ -87,7 +87,10 @@
 <script setup>
 import { splitStreetAndNumber } from '../utils/addressFields.js'
 import { ref, watch, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import ownerAPI from '../services/ownerService.js'
+
+const { t } = useI18n()
 
 const props = defineProps({
   visible: Boolean,
@@ -163,7 +166,7 @@ async function submit() {
   } catch (error) {
     console.error('Failed to save owner:', error)
     const reason = error.response?.data?.message
-    alert(reason ? `Fehler beim Speichern des Inhabers: ${reason}` : 'Fehler beim Speichern des Inhabers')
+    alert(reason ? t('ownerForm.saveFailedReason', { reason }) : t('ownerForm.saveFailed'))
   }
 }
 </script>

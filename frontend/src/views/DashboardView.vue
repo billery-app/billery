@@ -1,6 +1,6 @@
 <template>
   <div class="dashboard">
-    <h1 class="dashboard-title nav-destination-page-title">Dashboard</h1>
+    <h1 class="dashboard-title nav-destination-page-title">{{ $t('dashboard.title') }}</h1>
     
     <!-- Quick Stats Cards -->
     <div class="stats-grid">
@@ -8,7 +8,7 @@
         <div class="stat-icon">📄</div>
         <div class="stat-content">
           <div class="stat-value">{{ periodStats.totalInvoices }}</div>
-          <div class="stat-label">Gesamt Rechnungen</div>
+          <div class="stat-label">{{ $t('dashboard.cards.total') }}</div>
         </div>
       </div>
       
@@ -16,7 +16,7 @@
         <div class="stat-icon">✅</div>
         <div class="stat-content">
           <div class="stat-value">{{ periodStats.paidInvoices }}</div>
-          <div class="stat-label">Bezahlte Rechnungen</div>
+          <div class="stat-label">{{ $t('dashboard.cards.paid') }}</div>
         </div>
       </div>
       
@@ -24,7 +24,7 @@
         <div class="stat-icon">⚠️</div>
         <div class="stat-content">
           <div class="stat-value">{{ periodStats.unpaidInvoices }}</div>
-          <div class="stat-label">Unbezahlte Rechnungen</div>
+          <div class="stat-label">{{ $t('dashboard.cards.unpaid') }}</div>
         </div>
       </div>
       
@@ -45,13 +45,13 @@
           :class="{ active: selectedPeriod === 'custom' }"
           @click="selectPeriod('custom')"
         >
-          Benutzerdefiniert
+          {{ $t('dashboard.periods.custom') }}
         </button>
       </div>
       <div v-if="selectedPeriod === 'custom'" class="custom-date-inputs">
-        <label>Von:</label>
+        <label>{{ $t('dashboard.from') }}</label>
         <input v-model="customStartDate" type="date" @change="updateCustomPeriod" />
-        <label>Bis:</label>
+        <label>{{ $t('dashboard.to') }}</label>
         <input v-model="customEndDate" type="date" @change="updateCustomPeriod" />
       </div>
     </div>
@@ -67,16 +67,16 @@
         <div class="widget-content">
           <div v-if="loadError" class="load-error" data-testid="load-error">{{ loadError }}</div>
           <div v-if="filteredInvoices.length === 0" class="empty-state">
-            Keine Rechnungen vorhanden.
+            {{ $t('dashboard.empty') }}
           </div>
-          <div v-else class="table-scroll table-scroll--compact" role="region" aria-label="Aktuelle Rechnungstabelle" tabindex="0">
+          <div v-else class="table-scroll table-scroll--compact" role="region" :aria-label="$t('dashboard.tableLabel')" tabindex="0">
           <table class="data-table">
             <thead>
               <tr>
-                <th>Nr.</th>
-                <th>Kunde</th>
-                <th>Fällig</th>
-                <th class="numeric">Betrag</th>
+                <th>{{ $t('dashboard.columns.number') }}</th>
+                <th>{{ $t('dashboard.columns.customer') }}</th>
+                <th>{{ $t('dashboard.columns.due') }}</th>
+                <th class="numeric">{{ $t('dashboard.columns.amount') }}</th>
               </tr>
             </thead>
             <tbody>
@@ -85,7 +85,7 @@
                 :key="invoice.id"
                 :class="[{ 'overdue-row': isInvoiceOverdue(invoice) }, 'clickable-row']"
                 tabindex="0"
-                :aria-label="`${invoice.invoiceNumber || 'Rechnung'} ansehen`"
+                :aria-label="$t('dashboard.openInvoice', { number: invoice.invoiceNumber || $t('dashboard.invoice') })"
                 @click="openInvoice(invoice.id)"
                 @keydown.enter.prevent="openInvoice(invoice.id)"
                 @keydown.space.prevent="openInvoice(invoice.id)"
@@ -99,41 +99,41 @@
           </table>
           </div>
           <div v-if="listTotal > filteredInvoices.length" class="widget-footer">
-            <router-link :to="invoicesLink">Alle anzeigen →</router-link>
+            <router-link :to="invoicesLink">{{ $t('dashboard.showAll') }}</router-link>
           </div>
         </div>
         <div class="widget-summary">
           <span></span> <!-- Placeholder -->
-          <span class="summary-amount">Summe: {{ formatCurrency(filteredTotal) }}</span>
+          <span class="summary-amount">{{ $t('dashboard.sum', { amount: formatCurrency(filteredTotal) }) }}</span>
         </div>
       </div>
       
       <!-- Quick Actions Widget -->
       <div class="widget">
         <div class="widget-header">
-          <h2>Schnellzugriff</h2>
+          <h2>{{ $t('dashboard.quick.title') }}</h2>
         </div>
         <div class="widget-content">
           <div class="quick-actions">
             <div class="action-btn" @click="createInvoice">
               <span class="action-icon">📝</span>
-              <span>Neue Rechnung</span>
+              <span>{{ $t('dashboard.quick.invoice') }}</span>
             </div>
             <div class="action-btn" @click="createOffer">
               <span class="action-icon">💼</span>
-              <span>Neues Angebot</span>
+              <span>{{ $t('dashboard.quick.offer') }}</span>
             </div>
             <div class="action-btn" @click="createCostCalculation">
               <span class="action-icon">📊</span>
-              <span>Neuer Kostenvoranschlag</span>
+              <span>{{ $t('dashboard.quick.costCalculation') }}</span>
             </div>
             <div class="action-btn" @click="showCreateCustomer = true">
               <span class="action-icon">👤</span>
-              <span>Neuer Kunde</span>
+              <span>{{ $t('dashboard.quick.customer') }}</span>
             </div>
             <div class="action-btn" @click="showCreateArticleService = true">
               <span class="action-icon">📦</span>
-              <span>Artikel & Leistungen</span>
+              <span>{{ $t('dashboard.quick.catalog') }}</span>
             </div>
           </div>
         </div>
@@ -143,54 +143,54 @@
     <!-- Period Statistics -->
     <div class="widget full-width">
       <div class="widget-header">
-        <h2>Statistiken für ausgewählten Zeitraum</h2>
+        <h2>{{ $t('dashboard.stats.title') }}</h2>
       </div>
       <div class="widget-content">
         <div class="statistics-grid">
           <div class="stat-section">
-            <h3>Übersicht</h3>
+            <h3>{{ $t('dashboard.stats.overview') }}</h3>
             <div class="stat-row">
-              <span>Gesamt Rechnungen:</span>
+              <span>{{ $t('dashboard.stats.totalInvoices') }}</span>
               <strong>{{ periodStats.totalInvoices }}</strong>
             </div>
             <div class="stat-row">
-              <span>Bezahlte Rechnungen:</span>
+              <span>{{ $t('dashboard.stats.paidInvoices') }}</span>
               <strong>{{ periodStats.paidInvoices }}</strong>
             </div>
             <div class="stat-row">
-              <span>Unbezahlte Rechnungen:</span>
+              <span>{{ $t('dashboard.stats.unpaidInvoices') }}</span>
               <strong>{{ periodStats.unpaidInvoices }}</strong>
             </div>
           </div>
           
           <div class="stat-section">
-            <h3>Umsatz</h3>
+            <h3>{{ $t('dashboard.stats.revenue') }}</h3>
             <div class="stat-row">
-              <span>Gesamt Umsatz:</span>
+              <span>{{ $t('dashboard.stats.totalRevenue') }}</span>
               <strong>{{ formatCurrency(periodStats.totalRevenue) }}</strong>
             </div>
             <div class="stat-row">
-              <span>Bezahlter Umsatz:</span>
+              <span>{{ $t('dashboard.stats.paidRevenue') }}</span>
               <strong>{{ formatCurrency(periodStats.paidRevenue) }}</strong>
             </div>
             <div class="stat-row">
-              <span>Unbezahlter Umsatz:</span>
+              <span>{{ $t('dashboard.stats.unpaidRevenue') }}</span>
               <strong class="warning">{{ formatCurrency(periodStats.unpaidRevenue) }}</strong>
             </div>
           </div>
           
           <div class="stat-section">
-            <h3>Steuern</h3>
+            <h3>{{ $t('dashboard.stats.tax') }}</h3>
             <div class="stat-row">
-              <span>Gesamt Steuer:</span>
+              <span>{{ $t('dashboard.stats.totalTax') }}</span>
               <strong>{{ formatCurrency(periodStats.totalTax) }}</strong>
             </div>
             <div class="stat-row">
-              <span>Bezahlte Steuer:</span>
+              <span>{{ $t('dashboard.stats.paidTax') }}</span>
               <strong>{{ formatCurrency(periodStats.paidTax) }}</strong>
             </div>
             <div class="stat-row">
-              <span>Unbezahlte Steuer:</span>
+              <span>{{ $t('dashboard.stats.unpaidTax') }}</span>
               <strong class="warning">{{ formatCurrency(periodStats.unpaidTax) }}</strong>
             </div>
           </div>
@@ -227,6 +227,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import articleAPI from '../services/articleService.js'
 import invoiceAPI from '../services/invoiceService.js'
 import CustomerCreateModal from '../components/CustomerCreateModal.vue'
@@ -280,13 +281,14 @@ function onArticleServiceCreated() {
   // Article/service created, no need to reload dashboard
 }
 
-const periods = [
-  { value: 'currentMonth', label: 'Aktueller Monat' },
-  { value: 'lastMonth', label: 'Letzter Monat' },
-  { value: 'currentYear', label: 'Aktuelles Jahr' },
-  { value: 'lastYear', label: 'Letztes Jahr' },
-  { value: 'last12Months', label: 'Letzte 12 Monate' }
-]
+const { t } = useI18n()
+
+const periods = computed(() =>
+  ['currentMonth', 'lastMonth', 'currentYear', 'lastYear', 'last12Months'].map(value => ({
+    value,
+    label: t(`dashboard.periods.${value}`)
+  }))
+)
 
 const dateRange = computed(() => {
   const now = new Date()
@@ -346,7 +348,7 @@ const filteredTotal = computed(() => {
 })
 
 const tableTitle = computed(() => {
-  return 'Gesendete Rechnungen'
+  return t('dashboard.sentInvoices')
 })
 
 const invoicesLink = computed(() => {
@@ -466,7 +468,7 @@ async function loadStatistics() {
     const response = await invoiceAPI.getStatistics(from, to)
     if (request === statisticsRequest) stats.value = response.data
   } catch (error) {
-    if (request === statisticsRequest) loadError.value = 'Statistik konnte nicht geladen werden: ' + error.message
+    if (request === statisticsRequest) loadError.value = t('dashboard.statsFailed', { reason: error.message })
   }
 }
 
@@ -487,7 +489,7 @@ async function loadList() {
     })
     if (request === listRequest) listPage.value = response.data
   } catch (error) {
-    if (request === listRequest) loadError.value = 'Rechnungen konnten nicht geladen werden: ' + error.message
+    if (request === listRequest) loadError.value = t('dashboard.listFailed', { reason: error.message })
   }
 }
 

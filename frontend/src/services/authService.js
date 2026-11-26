@@ -110,6 +110,7 @@ export async function initAuth({ http = axios } = {}) {
   session.mode = config.mode === 'saas' ? 'saas' : 'selfhost'
   session.desktop = config.desktop === true
   session.demo = config.demo === true
+  session.version = typeof config.version === 'string' ? config.version : ''
   if (!isSaas()) {
     session.status = 'ready'
     return session

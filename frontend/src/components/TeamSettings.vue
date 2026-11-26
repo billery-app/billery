@@ -5,11 +5,11 @@
       <p v-if="error" class="notice notice-error" role="alert">{{ error }}</p>
       <p v-if="notice" class="notice" :class="notice.ok ? 'notice-success' : 'notice-warning'" role="status">{{ notice.text }}</p>
 
-      <h3 class="team-heading">Mitglieder</h3>
+      <h3 class="team-heading">{{ $t('team.members') }}</h3>
       <div class="table-scroll">
-        <table class="data-table" aria-label="Mitglieder">
+        <table class="data-table" :aria-label="$t('team.members')">
           <thead>
-            <tr><th>E-Mail</th><th>Name</th><th>Rolle</th><th class="actions"><span class="visually-hidden">Aktionen</span></th></tr>
+            <tr><th>{{ $t('common.columns.email') }}</th><th>{{ $t('common.columns.name') }}</th><th>{{ $t('team.role') }}</th><th class="actions"><span class="visually-hidden">{{ $t('team.actions') }}</span></th></tr>
           </thead>
           <tbody>
             <tr v-for="member in members" :key="member.userId" :data-testid="`member-${member.email}`">
@@ -20,7 +20,7 @@
                   v-if="canManage(member.role)"
                   class="form-control"
                   :value="member.role"
-                  :aria-label="`Rolle von ${member.email}`"
+                  :aria-label="$t('team.roleOf', { email: member.email })"
                   @change="changeRole(member, inputValue($event))"
                 >
                   <option v-for="choice in roles" :key="choice" :value="choice">{{ roleLabel(choice) }}</option>
@@ -28,49 +28,48 @@
                 <span v-else class="badge badge-neutral">{{ roleLabel(member.role) }}</span>
               </td>
               <td class="actions">
-                <button v-if="isSelf(member)" type="button" class="btn btn-secondary btn-small" @click="remove(member)">Verlassen</button>
-                <button v-else-if="canManage(member.role)" type="button" class="btn btn-outline btn-small" @click="remove(member)">Entfernen</button>
+                <button v-if="isSelf(member)" type="button" class="btn btn-secondary btn-small" @click="remove(member)">{{ $t('team.leave') }}</button>
+                <button v-else-if="canManage(member.role)" type="button" class="btn btn-outline btn-small" @click="remove(member)">{{ $t('team.remove') }}</button>
               </td>
             </tr>
           </tbody>
         </table>
       </div>
 
-      <h3 class="team-heading">Einladungen</h3>
+      <h3 class="team-heading">{{ $t('account.invitations') }}</h3>
       <ul v-if="invitations.length" class="invitations">
         <li v-for="invitation in invitations" :key="invitation.id">
           <span class="invitation-text">
             <strong>{{ invitation.email }}</strong>
             <span class="badge badge-neutral">{{ roleLabel(invitation.role) }}</span>
-            <span class="muted">gültig bis {{ formatDate(invitation.expiresAt) }}</span>
+            <span class="muted">{{ $t('team.validUntil', { date: formatDate(invitation.expiresAt) }) }}</span>
           </span>
-          <button v-if="canManage(invitation.role)" type="button" class="btn btn-outline btn-small" @click="revoke(invitation)">Zurückziehen</button>
+          <button v-if="canManage(invitation.role)" type="button" class="btn btn-outline btn-small" @click="revoke(invitation)">{{ $t('team.revoke') }}</button>
         </li>
       </ul>
-      <p v-else class="muted">Keine offenen Einladungen.</p>
+      <p v-else class="muted">{{ $t('team.noInvitations') }}</p>
 
       <form class="invite" data-testid="invite-form" @submit.prevent="invite">
         <div class="form-group invite-email">
-          <label for="invite-email">E-Mail-Adresse</label>
-          <input id="invite-email" v-model="email" class="form-control" type="email" autocomplete="off" placeholder="name@firma.de" />
+          <label for="invite-email">{{ $t('team.email') }}</label>
+          <input id="invite-email" v-model="email" class="form-control" type="email" autocomplete="off" :placeholder="$t('team.emailPlaceholder')" />
         </div>
         <div class="form-group invite-role">
-          <label for="invite-role">Rolle</label>
-          <select id="invite-role" v-model="role" class="form-control" aria-label="Rolle der Einladung">
+          <label for="invite-role">{{ $t('team.role') }}</label>
+          <select id="invite-role" v-model="role" class="form-control" :aria-label="$t('team.invitationRole')">
             <option v-for="option in roles" :key="option" :value="option">{{ roleLabel(option) }}</option>
           </select>
         </div>
         <button type="submit" class="btn btn-primary" :disabled="!email.trim() || inviting">
-          {{ inviting ? 'Lade ein…' : 'Einladen' }}
+          {{ inviting ? $t('team.inviting') : $t('team.invite') }}
         </button>
       </form>
       <p class="muted">
-        Die Person bekommt eine E-Mail, wenn der Mailversand eingerichtet ist. Sie meldet sich mit genau
-        dieser Adresse an und nimmt die Einladung danach an.
+        {{ $t('team.inviteHint') }}
       </p>
 
-      <h3 class="team-heading">Protokoll</h3>
-      <ol v-if="auditLog.length" class="audit-log" aria-label="Protokoll" data-testid="audit-log">
+      <h3 class="team-heading">{{ $t('team.log') }}</h3>
+      <ol v-if="auditLog.length" class="audit-log" :aria-label="$t('team.log')" data-testid="audit-log">
         <li v-for="entry in auditLog" :key="entry.id" class="audit-entry">
           <time class="muted" :datetime="entry.occurredAt">{{ formatDateTime(entry.occurredAt) }}</time>
           <span class="audit-action">{{ auditLabel(entry.action) }}</span>
@@ -78,16 +77,15 @@
           <span v-if="entry.actor" class="muted audit-actor">{{ entry.actor }}</span>
         </li>
       </ol>
-      <p v-else class="muted">Noch keine Einträge.</p>
+      <p v-else class="muted">{{ $t('team.noEntries') }}</p>
     </div>
 
     <div v-if="activeRole === 'OWNER'" class="card danger-zone">
-      <h3 class="team-heading">Unternehmen schließen</h3>
+      <h3 class="team-heading">{{ $t('team.close') }}</h3>
       <p class="muted">
-        Alle Daten bleiben erhalten, das Unternehmen ist danach aber schreibgeschützt (Export bleibt
-        möglich). Das Wiedereröffnen ist nur durch den Betreiber möglich.
+        {{ $t('team.closeHint') }}
       </p>
-      <button type="button" class="btn btn-danger danger-button" @click="close">Unternehmen schließen</button>
+      <button type="button" class="btn btn-danger danger-button" @click="close">{{ $t('team.close') }}</button>
     </div>
   </section>
 </template>
@@ -98,20 +96,12 @@ import { activeRole, session } from '../services/session.js'
 import teamService from '../services/teamService.js'
 import { manageableRoles, roleLabel } from '../utils/roles.js'
 
-/** German names of the actions of the administration log (`TenantAuditLog`). */
-const AUDIT_LABELS = {
-  TENANT_CREATED: 'Unternehmen angelegt',
-  TENANT_CLOSED: 'Unternehmen geschlossen',
-  MEMBER_INVITED: 'Eingeladen',
-  INVITATION_REVOKED: 'Einladung zurückgezogen',
-  INVITATION_ACCEPTED: 'Einladung angenommen',
-  ROLE_CHANGED: 'Rolle geändert',
-  MEMBER_REMOVED: 'Mitglied entfernt',
-  MEMBER_LEFT: 'Unternehmen verlassen',
-  GOBD_EXPORT_REQUESTED: 'GoBD-Export angefordert',
-  GOBD_EXPORT_REFUSED: 'GoBD-Export abgelehnt',
-  GOBD_EXPORTED: 'GoBD-Export'
-}
+/** The actions of the administration log (`TenantAuditLog`); their names are in the message files. */
+const AUDIT_ACTIONS = [
+  'TENANT_CREATED', 'TENANT_CLOSED', 'MEMBER_INVITED', 'INVITATION_REVOKED', 'INVITATION_ACCEPTED',
+  'ROLE_CHANGED', 'MEMBER_REMOVED', 'MEMBER_LEFT', 'GOBD_EXPORT_REQUESTED', 'GOBD_EXPORT_REFUSED',
+  'GOBD_EXPORTED'
+]
 
 export default {
   name: 'TeamSettings',
@@ -149,7 +139,7 @@ export default {
      * @returns {string} - the label
      */
     auditLabel(action) {
-      return AUDIT_LABELS[action] || 'Sonstige Änderung'
+      return AUDIT_ACTIONS.includes(action) ? this.$t(`team.audit.${action}`) : this.$t('team.audit.other')
     },
     /**
      * The details as stored, with role keys shown by their German names.
@@ -180,7 +170,7 @@ export default {
     async remove(member) {
       this.error = null
       const self = this.isSelf(member)
-      if (!window.confirm(self ? 'Dieses Unternehmen wirklich verlassen?' : `${member.email} wirklich entfernen?`)) return
+      if (!window.confirm(self ? this.$t('team.confirmLeave') : this.$t('team.confirmRemove', { email: member.email }))) return
       const done = await this.attempt(() => teamService.removeMember(member.userId))
       if (done && self) {
         window.location.reload()
@@ -212,7 +202,7 @@ export default {
     },
     async close() {
       this.error = null
-      if (!window.confirm('Das Unternehmen wirklich schließen? Danach sind keine Änderungen mehr möglich.')) return
+      if (!window.confirm(this.$t('team.confirmClose'))) return
       const done = await this.attempt(() => teamService.closeTenant())
       if (done) window.location.reload()
     },
@@ -225,14 +215,12 @@ export default {
      */
     inviteNotice(address, result) {
       if (result.mailSent) {
-        return { ok: true, text: `Einladung an ${address} verschickt.` }
+        return { ok: true, text: this.$t('team.invited', { address }) }
       }
       const reason = result.mailProblem ? ` (${result.mailProblem.replace(/\.$/, '')})` : ''
       return {
         ok: false,
-        text: `Einladung für ${address} angelegt, aber keine E-Mail verschickt${reason}. `
-          + `Bitte die Person selbst informieren: Anmeldung unter ${window.location.origin}`
-          + ' mit genau dieser Adresse.'
+        text: this.$t('team.invitedWithoutMail', { address, reason, origin: window.location.origin })
       }
     },
 
@@ -245,7 +233,7 @@ export default {
         await action()
         return true
       } catch (error) {
-        this.error = error.message || 'Das ging leider schief.'
+        this.error = error.message || this.$t('common.failed')
         return false
       }
     }
