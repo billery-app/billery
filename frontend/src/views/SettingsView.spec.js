@@ -143,4 +143,13 @@ describe('SettingsView in SaaS mode', () => {
     saasAs('OWNER')
     expect(cardIds(mountWithRouter())).not.toContain('backup')
   })
+
+  it('shows the version of the backend, the reference for support and updates', async () => {
+    session.version = '0.2.0'
+    const wrapper = mountWithRouter()
+    expect(wrapper.get('[data-testid="app-version"]').text()).toBe('Billery-Version 0.2.0')
+    session.version = ''
+    await wrapper.vm.$nextTick()
+    expect(wrapper.find('[data-testid="app-version"]').exists()).toBe(false)
+  })
 })

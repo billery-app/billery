@@ -68,7 +68,8 @@
         "title": "Help",
         "description": "Start and repeat the introductory tour"
       }
-    }
+    },
+    "version": "Billery version {version}"
   },
   "language": {
     "heading": "Language of the user interface",

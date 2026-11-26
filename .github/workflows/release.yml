@@ -87,9 +87,11 @@ jobs:
             --label "org.opencontainers.image.revision=$GITHUB_SHA"
             --label "org.opencontainers.image.version=$TAG"
           )
-          docker build -f backend/Dockerfile -t "billery:$TAG" "${labels[@]}" .
+          # the version the application reports (/api/config, Einstellungen): the tag without "v"
+          version=(--build-arg "APP_VERSION=${TAG#v}")
+          docker build -f backend/Dockerfile -t "billery:$TAG" "${labels[@]}" "${version[@]}" .
           docker build -f backend/Dockerfile -t "billery-saas:$TAG" \
-            --build-arg MAVEN_PROFILES=saas --build-arg SPRING_PROFILE=saas "${labels[@]}" .
+            --build-arg MAVEN_PROFILES=saas --build-arg SPRING_PROFILE=saas "${labels[@]}" "${version[@]}" .
 
       - name: Check the image variants
         run: |

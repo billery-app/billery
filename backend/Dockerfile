@@ -65,6 +65,11 @@ WORKDIR /app
 # Copy the built JAR from builder stage
 COPY --from=builder /app/target/*.jar app.jar
 
+# The released version (release.yml: the tag without "v"); shown under Einstellungen and the base
+# of a later update check. Any other build says "dev".
+ARG APP_VERSION=dev
+ENV BILLERY_APP_VERSION=${APP_VERSION}
+
 RUN addgroup -S -g 1001 app && adduser -S -u 1001 -G app app \
     && mkdir -p /app/uploads /app/logs && chown app:app /app/uploads /app/logs
 # Numeric UID/GID so the user resolves on any host (hadolint DL3066)

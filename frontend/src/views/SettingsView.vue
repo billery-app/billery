@@ -46,11 +46,13 @@
         </template>
       </div>
     </section>
+    <p v-if="version" class="app-version" data-testid="app-version">{{ $t('settings.version', { version }) }}</p>
   </div>
 </template>
 
 <script>
 import { visibleGroups } from '../utils/settingsAreas.js'
+import { session } from '../services/session.js'
 
 /**
  * The settings overview: one card per area, grouped. A card opens its own view (Inhaber,
@@ -64,12 +66,23 @@ export default {
     /** The groups and areas that apply now. */
     groups() {
       return visibleGroups()
+    },
+    /** The backend's version (`/api/config`), the reference for support and later updates. */
+    version() {
+      return session.version
     }
   }
 }
 </script>
 
 <style scoped>
+.app-version {
+  margin: var(--space-6) 0 0;
+  color: var(--color-text-subtle);
+  font-size: var(--font-size-xs);
+  text-align: center;
+}
+
 .settings-view {
   padding: 20px;
   max-width: 1400px;

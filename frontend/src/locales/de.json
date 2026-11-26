@@ -68,7 +68,8 @@
         "title": "Hilfe",
         "description": "Einführungstour starten und wiederholen"
       }
-    }
+    },
+    "version": "Billery-Version {version}"
   },
   "language": {
     "heading": "Sprache der Oberfläche",

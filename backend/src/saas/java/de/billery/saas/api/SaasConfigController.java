@@ -21,6 +21,7 @@ public class SaasConfigController {
   private final String clientId;
   private final String scope;
   private final String audience;
+  private final String version;
 
   /**
    * Reads the settings.
@@ -32,13 +33,16 @@ public class SaasConfigController {
    *     tokens for the silent renewal
    * @param audience the audience the access token is requested for (always set: the backend
    *     requires it)
+   * @param version the released version of this build
    */
   public SaasConfigController(
       @Value("${billery.oidc.issuer:}") String oidcIssuer,
       @Value("${billery.security.issuers:}") String trustedIssuers,
       @Value("${billery.oidc.client-id}") String clientId,
       @Value("${billery.oidc.scope:openid profile email offline_access}") String scope,
-      @Value("${billery.security.audience:}") String audience) {
+      @Value("${billery.security.audience:}") String audience,
+      de.billery.config.AppVersion version) {
+    this.version = version.version();
     this.issuer =
         oidcIssuer.isBlank()
             ? Arrays.stream(trustedIssuers.split(",")).map(String::trim).findFirst().orElse("")
@@ -51,7 +55,8 @@ public class SaasConfigController {
   /**
    * Returns the operating mode and the sign-in settings.
    *
-   * @return mode {@code saas} plus issuer, client id, scope and audience
+   * @return mode {@code saas}, the version of this build, plus issuer, client id, scope and
+   *     audience
    */
   @GetMapping("/api/config")
   public Map<String, Object> config() {
@@ -60,6 +65,6 @@ public class SaasConfigController {
     oidc.put("clientId", clientId);
     oidc.put("scope", scope);
     oidc.put("audience", audience);
-    return Map.of("mode", "saas", "oidc", oidc);
+    return Map.of("mode", "saas", "version", version, "oidc", oidc);
   }
 }
