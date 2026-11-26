@@ -1,4 +1,5 @@
 import { computed } from 'vue'
+import { t } from '../i18n/index.js'
 import { DOCUMENT_TYPES, getDocumentType, getDocumentTypeById, getDocumentTypeKey, INVOICE, OFFER, COST_CALCULATION, CREDIT_NOTE, isInvoice, isCreditNote } from '../data/documentTypes.js'
 import { DRAFT, SENT, ACCEPTED, REJECTED, CONVERTED, PAID, CANCELLED, PARTIALLY_PAID, isDraft, isSent, isAccepted, isRejected, isPaid, isPartiallyPaid, isCancelled, isInvoiceOverdue, isOfferExpired, OFFER_TRANSITIONS } from '../utils/documentStatus.js'
 
@@ -8,7 +9,7 @@ export function useDocumentType() {
 
   function tabConfig(key) {
     const dt = getDocumentType(key)
-    if (!dt) return { key: 'invoice', label: 'Rechnungen', types: [INVOICE, CREDIT_NOTE] }
+    if (!dt) return { key: 'invoice', label: t('documentTypes.invoice.plural'), types: [INVOICE, CREDIT_NOTE] }
     // Stornorechnungen are listed next to the invoices they cancel.
     const types = dt.id === INVOICE ? [INVOICE, CREDIT_NOTE] : [dt.id]
     return { key: dt.key, label: dt.plural || dt.label, types }
@@ -30,25 +31,24 @@ export function useDocumentType() {
 
   function pageTitle(key) {
     const dt = getDocumentType(key)
-    if (!dt || dt.key === 'invoice') return 'Rechnungsverwaltung'
-    return `${dt.label}verwaltung`
+    return (dt || getDocumentType('invoice')).listTitle
   }
 
   /** Label of the list's "create" button for a tab key, e.g. "Neues Angebot". */
   function newButtonLabel(key) {
     const dt = getDocumentType(key)
-    return dt ? dt.newLabel : 'Neue Rechnung'
+    return (dt || getDocumentType('invoice')).newLabel
   }
 
   function emptyMessage(key, archived) {
     const dt = getDocumentType(key)
-    const name = dt ? dt.plural : 'Rechnungen'
-    return archived ? `Keine archivierten ${name}` : `Keine ${name} vorhanden`
+    const type = dt || getDocumentType('invoice')
+    return archived ? type.emptyArchived : type.empty
   }
 
   function documentLabel(typeId) {
     const dt = getDocumentTypeById(typeId)
-    return dt ? dt.label : 'Rechnung'
+    return (dt || getDocumentTypeById(INVOICE)).label
   }
 
   /**
@@ -60,8 +60,8 @@ export function useDocumentType() {
    */
   function documentFormTitle(typeId, editing) {
     const dt = getDocumentTypeById(typeId)
-    if (editing) return `${dt ? dt.label : 'Rechnung'} bearbeiten`
-    return dt ? dt.newLabel : 'Neue Rechnung'
+    const type = dt || getDocumentTypeById(INVOICE)
+    return editing ? type.editLabel : type.newLabel
   }
 
   /**
@@ -87,25 +87,25 @@ export function useDocumentType() {
 
     if (!currentStatus || currentStatus === DRAFT) {
       return [
-        { value: DRAFT, label: 'Entwurf' },
-        { value: SENT, label: 'Gesendet' }
+        { value: DRAFT, label: statusText(typeId, DRAFT) },
+        { value: SENT, label: statusText(typeId, SENT) }
       ]
     }
     if (currentStatus === SENT || currentStatus === PARTIALLY_PAID) {
       return [
         { value: currentStatus, label: statusText(typeId, currentStatus) },
-        { value: PAID, label: 'Bezahlt' },
-        { value: CANCELLED, label: 'Storniert' }
+        { value: PAID, label: statusText(typeId, PAID) },
+        { value: CANCELLED, label: statusText(typeId, CANCELLED) }
       ]
     }
     if (currentStatus === PAID) {
       return [
-        { value: PAID, label: 'Bezahlt' },
-        { value: CANCELLED, label: 'Storniert' }
+        { value: PAID, label: statusText(typeId, PAID) },
+        { value: CANCELLED, label: statusText(typeId, CANCELLED) }
       ]
     }
     if (currentStatus === CANCELLED) {
-      return [{ value: CANCELLED, label: 'Storniert' }]
+      return [{ value: CANCELLED, label: statusText(typeId, CANCELLED) }]
     }
 
     return [{ value: currentStatus, label: statusText(typeId, currentStatus) }]
@@ -114,15 +114,15 @@ export function useDocumentType() {
   function statusText(typeId, statusId) {
     const isOfferCalc = isOfferOrCostCalc(typeId)
     switch (statusId) {
-      case DRAFT: return 'Entwurf'
-      case SENT: return isCreditNote(typeId) ? 'Ausgestellt' : 'Gesendet'
-      case PARTIALLY_PAID: return 'Teilweise bezahlt'
-      case ACCEPTED: return 'Angenommen'
-      case REJECTED: return 'Abgelehnt'
-      case CONVERTED: return 'Umgewandelt'
-      case PAID: return 'Bezahlt'
-      case CANCELLED: return 'Storniert'
-      default: return isOfferCalc ? 'Ausstehend' : 'Offen'
+      case DRAFT: return t('status.draft')
+      case SENT: return isCreditNote(typeId) ? t('status.issued') : t('status.sent')
+      case PARTIALLY_PAID: return t('status.partiallyPaid')
+      case ACCEPTED: return t('status.accepted')
+      case REJECTED: return t('status.rejected')
+      case CONVERTED: return t('status.converted')
+      case PAID: return t('status.paid')
+      case CANCELLED: return t('status.cancelled')
+      default: return isOfferCalc ? t('status.pending') : t('status.open')
     }
   }
 
@@ -144,23 +144,23 @@ export function useDocumentType() {
     const isInvoice = isInvoiceType(typeId) || !typeId
     if (isInvoice) {
       return [
-        { value: '', label: 'Alle Status' },
-        { value: 'draft', label: 'Entwurf' },
-        { value: 'sent', label: 'Gesendet' },
-        { value: 'partiallyPaid', label: 'Teilweise bezahlt' },
-        { value: 'open', label: 'Offen (gesendet oder teilweise bezahlt)' },
-        { value: 'paid', label: 'Bezahlt' },
-        { value: 'overdue', label: 'Überfällig' },
-        { value: 'cancelled', label: 'Storniert' }
+        { value: '', label: t('filters.all') },
+        { value: 'draft', label: t('status.draft') },
+        { value: 'sent', label: t('status.sent') },
+        { value: 'partiallyPaid', label: t('status.partiallyPaid') },
+        { value: 'open', label: t('filters.open') },
+        { value: 'paid', label: t('status.paid') },
+        { value: 'overdue', label: t('filters.overdue') },
+        { value: 'cancelled', label: t('status.cancelled') }
       ]
     }
     return [
-      { value: '', label: 'Alle Status' },
-      { value: 'draft', label: 'Entwurf' },
-      { value: 'sent', label: 'Gesendet' },
-      { value: 'accepted', label: 'Angenommen' },
-      { value: 'rejected', label: 'Abgelehnt' },
-      { value: 'expired', label: 'Abgelaufen' }
+      { value: '', label: t('filters.all') },
+      { value: 'draft', label: t('status.draft') },
+      { value: 'sent', label: t('status.sent') },
+      { value: 'accepted', label: t('status.accepted') },
+      { value: 'rejected', label: t('status.rejected') },
+      { value: 'expired', label: t('filters.expired') }
     ]
   }
 

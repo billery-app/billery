@@ -1,3 +1,5 @@
+import { t } from '../i18n/index.js'
+
 export const INVOICE = 1
 export const OFFER = 2
 export const COST_CALCULATION = 3
@@ -35,17 +37,55 @@ export function isOfferOrCostCalc(typeId) {
 }
 
 /**
- * The document types. `label` is the singular, `plural` the plural and `newLabel` the title for
- * creating one ("Neues Angebot"): the adjective depends on the noun's gender, so it is spelled out
- * per type instead of being put together from the label.
+ * One document type. `title` is the German name printed on the document (the default title of a
+ * template, kept German whatever the interface language: documents stay German, #15). The names
+ * shown in the interface come from the message files, `documentTypes.<key>.*`: `label` (singular),
+ * `plural`, `newLabel` ("Neues Angebot": the adjective depends on the noun's gender, so it is a
+ * message of its own), `editLabel`, `listTitle`, `empty` and `emptyArchived`.
+ * @param {string} key
+ * @param {number} id
+ * @param {string} title - the German name on the document
+ * @param {string} prefix - of the document number
  */
+function documentType(key, id, title, prefix) {
+  const text = name => t(`documentTypes.${key}.${name}`)
+  return {
+    key,
+    id,
+    title,
+    prefix,
+    get label() {
+      return text('label')
+    },
+    get plural() {
+      return text('plural')
+    },
+    get newLabel() {
+      return text('new')
+    },
+    get editLabel() {
+      return text('edit')
+    },
+    get listTitle() {
+      return text('list')
+    },
+    get empty() {
+      return text('empty')
+    },
+    get emptyArchived() {
+      return text('emptyArchived')
+    }
+  }
+}
+
+/** The document types. */
 export const DOCUMENT_TYPES = [
-  { key: 'invoice', id: INVOICE, label: 'Rechnung', newLabel: 'Neue Rechnung', plural: 'Rechnungen', prefix: 'RE' },
-  { key: 'offer', id: OFFER, label: 'Angebot', newLabel: 'Neues Angebot', plural: 'Angebote', prefix: 'AN' },
-  { key: 'costCalculation', id: COST_CALCULATION, label: 'Kostenvoranschlag', newLabel: 'Neuer Kostenvoranschlag', plural: 'Kostenvoranschläge', prefix: 'KV' },
-  { key: 'partedInvoice', id: PARTED_INVOICE, label: 'Teilrechnung', newLabel: 'Neue Teilrechnung', plural: 'Teilrechnungen', prefix: 'TR' },
-  { key: 'finalInvoice', id: FINAL_INVOICE, label: 'Endrechnung', newLabel: 'Neue Endrechnung', plural: 'Endrechnungen', prefix: 'SR' },
-  { key: 'creditNote', id: CREDIT_NOTE, label: 'Stornorechnung', newLabel: 'Neue Stornorechnung', plural: 'Stornorechnungen', prefix: 'ST' }
+  documentType('invoice', INVOICE, 'Rechnung', 'RE'),
+  documentType('offer', OFFER, 'Angebot', 'AN'),
+  documentType('costCalculation', COST_CALCULATION, 'Kostenvoranschlag', 'KV'),
+  documentType('partedInvoice', PARTED_INVOICE, 'Teilrechnung', 'TR'),
+  documentType('finalInvoice', FINAL_INVOICE, 'Endrechnung', 'SR'),
+  documentType('creditNote', CREDIT_NOTE, 'Stornorechnung', 'ST')
 ]
 
 export function getDocumentType(key) {

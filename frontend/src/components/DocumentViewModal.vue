@@ -3,61 +3,61 @@
     <div class="modal-panel">
       <div class="modal-header">
         <h2>{{ viewTitle }}</h2>
-        <button class="close-btn" @click="close">&times;</button>
+        <button class="close-btn" :aria-label="$t('common.close')" @click="close">&times;</button>
       </div>
 
-      <div v-if="loading" class="loading">Lade {{ documentTypeLabel }}...</div>
+      <div v-if="loading" class="loading">{{ $t('common.loading') }}</div>
       <div v-else-if="error" class="error">{{ error }}</div>
       <div v-else-if="doc" class="invoice-content">
         <div class="invoice-header">
           <div class="header-row">
-            <span class="label">Kunde:</span>
+            <span class="label">{{ $t('view.customer') }}</span>
             <span class="value">{{ doc.customerName }}</span>
           </div>
           <div class="header-row">
-            <span class="label">Datum:</span>
+            <span class="label">{{ $t('view.date') }}</span>
             <span class="value">{{ formatDate(doc.invoiceDate) }}</span>
           </div>
           <div class="header-row">
-            <span class="label">Fällig am:</span>
+            <span class="label">{{ $t('view.due') }}</span>
             <span class="value" :class="{ overdue: isOverdue }">{{ formatDate(doc.dueDate) }}</span>
           </div>
           <div v-if="doc.workStartDate && !doc.workEndDate" class="header-row">
-            <span class="label">Leistungsdatum:</span>
+            <span class="label">{{ $t('view.serviceDate') }}</span>
             <span class="value">{{ formatDate(doc.workStartDate) }}</span>
           </div>
           <div v-if="doc.workStartDate && doc.workEndDate" class="header-row">
-            <span class="label">Leistungszeitraum:</span>
+            <span class="label">{{ $t('view.servicePeriod') }}</span>
             <span class="value">{{ formatDate(doc.workStartDate) }} – {{ formatDate(doc.workEndDate) }}</span>
           </div>
           <div class="header-row">
-            <span class="label">Status:</span>
+            <span class="label">{{ $t('view.status') }}</span>
             <span :class="['status', 'status-badge', statusClassComputed]">{{ statusTextComputed }}</span>
           </div>
           <div v-if="doc.cancelsInvoiceId" class="header-row">
-            <span class="label">Storno zu Rechnung:</span>
+            <span class="label">{{ $t('view.cancels') }}</span>
             <span class="value">{{ relatedNumber }}</span>
           </div>
           <div v-if="doc.cancelledByInvoiceId" class="header-row">
-            <span class="label">Storniert durch:</span>
+            <span class="label">{{ $t('view.cancelledBy') }}</span>
             <span class="value">{{ relatedNumber }}</span>
           </div>
           <div v-if="isIssuedInvoice" class="header-row">
-            <span class="label">Bezahlt / offen:</span>
+            <span class="label">{{ $t('view.paidOpen') }}</span>
             <span class="value">{{ formatCurrency(doc.paidAmount || 0) }} / {{ formatCurrency(openAmount) }}</span>
           </div>
         </div>
 
         <div v-if="payments.length" class="payments-section">
-          <h3>Zahlungen</h3>
-          <div class="table-scroll" role="region" aria-label="Zahlungstabelle" tabindex="0">
+          <h3>{{ $t('view.payments') }}</h3>
+          <div class="table-scroll" role="region" :aria-label="$t('view.payments')" tabindex="0">
           <table class="items-table">
             <thead>
               <tr>
-                <th>Datum</th>
-                <th class="numeric">Betrag</th>
-                <th>Zahlungsart</th>
-                <th>Referenz / Notiz</th>
+                <th>{{ $t('documents.columns.date') }}</th>
+                <th class="numeric">{{ $t('dashboard.columns.amount') }}</th>
+                <th>{{ $t('view.method') }}</th>
+                <th>{{ $t('view.referenceNote') }}</th>
                 <th></th>
               </tr>
             </thead>
@@ -73,7 +73,7 @@
                     class="btn btn-small btn-secondary"
                     :disabled="statusUpdating"
                     @click="reversePayment(p)"
-                  >Stornieren</button>
+                  >{{ $t('view.reverse') }}</button>
                 </td>
               </tr>
             </tbody>
@@ -82,18 +82,18 @@
         </div>
 
         <div class="items-section">
-          <h3>Positionen</h3>
-          <div v-if="flatItems.length" class="table-scroll" role="region" aria-label="Positionstabelle" tabindex="0">
+          <h3>{{ $t('view.items') }}</h3>
+          <div v-if="flatItems.length" class="table-scroll" role="region" :aria-label="$t('view.items')" tabindex="0">
           <table class="items-table">
             <thead>
               <tr>
-                <th>Pos.</th>
-                <th>Artikel/Leistung</th>
-                <th class="numeric">Menge</th>
-                <th class="numeric">Einheit</th>
-                <th class="numeric">Einzelpreis</th>
-                <th v-if="mixedRates" class="numeric">USt.</th>
-                <th class="numeric">Gesamt</th>
+                <th>{{ $t('view.position') }}</th>
+                <th>{{ $t('view.articleService') }}</th>
+                <th class="numeric">{{ $t('catalog.columns.quantity') }}</th>
+                <th class="numeric">{{ $t('catalog.columns.unit') }}</th>
+                <th class="numeric">{{ $t('view.unitPrice') }}</th>
+                <th v-if="mixedRates" class="numeric">{{ $t('catalog.columns.vat') }}</th>
+                <th class="numeric">{{ $t('catalog.columns.total') }}</th>
               </tr>
             </thead>
             <tbody>
@@ -104,7 +104,7 @@
               >
                 <td>{{ index + 1 }}</td>
                 <td :class="{ 'item-description-cell': entry.depth > 0 }">
-                  <div class="item-name">{{ entry.item.itemName || '(ohne Bezeichnung)' }}</div>
+                  <div class="item-name">{{ entry.item.itemName || $t('view.noName') }}</div>
                   <div v-if="entry.item.itemDescription" class="item-description">{{ entry.item.itemDescription }}</div>
                 </td>
                 <td class="numeric">{{ formatQuantity(entry.item.quantity) }}</td>
@@ -116,32 +116,32 @@
             </tbody>
           </table>
           </div>
-          <div v-else class="no-items">Keine Positionen vorhanden</div>
+          <div v-else class="no-items">{{ $t('view.noItems') }}</div>
         </div>
 
         <div class="totals-section">
           <div class="total-row">
-            <span>Nettobetrag:</span>
+            <span>{{ $t('view.net') }}</span>
             <span>{{ formatCurrency(doc.netAmount) }}</span>
           </div>
           <div v-for="group in vatLines" :key="group.ratePercent" class="total-row">
-            <span>MwSt. {{ formatRate(group.ratePercent) }}<template v-if="vatLines.length > 1"> auf {{ formatCurrency(group.net) }}</template>:</span>
+            <span>{{ vatLines.length > 1 ? $t('view.vatOn', { rate: formatRate(group.ratePercent), net: formatCurrency(group.net) }) : $t('view.vat', { rate: formatRate(group.ratePercent) }) }}</span>
             <span>{{ formatCurrency(group.tax) }}</span>
           </div>
           <div class="total-row gross">
-            <span>Gesamtbetrag:</span>
+            <span>{{ $t('view.gross') }}</span>
             <span>{{ formatCurrency(doc.grossAmount) }}</span>
           </div>
           <p v-if="taxNote" class="tax-note" data-testid="tax-note">{{ taxNote }}</p>
         </div>
 
         <div v-if="doc.notes" class="notes-section">
-          <h3>Notizen</h3>
+          <h3>{{ $t('view.notes') }}</h3>
           <p>{{ doc.notes }}</p>
         </div>
 
         <details v-if="history.length" class="history-section">
-          <summary>Verlauf ({{ history.length }})</summary>
+          <summary>{{ $t('view.history', { count: history.length }) }}</summary>
           <ol class="history-list">
             <li v-for="h in history" :key="h.id" class="history-entry">
               <time class="history-date" :datetime="h.actionDate">{{ formatDateTime(h.actionDate) }}</time>
@@ -164,18 +164,18 @@
         <div v-if="mailNotice" class="action-notice" role="status" data-testid="mail-notice">{{ mailNotice }}</div>
 
         <div v-if="doc && showPaymentForm" ref="footerForm" class="footer-form payment-form">
-          <h3>Zahlung erfassen</h3>
+          <h3>{{ $t('view.recordPayment') }}</h3>
           <div class="footer-form-row footer-form-row-payment">
             <div class="form-group">
-              <label for="payment-date">Zahlungseingang am:</label>
+              <label for="payment-date">{{ $t('view.paymentDate') }}</label>
               <input id="payment-date" v-model="paymentForm.paymentDate" type="date" />
             </div>
             <div class="form-group">
-              <label for="payment-amount">Betrag (€):</label>
+              <label for="payment-amount">{{ $t('view.paymentAmount') }}</label>
               <input id="payment-amount" v-model.number="paymentForm.amount" type="number" step="0.01" min="0.01" :max="openAmount" />
             </div>
             <div class="form-group">
-              <label for="payment-method">Zahlungsart:</label>
+              <label for="payment-method">{{ $t('view.paymentMethod') }}</label>
               <input id="payment-method" v-model="paymentForm.paymentMethod" list="payment-methods" />
               <datalist id="payment-methods">
                 <option value="Überweisung" />
@@ -185,33 +185,33 @@
               </datalist>
             </div>
             <div class="form-group">
-              <label for="payment-reference">Referenz:</label>
-              <input id="payment-reference" v-model="paymentForm.reference" placeholder="z. B. Kontoauszug" />
+              <label for="payment-reference">{{ $t('view.reference') }}</label>
+              <input id="payment-reference" v-model="paymentForm.reference" :placeholder="$t('view.referencePlaceholder')" />
             </div>
           </div>
           <div class="footer-form-buttons">
-            <button type="button" class="btn btn-primary" :disabled="statusUpdating" @click="savePayment">Speichern</button>
-            <button type="button" class="btn btn-secondary" @click="showPaymentForm = false">Abbrechen</button>
+            <button type="button" class="btn btn-primary" :disabled="statusUpdating" @click="savePayment">{{ $t('common.save') }}</button>
+            <button type="button" class="btn btn-secondary" @click="showPaymentForm = false">{{ $t('common.cancel') }}</button>
           </div>
         </div>
 
         <div v-else-if="doc && showCloneForm" ref="footerForm" class="footer-form clone-form">
-          <h3>{{ documentTypeLabel }} duplizieren</h3>
+          <h3>{{ $t('view.duplicateTitle', { type: documentTypeLabel }) }}</h3>
           <div class="footer-form-row">
             <div class="form-group">
-              <label for="clone-date">Neues Rechnungsdatum:</label>
+              <label for="clone-date">{{ $t('view.newDate') }}</label>
               <input id="clone-date" v-model="cloneForm.invoiceDate" type="date" />
             </div>
             <div class="form-group">
-              <label for="clone-work-date">Neues Leistungsdatum:</label>
+              <label for="clone-work-date">{{ $t('view.newServiceDate') }}</label>
               <input id="clone-work-date" v-model="cloneForm.workStartDate" type="date" />
             </div>
           </div>
           <div class="footer-form-buttons">
             <button type="button" class="btn btn-primary" :disabled="cloneLoading" @click="cloneDocument">
-              {{ cloneLoading ? 'Dupliziere...' : 'Bestätigen' }}
+              {{ cloneLoading ? $t('view.duplicating') : $t('view.confirm') }}
             </button>
-            <button type="button" class="btn btn-secondary" @click="showCloneForm = false">Abbrechen</button>
+            <button type="button" class="btn btn-secondary" @click="showCloneForm = false">{{ $t('common.cancel') }}</button>
           </div>
         </div>
 
@@ -233,34 +233,34 @@
             >{{ action.label }}</button>
           </div>
 
-          <div v-if="doc" class="action-group action-group-document" role="group" aria-label="Dokument">
+          <div v-if="doc" class="action-group action-group-document" role="group" :aria-label="$t('view.document')">
             <button
               type="button"
               :class="['btn', lifecycleActions.length ? 'btn-secondary' : 'btn-primary']"
               :disabled="pdfLoading"
-              title="PDF herunterladen"
+              :title="$t('view.pdfTitle')"
               data-testid="pdf-download"
               @click="downloadPdf"
-            >{{ pdfLoading ? 'Lade...' : 'PDF' }}</button>
+            >{{ pdfLoading ? $t('common.loading') : 'PDF' }}</button>
             <button
               v-if="isIssuedInvoice || isCreditNoteDoc"
               type="button"
               class="btn btn-secondary"
-              title="E-Rechnung im Format XRechnung (UBL) für Geschäftskunden und Behörden"
+              :title="$t('view.eInvoiceTitle')"
               data-testid="xrechnung-download"
               @click="downloadXRechnung"
-            >E-Rechnung</button>
+            >{{ $t('view.eInvoice') }}</button>
             <button
               v-if="canSendMail"
               type="button"
               class="btn btn-secondary"
-              title="Dokument per E-Mail an den Kunden senden"
+              :title="$t('view.mailTitle')"
               data-testid="send-mail-button"
               @click="showSendMail = true"
-            >Per E-Mail</button>
-            <button v-if="!isCreditNoteDoc" type="button" class="btn btn-secondary" @click="openCloneForm">Duplizieren</button>
-            <button v-if="listActions.edit" type="button" class="btn btn-secondary" @click="emit('edit-request', doc)">Bearbeiten</button>
-            <button v-if="listActions.restore" type="button" class="btn btn-secondary" @click="emit('restore-request', doc.id)">Wiederherstellen</button>
+            >{{ $t('view.mail') }}</button>
+            <button v-if="!isCreditNoteDoc" type="button" class="btn btn-secondary" @click="openCloneForm">{{ $t('view.duplicate') }}</button>
+            <button v-if="listActions.edit" type="button" class="btn btn-secondary" @click="emit('edit-request', doc)">{{ $t('common.edit') }}</button>
+            <button v-if="listActions.restore" type="button" class="btn btn-secondary" @click="emit('restore-request', doc.id)">{{ $t('view.restore') }}</button>
           </div>
 
           <div class="action-group action-group-end">
@@ -275,14 +275,14 @@
                 @click="toggleMenu"
                 @keydown.down.prevent="openMenu"
                 @keydown.up.prevent="openMenu"
-              >Mehr <span class="more-menu-caret" aria-hidden="true">▾</span></button>
+              >{{ $t('view.more') }} <span class="more-menu-caret" aria-hidden="true">▾</span></button>
               <ul
                 v-if="menuOpen"
                 id="document-more-menu"
                 ref="menuList"
                 class="more-menu-list"
                 role="menu"
-                aria-label="Weitere Aktionen"
+                :aria-label="$t('view.moreActions')"
                 @keydown="onMenuKeydown"
               >
                 <li v-for="action in menuActions" :key="action.key" role="none">
@@ -296,7 +296,7 @@
                 </li>
               </ul>
             </div>
-            <button type="button" class="btn btn-secondary" @click="close">Schließen</button>
+            <button type="button" class="btn btn-secondary" @click="close">{{ $t('common.close') }}</button>
           </div>
         </div>
       </div>
@@ -306,6 +306,7 @@
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
 import { ref, watch, computed, nextTick, onBeforeUnmount } from 'vue'
 import invoiceAPI from '../services/invoiceService.js'
 import { useDocumentType } from '../composables/useDocumentType.js'
@@ -314,6 +315,8 @@ import { isInvoice, isCreditNote } from '../data/documentTypes.js'
 import { chargesVat, legalNote, formatRate } from '../utils/vat.js'
 import SendMailModal from './SendMailModal.vue'
 import { activeRole, isSaas, session } from '../services/session.js'
+
+const { t } = useI18n()
 
 const { documentLabel, statusText, statusClass, statusOptions: getStatusOptions } = useDocumentType()
 
@@ -438,16 +441,8 @@ const openAmount = computed(() => {
   return Math.max(0, Math.round(open * 100) / 100)
 })
 
-const HISTORY_LABELS = {
-  CREATED: 'Erstellt',
-  UPDATED: 'Bearbeitet',
-  ISSUED: 'Ausgestellt',
-  STATUS_CHANGED: 'Status geändert',
-  PAYMENT_RECORDED: 'Zahlung erfasst',
-  PAYMENT_REVERSED: 'Zahlung storniert',
-  CANCELLED: 'Storniert',
-  MAIL_SENT: 'Per E-Mail gesendet'
-}
+/** The actions of the document history; their names are in the message files (`view.historyActions`). */
+const HISTORY_ACTIONS = ['CREATED', 'UPDATED', 'ISSUED', 'STATUS_CHANGED', 'PAYMENT_RECORDED', 'PAYMENT_REVERSED', 'CANCELLED', 'MAIL_SENT']
 
 /**
  * The German name of a history action; an action this version does not know never shows its key.
@@ -455,7 +450,7 @@ const HISTORY_LABELS = {
  * @returns {string} - the label
  */
 function historyLabel(action) {
-  return HISTORY_LABELS[action] || 'Sonstige Änderung'
+  return HISTORY_ACTIONS.includes(action) ? t(`view.historyActions.${action}`) : t('team.audit.other')
 }
 
 /**
@@ -505,8 +500,8 @@ const nextStatuses = computed(() => {
 const lifecycleActions = computed(() => {
   if (!doc.value) return []
   if (isInvoiceDoc.value) {
-    if (isDraftDoc.value) return [{ key: 'issue', label: 'Ausstellen', kind: 'step', run: issue }]
-    if (isOpen.value) return [{ key: 'payment', label: 'Zahlung erfassen', kind: 'step', run: openPaymentForm }]
+    if (isDraftDoc.value) return [{ key: 'issue', label: t('view.issue'), kind: 'step', run: issue }]
+    if (isOpen.value) return [{ key: 'payment', label: t('view.recordPayment'), kind: 'step', run: openPaymentForm }]
     return []
   }
   const actions = nextStatuses.value
@@ -519,10 +514,10 @@ const lifecycleActions = computed(() => {
     }))
   // Converting is the step after "Angenommen"; the list decides whether it is possible.
   if (listActions.value.convertToInvoice) {
-    actions.push({ key: 'to-invoice', label: 'In Rechnung', kind: 'step', run: async () => emit('convert-to-invoice', doc.value) })
+    actions.push({ key: 'to-invoice', label: t('view.toInvoice'), kind: 'step', run: async () => emit('convert-to-invoice', doc.value) })
   }
   if (listActions.value.convertToOffer) {
-    actions.push({ key: 'to-offer', label: 'In Angebot', kind: 'step', run: async () => emit('convert-to-offer', doc.value) })
+    actions.push({ key: 'to-offer', label: t('view.toOffer'), kind: 'step', run: async () => emit('convert-to-offer', doc.value) })
   }
   return actions
 })
@@ -534,7 +529,7 @@ const lifecycleActions = computed(() => {
  * the next step.
  */
 const lifecycleCaption = computed(() =>
-  lifecycleActions.value.some(action => action.kind === 'status') ? 'Status setzen auf:' : 'Nächster Schritt:'
+  lifecycleActions.value.some(action => action.kind === 'status') ? t('view.setStatus') : t('view.nextStep')
 )
 
 /**
@@ -547,16 +542,16 @@ const menuActions = computed(() => {
   const actions = []
   if (isInvoiceDoc.value) {
     if (isIssuedInvoice.value && !isCancelledDoc.value) {
-      actions.push({ key: 'cancel', label: 'Stornieren', danger: true, run: cancelInvoice })
+      actions.push({ key: 'cancel', label: t('view.cancel'), danger: true, run: cancelInvoice })
     }
   } else if (nextStatuses.value.some(opt => opt.value === CANCELLED)) {
-    actions.push({ key: 'cancel', label: 'Stornieren', danger: true, run: cancelOffer })
+    actions.push({ key: 'cancel', label: t('view.cancel'), danger: true, run: cancelOffer })
   }
   if (listActions.value.archive) {
-    actions.push({ key: 'archive', label: 'Archivieren', danger: false, run: requestArchive })
+    actions.push({ key: 'archive', label: t('view.archive'), danger: false, run: requestArchive })
   }
   if (listActions.value.delete) {
-    actions.push({ key: 'delete', label: 'Löschen', danger: true, run: () => emit('delete-request', doc.value.id) })
+    actions.push({ key: 'delete', label: t('common.delete'), danger: true, run: () => emit('delete-request', doc.value.id) })
   }
   return actions
 })
@@ -584,8 +579,8 @@ async function onMailSent(result) {
   await loadInvoice()
   emit('status-updated')
   mailNotice.value = result.issued
-    ? `Als ${result.documentNumber} ausgestellt und an ${result.to.join(', ')} gesendet.`
-    : `An ${result.to.join(', ')} gesendet.`
+    ? t('view.mailIssuedSent', { number: result.documentNumber, to: result.to.join(', ') })
+    : t('view.mailSent', { to: result.to.join(', ') })
 }
 
 watch(() => props.visible, async (newVal) => {
@@ -696,7 +691,7 @@ async function loadInvoice() {
     doc.value = response.data
     await loadBookkeepingDetails()
   } catch (err) {
-    error.value = 'Fehler beim Laden: ' + err.message
+    error.value = t('common.loadFailed', { reason: err.message })
   } finally {
     loading.value = false
   }
@@ -746,14 +741,12 @@ async function issue() {
   try {
     const missing = (await invoiceAPI.checkXRechnung(doc.value.id)).data.missing || []
     if (missing.length) {
-      eInvoiceHint = '\n\nHinweis: Für eine E-Rechnung (XRechnung) fehlen noch: '
-        + missing.join(', ') + '. Bitte vorher ergänzen, falls der Kunde eine E-Rechnung braucht.'
+      eInvoiceHint = '\n\n' + t('view.eInvoiceMissing', { fields: missing.join(', ') })
     }
   } catch {
     // The check is advisory; issuing does not depend on it.
   }
-  if (!confirm('Rechnung jetzt ausstellen?\n\nSie erhält ihre Rechnungsnummer und kann danach '
-      + 'nicht mehr geändert oder gelöscht werden (nur noch storniert).' + eInvoiceHint)) {
+  if (!confirm(t('view.confirmIssue') + eInvoiceHint)) {
     return
   }
   runAction(() => invoiceAPI.updateInvoiceStatus(doc.value.id, SENT))
@@ -767,7 +760,7 @@ async function downloadXRechnung() {
     saveBlob(new Blob([response.data], { type: 'application/xml' }),
       `XRechnung_${doc.value.invoiceNumber}.xml`)
   } catch (err) {
-    actionError.value = 'E-Rechnung nicht möglich: ' + err.message
+    actionError.value = t('view.eInvoiceFailed', { reason: err.message })
   }
 }
 
@@ -812,23 +805,20 @@ function isReversed(payment) {
 }
 
 function reversePayment(payment) {
-  if (!confirm(`Zahlung über ${formatCurrency(payment.amount)} vom ${formatDate(payment.paymentDate)} `
-      + 'stornieren? Es wird eine Gegenbuchung angelegt.')) {
+  if (!confirm(t('view.confirmReverse', { amount: formatCurrency(payment.amount), date: formatDate(payment.paymentDate) }))) {
     return
   }
   runAction(() => invoiceAPI.reversePayment(doc.value.id, payment.id))
 }
 
 function cancelInvoice() {
-  if (!confirm('Rechnung stornieren?\n\nEs wird eine Stornorechnung mit eigener Nummer erstellt. '
-      + 'Die Rechnung selbst bleibt unverändert erhalten.')) {
+  if (!confirm(t('view.confirmCancelInvoice'))) {
     return
   }
   const original = doc.value
   runAction(async () => {
     const creditNote = (await invoiceAPI.cancelInvoice(original.id)).data
-    if (confirm(`Stornorechnung ${creditNote.invoiceNumber} wurde erstellt.\n\n`
-        + 'Soll eine Kopie der Rechnung als neuer Entwurf zur Korrektur angelegt werden?')) {
+    if (confirm(t('view.confirmCopyAfterCancel', { number: creditNote.invoiceNumber }))) {
       await invoiceAPI.cloneInvoice(original.id, {
         invoiceDate: today(),
         workStartDate: original.workStartDate || null
@@ -843,8 +833,7 @@ function cancelInvoice() {
  * (an invoice is cancelled by {@link cancelInvoice}, with a credit note).
  */
 function cancelOffer() {
-  if (!confirm(`${documentTypeLabel.value} ${doc.value.invoiceNumber} stornieren?\n\n`
-      + 'Der Status „Storniert“ ist endgültig und kann nicht zurückgenommen werden.')) {
+  if (!confirm(t('view.confirmCancelOffer', { type: documentTypeLabel.value, number: doc.value.invoiceNumber }))) {
     return
   }
   updateStatus(CANCELLED)
@@ -852,8 +841,7 @@ function cancelOffer() {
 
 /** Asks before the document leaves the list for the archive; the list then archives it. */
 function requestArchive() {
-  if (!confirm(`${documentTypeLabel.value} ${doc.value.invoiceNumber} archivieren?\n\n`
-      + 'Das Dokument wird ins Archiv verschoben und kann dort wiederhergestellt werden.')) {
+  if (!confirm(t('view.confirmArchive', { type: documentTypeLabel.value, number: doc.value.invoiceNumber }))) {
     return
   }
   emit('archive-request', doc.value.id)
@@ -872,7 +860,7 @@ async function updateStatus(newStatus) {
     doc.value.documentStatusId = newStatus
     emit('status-updated')
   } catch (err) {
-    actionError.value = 'Status-Update fehlgeschlagen: ' + err.message
+    actionError.value = t('documents.statusFailed', { reason: err.message })
   } finally {
     statusUpdating.value = false
   }
@@ -911,7 +899,7 @@ async function cloneDocument() {
     emit('update:visible', false)
   } catch (err) {
     // Not `error`: that one replaces the whole document view, and the form would be gone.
-    actionError.value = 'Duplizieren fehlgeschlagen: ' + err.message
+    actionError.value = t('view.duplicateFailed', { reason: err.message })
   } finally {
     cloneLoading.value = false
   }

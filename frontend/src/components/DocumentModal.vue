@@ -11,46 +11,46 @@
         <div class="scroll-container">
         <div class="form-row">
           <div class="form-group customer-group">
-            <label>Kunde:</label>
+            <label>{{ $t('view.customer') }}</label>
             <div class="customer-select-row">
               <CustomerPicker v-model="form.customerId" v-model:customer="selectedCustomer" />
-              <button type="button" class="btn btn-small btn-success" title="Neuen Kunden anlegen" @click="showCreateCustomer = true">+</button>
+              <button type="button" class="btn btn-small btn-success" :title="$t('docForm.newCustomer')" @click="showCreateCustomer = true">+</button>
             </div>
           </div>
           <div class="form-group">
-            <label>Dokumentnummer:</label>
+            <label>{{ $t('docForm.number') }}</label>
             <input v-model="form.invoiceNumber" readonly :placeholder="numberPlaceholder" class="invoice-number-preview" />
           </div>
         </div>
         <div class="form-row">
           <div class="form-group">
-            <label>Datum:</label>
+            <label>{{ $t('view.date') }}</label>
             <input v-model="form.invoiceDate" type="date" required />
           </div>
           <div class="form-group">
-            <label>Fälligkeitsdatum:</label>
+            <label>{{ $t('convert.dueDate') }}</label>
             <input v-model="form.dueDate" type="date" />
           </div>
         </div>
         <div class="form-row">
           <div class="form-group">
-            <label>Leistungsdatum:<span v-if="isInvoiceDocument" class="required-hint"> (Pflicht zum Ausstellen)</span></label>
+            <label>{{ $t('view.serviceDate') }}<span v-if="isInvoiceDocument" class="required-hint"> {{ $t('docForm.requiredToIssue') }}</span></label>
             <input v-model="form.workStartDate" type="date" />
           </div>
           <div v-if="showWorkEndDate" class="form-group">
-            <label>Leistungsende:</label>
+            <label>{{ $t('docForm.serviceEnd') }}</label>
             <div class="date-with-toggle">
               <input v-model="form.workEndDate" type="date" />
-              <button type="button" class="btn btn-small btn-danger" title="Zeitraum entfernen" @click="showWorkEndDate = false">&times;</button>
+              <button type="button" class="btn btn-small btn-danger" :title="$t('docForm.removePeriod')" @click="showWorkEndDate = false">&times;</button>
             </div>
           </div>
           <div v-else class="form-group">
             <label>&nbsp;</label>
-            <button type="button" class="btn btn-small btn-secondary" @click="showWorkEndDate = true">Zeitraum angeben</button>
+            <button type="button" class="btn btn-small btn-secondary" @click="showWorkEndDate = true">{{ $t('docForm.addPeriod') }}</button>
           </div>
         </div>
         <div class="form-group">
-          <label>Notizen:</label>
+          <label>{{ $t('docForm.notes') }}</label>
           <textarea
             v-model="form.notes"
             class="document-notes-input"
@@ -58,23 +58,23 @@
         </div>
         <div class="form-row">
           <div class="form-group">
-            <label>Besteuerung:</label>
+            <label>{{ $t('docForm.taxation') }}</label>
             <span v-if="isKleinunternehmer" class="tax-info" data-testid="small-business-info">
-              Kleinunternehmer (§ 19 UStG) – keine Umsatzsteuer
+              {{ $t('docForm.smallBusiness') }}
             </span>
             <select v-else v-model="form.taxTreatment" data-testid="tax-treatment">
-              <option v-for="t in TAX_TREATMENTS" :key="t.value" :value="t.value">{{ t.label }}</option>
+              <option v-for="treatment in TAX_TREATMENTS" :key="treatment.value" :value="treatment.value">{{ treatment.label }}</option>
             </select>
           </div>
           <div v-if="!isKleinunternehmer && form.taxTreatment === 'TAX_EXEMPT'" class="form-group">
-            <label>Grund der Steuerbefreiung:</label>
-            <input v-model="form.taxExemptionReason" placeholder="z. B. gemäß § 4 Nr. 14 UStG" />
+            <label>{{ $t('docForm.exemptionReason') }}</label>
+            <input v-model="form.taxExemptionReason" :placeholder="$t('docForm.exemptionPlaceholder')" />
           </div>
         </div>
 
         <div class="layout-section">
           <details class="layout-details">
-            <summary>Layout</summary>
+            <summary>{{ $t('docForm.layout') }}</summary>
             <div class="layout-body">
               <div class="layout-row">
                 <label>
@@ -85,7 +85,7 @@
                     :checked="form.templateId === null"
                     @change="onLayoutModeDefault"
                   />
-                  Standardvorlage für diesen Dokumenttyp
+                  {{ $t('docForm.defaultTemplate') }}
                 </label>
               </div>
               <div class="layout-row">
@@ -97,16 +97,16 @@
                     :checked="form.templateId !== null"
                     @change="onLayoutModePick"
                   />
-                  Gespeicherte Vorlage verwenden
+                  {{ $t('docForm.savedTemplate') }}
                 </label>
                 <select
                   v-model="form.templateId"
                   :disabled="layoutMode !== 'pick'"
                   @change="onTemplatePicked"
                 >
-                  <option :value="null" disabled>Vorlage auswählen…</option>
-                  <option v-for="t in availableTemplates" :key="t.id" :value="t.id">
-                    {{ t.name }}{{ t.isDefault ? ' (Standard)' : '' }}
+                  <option :value="null" disabled>{{ $t('docForm.chooseTemplate') }}</option>
+                  <option v-for="tpl in availableTemplates" :key="tpl.id" :value="tpl.id">
+                    {{ tpl.name }}{{ tpl.isDefault ? ` (${$t('templates.default')})` : '' }}
                   </option>
                 </select>
               </div>
@@ -118,11 +118,11 @@
                   :title="customizeTooltip"
                   @click="openCustomize"
                 >
-                  Layout für dieses Dokument anpassen…
+                  {{ $t('docForm.customize') }}
                 </button>
                 <small v-if="!canCustomize" class="layout-hint">{{ customizeHint }}</small>
                 <small v-else-if="form.templateId" class="layout-hint">
-                  Aktuell: eigene Vorlage (id #{{ form.templateId }})
+                  {{ $t('docForm.currentOwn', { id: form.templateId }) }}
                 </small>
               </div>
             </div>
@@ -131,38 +131,38 @@
 
         <div class="items-section">
           <div class="items-header">
-            <h3>Positionen</h3>
+            <h3>{{ $t('view.items') }}</h3>
             <div class="item-type-tabs">
-              <button type="button" :class="['tab', itemTypeTab === 'articles' ? 'active' : '']" @click="itemTypeTab = 'articles'">Artikel</button>
-              <button type="button" :class="['tab', itemTypeTab === 'services' ? 'active' : '']" @click="itemTypeTab = 'services'">Leistungen</button>
+              <button type="button" :class="['tab', itemTypeTab === 'articles' ? 'active' : '']" @click="itemTypeTab = 'articles'">{{ $t('catalog.articles') }}</button>
+              <button type="button" :class="['tab', itemTypeTab === 'services' ? 'active' : '']" @click="itemTypeTab = 'services'">{{ $t('catalog.services') }}</button>
             </div>
           </div>
 
           <div v-if="itemTypeTab === 'articles'" class="item-selector">
             <div class="selector-row">
               <select v-model="selectedArticleId" @change="onArticleSelect">
-                <option value="">Artikel auswählen...</option>
+                <option value="">{{ $t('items.chooseArticle') }}</option>
                 <option v-for="a in articles" :key="a.id" :value="a.id">{{ a.name }} ({{ formatCurrency(a.salesPrice) }})</option>
               </select>
-              <button type="button" class="btn btn-small btn-success" title="Neuen Artikel anlegen" @click="showCreateArticle = true">+</button>
+              <button type="button" class="btn btn-small btn-success" :title="$t('docForm.newArticle')" @click="showCreateArticle = true">+</button>
             </div>
             <div v-if="selectedArticle" class="selected-item-preview">
               <span>{{ selectedArticle.name }} - {{ selectedArticle.description }}</span>
-              <button type="button" class="btn btn-small btn-primary" @click="addSelectedArticle">Hinzufügen</button>
+              <button type="button" class="btn btn-small btn-primary" @click="addSelectedArticle">{{ $t('items.add') }}</button>
             </div>
           </div>
 
           <div v-if="itemTypeTab === 'services'" class="item-selector">
             <div class="selector-row">
               <select v-model="selectedServiceId" @change="onServiceSelect">
-                <option value="">Leistung auswählen...</option>
-                <option v-for="s in services" :key="s.id" :value="s.id">{{ s.name }} ({{ formatCurrency(s.hourlyRate) }}/h)</option>
+                <option value="">{{ $t('items.chooseService') }}</option>
+                <option v-for="s in services" :key="s.id" :value="s.id">{{ s.name }} {{ $t('items.perHour', { rate: formatCurrency(s.hourlyRate) }) }}</option>
               </select>
-              <button type="button" class="btn btn-small btn-success" title="Neue Leistung anlegen" @click="showCreateService = true">+</button>
+              <button type="button" class="btn btn-small btn-success" :title="$t('docForm.newService')" @click="showCreateService = true">+</button>
             </div>
             <div v-if="selectedService" class="selected-item-preview">
               <span>{{ selectedService.name }} - {{ selectedService.description }}</span>
-              <button type="button" class="btn btn-small btn-primary" @click="addSelectedService">Hinzufügen</button>
+              <button type="button" class="btn btn-small btn-primary" @click="addSelectedService">{{ $t('items.add') }}</button>
             </div>
           </div>
         </div>
@@ -182,22 +182,22 @@
 
         <div v-if="form.items.length" class="totals-summary" data-testid="totals-summary">
           <div class="total-line">
-            <span>Netto</span><span>{{ formatAmount(vat.net) }}</span>
+            <span>{{ $t('documents.columns.net') }}</span><span>{{ formatAmount(vat.net) }}</span>
           </div>
           <div v-for="group in vatLines" :key="group.rate" class="total-line">
-            <span>MwSt. {{ formatRate(group.rate) }}<template v-if="vatLines.length > 1"> auf {{ formatAmount(group.net) }}</template></span>
+            <span>{{ vatLines.length > 1 ? $t('docForm.vatOn', { rate: formatRate(group.rate), net: formatAmount(group.net) }) : $t('docForm.vat', { rate: formatRate(group.rate) }) }}</span>
             <span>{{ formatAmount(group.tax) }}</span>
           </div>
           <div class="total-line gross">
-            <span>Gesamt</span><span>{{ formatAmount(vat.gross) }}</span>
+            <span>{{ $t('catalog.columns.total') }}</span><span>{{ formatAmount(vat.gross) }}</span>
           </div>
           <p v-if="taxNote" class="tax-note">{{ taxNote }}</p>
         </div>
 
         </div>
         <div class="form-actions">
-          <button type="submit" class="btn btn-primary">Speichern</button>
-          <button type="button" class="btn btn-secondary" @click="cancel">Abbrechen</button>
+          <button type="submit" class="btn btn-primary">{{ $t('common.save') }}</button>
+          <button type="button" class="btn btn-secondary" @click="cancel">{{ $t('common.cancel') }}</button>
         </div>
       </form>
     </div>
@@ -209,31 +209,31 @@
 
     <div v-if="showCreateArticle" class="modal-backdrop" @click.self="showCreateArticle = false">
       <div class="modal-panel">
-        <h2>Neuer Artikel</h2>
+        <h2>{{ $t('catalog.newArticle') }}</h2>
         <form @submit.prevent="createArticleInline">
           <div class="form-group">
-            <label>Name:</label>
+            <label>{{ $t('catalog.form.name') }}</label>
             <input v-model="articleForm.name" required />
           </div>
           <div class="form-group">
-            <label>Beschreibung:</label>
+            <label>{{ $t('itemForm.description') }}</label>
             <textarea v-model="articleForm.description"></textarea>
           </div>
           <div class="form-group">
-            <label>Einheit:</label>
-            <input v-model="articleForm.unit" placeholder="z.B. Stk, kg, m" />
+            <label>{{ $t('itemForm.unit') }}</label>
+            <input v-model="articleForm.unit" :placeholder="$t('itemForm.articleUnitPlaceholder')" />
           </div>
           <div class="form-group">
-            <label>Einkaufspreis:</label>
+            <label>{{ $t('itemForm.purchasePrice') }}</label>
             <input v-model="articleForm.purchasePrice" type="number" step="0.01" />
           </div>
           <div class="form-group">
-            <label>Verkaufspreis:</label>
+            <label>{{ $t('itemForm.salesPrice') }}</label>
             <input v-model="articleForm.salesPrice" type="number" step="0.01" required />
           </div>
           <div class="form-actions">
-            <button type="submit" class="btn btn-primary">Artikel anlegen</button>
-            <button type="button" class="btn btn-secondary" @click="showCreateArticle = false">Abbrechen</button>
+            <button type="submit" class="btn btn-primary">{{ $t('docForm.createArticle') }}</button>
+            <button type="button" class="btn btn-secondary" @click="showCreateArticle = false">{{ $t('common.cancel') }}</button>
           </div>
         </form>
       </div>
@@ -241,30 +241,30 @@
 
     <div v-if="showCreateService" class="modal-backdrop" @click.self="showCreateService = false">
       <div class="modal-panel">
-        <h2>Neue Leistung</h2>
+        <h2>{{ $t('catalog.newService') }}</h2>
         <form @submit.prevent="createServiceInline">
           <div class="form-group">
-            <label>Name:</label>
+            <label>{{ $t('catalog.form.name') }}</label>
             <input v-model="serviceForm.name" required />
           </div>
           <div class="form-group">
-            <label>Beschreibung:</label>
+            <label>{{ $t('itemForm.description') }}</label>
             <textarea v-model="serviceForm.description"></textarea>
           </div>
           <div class="form-group">
-            <label>Stundensatz:</label>
+            <label>{{ $t('itemForm.hourlyRate') }}</label>
             <input v-model="serviceForm.hourlyRate" type="number" step="0.01" required />
           </div>
           <div v-if="equipmentList.length" class="form-group">
-            <label>Verknüpfte Ausstattung:</label>
+            <label>{{ $t('itemForm.linkedEquipment') }}</label>
             <select v-model="serviceForm.equipmentId">
-              <option :value="null">Keine</option>
+              <option :value="null">{{ $t('itemForm.noEquipment') }}</option>
               <option v-for="eq in equipmentList" :key="eq.id" :value="eq.id">{{ eq.name }}</option>
             </select>
           </div>
           <div class="form-actions">
-            <button type="submit" class="btn btn-primary">Leistung anlegen</button>
-            <button type="button" class="btn btn-secondary" @click="showCreateService = false">Abbrechen</button>
+            <button type="submit" class="btn btn-primary">{{ $t('docForm.createService') }}</button>
+            <button type="button" class="btn btn-secondary" @click="showCreateService = false">{{ $t('common.cancel') }}</button>
           </div>
         </form>
       </div>
@@ -282,6 +282,7 @@
       </div>
     </div>
 
+    <!-- eslint-disable @intlify/vue-i18n/no-raw-text -- developer diagnostics, only in a dev build with the flag set; never shown to users -->
     <aside v-if="keyboardZoomDebugEnabled" class="keyboard-zoom-debug" data-testid="keyboard-zoom-debug">
       <strong>Keyboard zoom debug · dev only</strong>
       <dl>
@@ -306,10 +307,12 @@
         <button type="button" :disabled="keyboardZoomDebug.telemetryEventCount === 0 || telemetrySending" @click="sendKeyboardZoomDiagnostics">Send diagnostics ({{ keyboardZoomDebug.telemetryEventCount }})</button>
       </div>
     </aside>
+    <!-- eslint-enable @intlify/vue-i18n/no-raw-text -->
   </div>
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import invoiceAPI from '../services/invoiceService.js'
 import articleAPI from '../services/articleService.js'
@@ -327,6 +330,8 @@ import { INVOICE, OFFER, isInvoice, isBookkeepingRecord } from '../data/document
 import { buildPreviewVariables, buildLineItemsData } from '../utils/invoiceVariables.js'
 import { TAX_TREATMENTS, SMALL_BUSINESS, calculateVat, chargesVat, legalNote, formatRate } from '../utils/vat.js'
 import { captureKeyboardZoomSnapshot, createKeyboardZoomTelemetry } from '../utils/keyboardZoomTelemetry.js'
+
+const { t } = useI18n()
 
 const { documentFormTitle } = useDocumentType()
 
@@ -429,9 +434,9 @@ const isInvoiceDocument = computed(() => isInvoice(targetTypeId.value))
 const numberPlaceholder = computed(() => {
   if (isInvoiceDocument.value && (!isEditMode.value || isDraft(props.invoice?.documentStatusId)
       || props.convertFromOffer)) {
-    return 'Wird beim Ausstellen vergeben'
+    return t('docForm.numberOnIssue')
   }
-  return isEditMode.value ? '' : 'Wird automatisch generiert'
+  return isEditMode.value ? '' : t('docForm.numberAuto')
 })
 
 /** "Neues Angebot" when creating, "Angebot bearbeiten" when editing. */
@@ -499,13 +504,13 @@ const layoutMode = computed(() => (form.value.templateId === null ? 'default' : 
 const canCustomize = computed(() => isEditMode.value && !!props.invoice?.id)
 const customizeTooltip = computed(() =>
   canCustomize.value
-    ? 'Erstellt eine eigene Vorlage nur für dieses Dokument'
-    : 'Bitte zuerst das Dokument speichern'
+    ? t('docForm.customizeTooltip')
+    : t('docForm.saveFirst')
 )
 const customizeHint = computed(() =>
   canCustomize.value
     ? ''
-    : 'Bitte zuerst das Dokument speichern, dann ein eigenes Layout anlegen.'
+    : t('docForm.saveFirstHint')
 )
 
 async function loadOwnerSettings() {
@@ -1032,8 +1037,7 @@ function onLayoutModeDefault() {
   // reflects the actual server state.
   if (props.invoice?.templateId != null) {
     const confirmed = confirm(
-      'Diese Aktion entfernt die individuelle Vorlage für dieses Dokument. '
-      + 'Die PDF wird dann mit der globalen Standardvorlage erstellt. Fortfahren?'
+      t('docForm.confirmRemoveOwn')
     )
     if (!confirmed) {
       form.value.templateId = props.invoice.templateId
@@ -1074,7 +1078,7 @@ async function openCustomize() {
       sourceTemplate = response.data
     } catch (e) {
       console.error('Failed to load override template:', e)
-      alert('Eigene Vorlage konnte nicht geladen werden: ' + e.message)
+      alert(t('docForm.ownLoadFailed', { reason: e.message }))
       return
     }
     isNewOverride = false
@@ -1084,7 +1088,7 @@ async function openCustomize() {
       sourceTemplate = response.data
     } catch (e) {
       console.error('Failed to load type default:', e)
-      alert('Standardvorlage konnte nicht geladen werden: ' + e.message)
+      alert(t('docForm.defaultLoadFailed', { reason: e.message }))
       return
     }
     isNewOverride = true
@@ -1173,7 +1177,7 @@ async function onCustomTemplateSaved(savedTemplate) {
     }
   } catch (e) {
     console.error('Failed to save custom template:', e)
-    alert('Eigene Vorlage konnte nicht gespeichert werden: ' + e.message)
+    alert(t('docForm.ownSaveFailed', { reason: e.message }))
   }
   closeTemplateEditor()
 }
@@ -1312,7 +1316,7 @@ async function createArticleInline() {
     onArticleSelect()
     addSelectedArticle()
   } catch (err) {
-    alert('Fehler beim Anlegen des Artikels: ' + err.message)
+    alert(t('docForm.articleFailed', { reason: err.message }))
   }
 }
 
@@ -1328,7 +1332,7 @@ async function createServiceInline() {
     onServiceSelect()
     addSelectedService()
   } catch (err) {
-    alert('Fehler beim Anlegen der Leistung: ' + err.message)
+    alert(t('docForm.serviceFailed', { reason: err.message }))
   }
 }
 
@@ -1339,7 +1343,7 @@ function cancel() {
 async function submit() {
   try {
     if (!form.value.customerId) {
-      alert('Bitte wählen Sie einen Kunden aus')
+      alert(t('docForm.chooseCustomer'))
       return
     }
 
@@ -1356,8 +1360,7 @@ async function submit() {
       && !props.convertFromCostCalc
     ) {
       const confirmed = confirm(
-        'Sie sind dabei, die individuelle Vorlage für dieses Dokument zu '
-        + 'entfernen. Sind Sie sicher?'
+        t('docForm.confirmLoseOwn')
       )
       if (!confirmed) {
         return
@@ -1366,7 +1369,7 @@ async function submit() {
 
     if (!isCancelled(form.value.documentStatusId) && !isCancelled(props.invoice?.documentStatusId)
         && isCancelled(form.value.documentStatusId)) {
-      if (!confirm('Möchten Sie dieses Dokument wirklich stornieren?')) {
+      if (!confirm(t('docForm.confirmCancel'))) {
         form.value.documentStatusId = props.invoice?.documentStatusId || DRAFT
         return
       }
@@ -1385,8 +1388,7 @@ async function submit() {
 
     // Issued invoices are frozen; the list only offers "Bearbeiten" for drafts.
     if (isNonDraftEdit && isBookkeepingRecord(props.invoice.documentTypeId)) {
-      alert('Ausgestellte Rechnungen können nicht mehr geändert werden. '
-        + 'Bitte stornieren und eine korrigierte Rechnung erstellen.')
+      alert(t('docForm.issuedFrozen'))
       return
     }
 
@@ -1444,7 +1446,7 @@ async function submit() {
     cancel()
   } catch (error) {
     console.error('Failed to save document:', error)
-    alert('Fehler beim Speichern: ' + error.message)
+    alert(t('common.saveFailed', { reason: error.message }))
   }
 }
 

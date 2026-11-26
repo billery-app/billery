@@ -10,8 +10,8 @@
       :aria-expanded="open ? 'true' : 'false'"
       :aria-controls="listId"
       :aria-activedescendant="activeIndex >= 0 ? optionId(activeIndex) : undefined"
-      :aria-label="ariaLabel"
-      :placeholder="placeholder"
+      :aria-label="ariaLabel || $t('picker.label')"
+      :placeholder="placeholder || $t('picker.placeholder')"
       data-testid="customer-picker-input"
       @focus="onFocus"
       @input="onInput"
@@ -21,14 +21,14 @@
       v-if="modelValue && !open"
       type="button"
       class="clear-btn"
-      aria-label="Kundenauswahl entfernen"
+      :aria-label="$t('picker.clear')"
       data-testid="customer-picker-clear"
       @mousedown.prevent
       @click="clear"
     >×</button>
     <ul v-if="open" :id="listId" role="listbox" class="options" data-testid="customer-picker-options">
-      <li v-if="loading && !results.length" class="hint" role="presentation">Suche…</li>
-      <li v-else-if="!results.length" class="hint" role="presentation">Kein Kunde gefunden</li>
+      <li v-if="loading && !results.length" class="hint" role="presentation">{{ $t('picker.searching') }}</li>
+      <li v-else-if="!results.length" class="hint" role="presentation">{{ $t('picker.none') }}</li>
       <li
         v-for="(match, index) in results"
         :id="optionId(index)"
@@ -44,13 +44,14 @@
         <span v-if="match.city" class="city">{{ match.postalCode }} {{ match.city }}</span>
       </li>
       <li v-if="total > results.length" class="hint" role="presentation">
-        {{ total - results.length }} weitere – Suche verfeinern
+        {{ $t('picker.more', { n: total - results.length }) }}
       </li>
     </ul>
   </div>
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
 /**
  * Customer selection for the document form, searching on the server (GET /api/customers/page)
  * instead of rendering every customer as an <option>. v-model is the customer id ('' for none);
@@ -59,11 +60,14 @@
 import { ref, watch, onBeforeUnmount } from 'vue'
 import customerAPI from '../services/customerService.js'
 
+const { t } = useI18n()
+
 const props = defineProps({
   modelValue: { type: [Number, String], default: '' },
   customer: { type: Object, default: null },
-  placeholder: { type: String, default: 'Kunde suchen…' },
-  ariaLabel: { type: String, default: 'Kunde' }
+  // empty: the default text of the interface language
+  placeholder: { type: String, default: '' },
+  ariaLabel: { type: String, default: '' }
 })
 const emit = defineEmits(['update:modelValue', 'update:customer'])
 
@@ -105,7 +109,7 @@ async function syncSelection() {
     try {
       selected.value = (await customerAPI.getCustomer(id)).data
     } catch {
-      selected.value = { id, firstName: `Kunde #${id}`, lastName: '' }
+      selected.value = { id, firstName: t('picker.unknown', { id }), lastName: '' }
     }
   }
   if (!open.value) query.value = label(selected.value)

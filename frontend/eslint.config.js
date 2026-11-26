@@ -36,7 +36,13 @@ const I18N_DONE = [
   'src/components/CustomerCreateModal.vue',
   'src/components/OwnerModal.vue',
   'src/components/ArticleServiceCreateModal.vue',
-  'src/components/SpotlightSearch.vue'
+  'src/components/SpotlightSearch.vue',
+  'src/components/DocumentModal.vue',
+  'src/components/DocumentViewModal.vue',
+  'src/components/SendMailModal.vue',
+  'src/components/ConvertModal.vue',
+  'src/components/CustomerPicker.vue',
+  'src/components/editor/InvoiceItemRow.vue'
 ]
 export default [
   { ignores: ['dist/**', 'coverage/**', 'test-results/**', 'playwright-report/**'] },
@@ -87,8 +93,8 @@ export default [
       '@intlify/vue-i18n/no-raw-text': [
         'error',
         {
-          ignorePattern: '^[\\s\\p{P}\\p{S}\\p{Extended_Pictographic}\\u{FE0F}]+$',
-          ignoreText: ['Billery', '⌘K', 'DOCX', 'ODT', 'Enter', 'Esc', 'BILLERY_SECRETS_KEY']
+          ignorePattern: '^[\\s\\p{P}\\p{S}\\p{Extended_Pictographic}\\u{FE0F}]*$',
+          ignoreText: ['Billery', '⌘K', 'DOCX', 'ODT', 'Enter', 'Esc', 'BILLERY_SECRETS_KEY', 'PDF']
         }
       ]
     }

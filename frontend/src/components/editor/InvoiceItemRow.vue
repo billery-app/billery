@@ -4,21 +4,21 @@
     <div class="row-fields">
       <input
         v-model="item.itemName"
-        :placeholder="isNote ? 'Notiz (Überschrift)' : 'Bezeichnung'"
+        :placeholder="isNote ? $t('items.noteTitle') : $t('items.name')"
         class="row-input"
         data-testid="item-name"
       />
       <textarea
         v-if="isNote"
         v-model="item.itemDescription"
-        placeholder="Notiz (optional, mehrzeilig)"
+        :placeholder="$t('items.noteText')"
         class="row-textarea"
         rows="2"
       />
       <input
         v-else
         v-model="item.itemDescription"
-        placeholder="Beschreibung"
+        :placeholder="$t('items.description')"
         class="row-input row-input-wide"
       />
       <template v-if="!isNote">
@@ -27,12 +27,12 @@
           type="number"
           min="0"
           step="1"
-          placeholder="Menge"
+          :placeholder="$t('items.quantity')"
           class="row-input row-input-num"
         />
         <input
           v-model="item.unit"
-          placeholder="Einheit"
+          :placeholder="$t('items.unit')"
           class="row-input row-input-unit"
         />
         <input
@@ -40,14 +40,14 @@
           type="number"
           min="0"
           step="0.01"
-          placeholder="Preis"
+          :placeholder="$t('items.price')"
           class="row-input row-input-num"
         />
         <select
           v-if="showTaxRate"
           v-model.number="item.taxRate"
           class="row-input row-input-rate"
-          title="Umsatzsteuersatz"
+          :title="$t('items.vatRate')"
           data-testid="item-tax-rate"
         >
           <option v-for="rate in VAT_RATES" :key="rate" :value="rate">{{ rate }} %</option>
@@ -68,8 +68,8 @@
         type="button"
         class="btn btn-small btn-secondary"
         @click="showChildPicker = true"
-      >+ Unterposition</button>
-      <span v-else-if="!canHaveChildren" class="row-hint">max. Tiefe</span>
+      >{{ $t('items.addSub') }}</button>
+      <span v-else-if="!canHaveChildren" class="row-hint">{{ $t('items.maxDepth') }}</span>
     </div>
 
     <div v-if="showChildPicker" class="child-picker">
@@ -78,50 +78,50 @@
           type="button"
           :class="['tab', childTab === 'articles' ? 'active' : '']"
           @click="childTab = 'articles'"
-        >Artikel</button>
+        >{{ $t('catalog.articles') }}</button>
         <button
           type="button"
           :class="['tab', childTab === 'services' ? 'active' : '']"
           @click="childTab = 'services'"
-        >Leistungen</button>
+        >{{ $t('catalog.services') }}</button>
         <button
           type="button"
           :class="['tab', childTab === 'custom' ? 'active' : '']"
           @click="childTab = 'custom'"
-        >Freitext</button>
+        >{{ $t('items.freeText') }}</button>
       </div>
 
       <div v-if="childTab === 'articles'" class="child-selector">
         <select v-model="childArticleId" @change="onChildArticleSelect">
-          <option value="">Artikel auswählen…</option>
+          <option value="">{{ $t('items.chooseArticle') }}</option>
           <option v-for="a in articles" :key="a.id" :value="a.id">
             {{ a.name }} ({{ formatCurrency(a.salesPrice) }})
           </option>
         </select>
         <div v-if="childArticle" class="child-preview">
           <span>{{ childArticle.name }} — {{ childArticle.description }}</span>
-          <button type="button" class="btn btn-small btn-primary" @click="addChildFromArticle">Hinzufügen</button>
+          <button type="button" class="btn btn-small btn-primary" @click="addChildFromArticle">{{ $t('items.add') }}</button>
         </div>
       </div>
 
       <div v-if="childTab === 'services'" class="child-selector">
         <select v-model="childServiceId" @change="onChildServiceSelect">
-          <option value="">Leistung auswählen…</option>
+          <option value="">{{ $t('items.chooseService') }}</option>
           <option v-for="s in services" :key="s.id" :value="s.id">
-            {{ s.name }} ({{ formatCurrency(s.hourlyRate) }}/h)
+            {{ s.name }} {{ $t('items.perHour', { rate: formatCurrency(s.hourlyRate) }) }}
           </option>
         </select>
         <div v-if="childService" class="child-preview">
           <span>{{ childService.name }} — {{ childService.description }}</span>
-          <button type="button" class="btn btn-small btn-primary" @click="addChildFromService">Hinzufügen</button>
+          <button type="button" class="btn btn-small btn-primary" @click="addChildFromService">{{ $t('items.add') }}</button>
         </div>
       </div>
 
       <div v-if="childTab === 'custom'" class="child-selector">
-        <button type="button" class="btn btn-small btn-primary" @click="addCustomChild">+ Freie Unterposition</button>
+        <button type="button" class="btn btn-small btn-primary" @click="addCustomChild">{{ $t('items.addFreeSub') }}</button>
       </div>
 
-      <button type="button" class="btn btn-small btn-secondary child-picker-close" @click="closeChildPicker">Schließen</button>
+      <button type="button" class="btn btn-small btn-secondary child-picker-close" @click="closeChildPicker">{{ $t('common.close') }}</button>
     </div>
 
     <div v-if="item.children && item.children.length" class="children">
@@ -142,8 +142,11 @@
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
 import { ref, computed } from 'vue'
 import { VAT_RATES } from '../../utils/vat.js'
+
+const { t } = useI18n()
 
 const props = defineProps({
   item: { type: Object, required: true },
@@ -167,7 +170,7 @@ const indentStyle = computed(() => ({
 
 const removeTitle = computed(() => {
   const hasChildren = props.item.children && props.item.children.length > 0
-  return hasChildren ? 'Position inkl. Unterpositionen entfernen' : 'Position entfernen'
+  return hasChildren ? t('items.removeWithSubs') : t('items.remove')
 })
 
 const showChildPicker = ref(false)

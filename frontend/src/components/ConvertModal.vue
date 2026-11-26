@@ -3,24 +3,27 @@
     <div class="modal-panel modal-panel-sm">
       <h2>{{ title }}</h2>
       <div class="form-group">
-        <label>Rechnungsdatum:</label>
+        <label>{{ $t('convert.invoiceDate') }}</label>
         <input v-model="form.invoiceDate" type="date" class="date-input" />
       </div>
       <div class="form-group">
-        <label>Fälligkeitsdatum:</label>
+        <label>{{ $t('convert.dueDate') }}</label>
         <input v-model="form.dueDate" type="date" class="date-input" />
       </div>
       <div v-if="validationError" class="error-msg">{{ validationError }}</div>
       <div class="form-actions">
-        <button class="btn btn-primary" @click="confirm">Umwandeln</button>
-        <button class="btn btn-secondary" @click="cancel">Abbrechen</button>
+        <button class="btn btn-primary" @click="confirm">{{ $t('convert.convert') }}</button>
+        <button class="btn btn-secondary" @click="cancel">{{ $t('common.cancel') }}</button>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
 import { ref, watch, computed } from 'vue'
+
+const { t } = useI18n()
 
 const props = defineProps({
   visible: Boolean,
@@ -31,9 +34,9 @@ const props = defineProps({
 const emit = defineEmits(['update:visible', 'convert'])
 
 const title = computed(() => {
-  if (props.targetType === 1) return 'Angebot in Rechnung umwandeln'
-  if (props.targetType === 2) return 'Kostenvoranschlag in Angebot umwandeln'
-  return 'Umwandeln'
+  if (props.targetType === 1) return t('convert.offerToInvoice')
+  if (props.targetType === 2) return t('convert.calculationToOffer')
+  return t('convert.convert')
 })
 
 const form = ref({
@@ -55,7 +58,7 @@ watch(() => props.visible, (val) => {
 
 function confirm() {
   if (form.value.dueDate && form.value.invoiceDate && form.value.dueDate < form.value.invoiceDate) {
-    validationError.value = 'Das Fälligkeitsdatum kann nicht vor dem Rechnungsdatum liegen.'
+    validationError.value = t('convert.dueBeforeInvoice')
     return
   }
   validationError.value = ''
