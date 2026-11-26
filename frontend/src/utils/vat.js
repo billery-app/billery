@@ -5,14 +5,21 @@
  */
 
 /** VAT rates a line may carry under regular taxation (§12 UStG). */
+import { t } from '../i18n/index.js'
+
 export const VAT_RATES = [19, 7]
 
-/** How VAT applies to a whole document. Keys match `TaxTreatment` in the backend. */
-export const TAX_TREATMENTS = [
-  { value: 'STANDARD', label: 'Regelbesteuerung (19 % / 7 %)' },
-  { value: 'REVERSE_CHARGE', label: 'Reverse Charge (§ 13b UStG)' },
-  { value: 'TAX_EXEMPT', label: 'Steuerfrei (§ 4 UStG)' }
-]
+/**
+ * How VAT applies to a whole document. Keys match `TaxTreatment` in the backend; the labels are in
+ * the message files (`taxTreatments`). The legal notes below are printed on the document and stay
+ * German (#15).
+ */
+export const TAX_TREATMENTS = ['STANDARD', 'REVERSE_CHARGE', 'TAX_EXEMPT'].map(value => ({
+  value,
+  get label() {
+    return t(`taxTreatments.${value}`)
+  }
+}))
 
 /** Treatment of every document of a Kleinunternehmer; never chosen by hand. */
 export const SMALL_BUSINESS = 'SMALL_BUSINESS'

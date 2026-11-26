@@ -140,7 +140,8 @@ export function numberLabel(documentTypeId) {
  */
 export function documentTitle(documentTypeId) {
   const type = DOCUMENT_TYPES.find(dt => dt.id === documentTypeId)
-  return type ? type.label : 'Rechnung'
+  // the German name: it is stored in the template and printed (documents stay German)
+  return type ? type.title : 'Rechnung'
 }
 
 /** Help text for invoice-meta fields that the document fills in when left empty. */

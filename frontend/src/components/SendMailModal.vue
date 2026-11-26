@@ -1,27 +1,24 @@
 <template>
   <div v-if="visible" class="modal-backdrop send-mail-backdrop" @click.self="close">
     <div class="modal-panel modal-panel-lg send-mail" role="dialog" aria-labelledby="send-mail-title" data-testid="send-mail">
-      <h2 id="send-mail-title">Per E-Mail senden</h2>
+      <h2 id="send-mail-title">{{ $t('sendMail.title') }}</h2>
 
-      <p v-if="loading" class="muted">Lade…</p>
+      <p v-if="loading" class="muted">{{ $t('common.loading') }}</p>
       <p v-if="error" class="notice notice-error" role="alert">{{ error }}</p>
 
       <template v-if="draft && !loading">
         <div v-if="!draft.accounts.length" class="notice notice-warning" data-testid="no-account">
-          Es ist noch kein Mailkonto eingerichtet. Rechnungen gehen über Ihr eigenes Mailkonto an
-          Kunden.
-          <router-link v-if="canManage" to="/settings/mail" @click="close">Mailkonto einrichten</router-link>
-          <span v-else>Bitte wenden Sie sich an den Inhaber oder einen Administrator.</span>
+          {{ $t('sendMail.noAccount') }}
+          <router-link v-if="canManage" to="/settings/mail" @click="close">{{ $t('sendMail.setUp') }}</router-link>
+          <span v-else>{{ $t('sendMail.askOwner') }}</span>
         </div>
 
         <form v-else class="send-form" @submit.prevent="send">
           <p v-if="draft.needsIssue" class="notice notice-warning" data-testid="needs-issue">
-            Die Rechnung ist ein Entwurf. Beim Senden wird sie ausgestellt: Sie erhält ihre Nummer
-            und kann danach nicht mehr geändert werden. Platzhalter wie die Rechnungsnummer werden
-            dabei ausgefüllt.
+            {{ $t('sendMail.needsIssue') }}
           </p>
           <div class="form-group">
-            <label for="send-account">Absender</label>
+            <label for="send-account">{{ $t('mail.sender') }}</label>
             <select id="send-account" v-model="form.accountId" class="form-control">
               <option v-for="account in draft.accounts" :key="account.id" :value="account.id">
                 {{ account.name }} – {{ account.fromAddress }}
@@ -29,55 +26,58 @@
             </select>
           </div>
           <div class="form-group">
-            <label for="send-to">An</label>
-            <input id="send-to" v-model="form.to" class="form-control" type="text" autocomplete="off" placeholder="kunde@example.com" data-testid="send-to" />
+            <label for="send-to">{{ $t('sendMail.to') }}</label>
+            <input id="send-to" v-model="form.to" class="form-control" type="text" autocomplete="off" :placeholder="$t('sendMail.toPlaceholder')" data-testid="send-to" />
           </div>
           <div class="form-group">
-            <label for="send-cc">Kopie (CC)</label>
-            <input id="send-cc" v-model="form.cc" class="form-control" type="text" autocomplete="off" placeholder="optional, mehrere mit Komma trennen" />
+            <label for="send-cc">{{ $t('sendMail.cc') }}</label>
+            <input id="send-cc" v-model="form.cc" class="form-control" type="text" autocomplete="off" :placeholder="$t('sendMail.ccPlaceholder')" />
           </div>
           <!-- chips for what is still a placeholder (the number of a draft), like the mail templates -->
           <div class="form-group">
-            <span class="field-label" aria-hidden="true">Betreff</span>
-            <VariableTextInput id="send-subject" v-model="form.subject" label="Betreff" data-testid="send-subject" />
+            <span class="field-label" aria-hidden="true">{{ $t('mail.subject') }}</span>
+            <VariableTextInput id="send-subject" v-model="form.subject" :label="$t('mail.subject')" data-testid="send-subject" />
           </div>
           <div class="form-group">
-            <span class="field-label" aria-hidden="true">Text</span>
-            <VariableTextInput id="send-text" v-model="form.text" label="Text" multiline data-testid="send-text" />
+            <span class="field-label" aria-hidden="true">{{ $t('mail.text') }}</span>
+            <VariableTextInput id="send-text" v-model="form.text" :label="$t('mail.text')" multiline data-testid="send-text" />
           </div>
-          <p class="muted">Anhang: {{ attachmentLabel }}</p>
+          <p class="muted">{{ $t('sendMail.attachment', { name: attachmentLabel }) }}</p>
           <label v-if="draft.xrechnungPossible" class="inline-check">
             <input v-model="form.attachXRechnung" type="checkbox" :disabled="draft.xrechnungMissing.length > 0" />
-            XRechnung zusätzlich als XML-Datei anhängen
+            {{ $t('sendMail.attachXRechnung') }}
           </label>
           <p v-if="draft.xrechnungPossible && draft.xrechnungMissing.length" class="muted">
-            Für die XRechnung fehlen noch: {{ draft.xrechnungMissing.join(', ') }}.
+            {{ $t('sendMail.xrechnungMissing', { fields: draft.xrechnungMissing.join(', ') }) }}
           </p>
           <label class="inline-check">
             <input v-model="form.copyToSelf" type="checkbox" />
-            Kopie an mich (an die Absenderadresse)
+            {{ $t('sendMail.copyToSelf') }}
           </label>
           <div class="form-actions">
             <button type="submit" class="btn btn-primary" :disabled="sending" data-testid="send-button">
-              {{ sending ? 'Sende…' : draft.needsIssue ? 'Ausstellen und senden' : 'Senden' }}
+              {{ sending ? $t('sendMail.sending') : draft.needsIssue ? $t('sendMail.issueAndSend') : $t('sendMail.send') }}
             </button>
-            <button type="button" class="btn btn-secondary" :disabled="sending" @click="close">Abbrechen</button>
+            <button type="button" class="btn btn-secondary" :disabled="sending" @click="close">{{ $t('common.cancel') }}</button>
           </div>
         </form>
       </template>
 
       <div v-if="draft && !draft.accounts.length" class="form-actions">
-        <button type="button" class="btn btn-secondary" @click="close">Schließen</button>
+        <button type="button" class="btn btn-secondary" @click="close">{{ $t('common.close') }}</button>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
 import { computed, ref, watch } from 'vue'
 import mailService, { splitAddresses } from '../services/mailService.js'
 import VariableTextInput from './editor/VariableTextInput.vue'
 import { activeRole, isSaas } from '../services/session.js'
+
+const { t } = useI18n()
 
 /**
  * The send dialog of a document: sender account, recipients, subject and text (from the company's
@@ -105,7 +105,7 @@ function emptyForm() {
 const canManage = computed(() => !isSaas() || ['OWNER', 'ADMIN'].includes(activeRole()))
 
 const attachmentLabel = computed(() =>
-  draft.value.needsIssue ? 'die Rechnung als PDF (die Nummer wird beim Ausstellen vergeben)' : draft.value.attachmentName
+  draft.value.needsIssue ? t('sendMail.draftAttachment') : draft.value.attachmentName
 )
 
 watch(
@@ -128,7 +128,7 @@ watch(
         text: loaded.text
       }
     } catch (err) {
-      error.value = err.message || 'Der Versand kann gerade nicht vorbereitet werden.'
+      error.value = err.message || t('sendMail.prepareFailed')
     } finally {
       loading.value = false
     }
@@ -146,12 +146,12 @@ async function send() {
   error.value = null
   const to = splitAddresses(form.value.to)
   if (!to.length) {
-    error.value = 'Bitte mindestens einen Empfänger angeben.'
+    error.value = t('sendMail.noRecipient')
     return
   }
   if (
     draft.value.needsIssue &&
-    !window.confirm('Die Rechnung jetzt ausstellen und senden? Danach kann sie nicht mehr geändert werden.')
+    !window.confirm(t('sendMail.confirmIssue'))
   ) {
     return
   }
@@ -170,7 +170,7 @@ async function send() {
     emit('sent', { ...result, to })
     emit('update:visible', false)
   } catch (err) {
-    error.value = err.message || 'Die Nachricht konnte nicht gesendet werden.'
+    error.value = err.message || t('sendMail.failed')
   } finally {
     sending.value = false
   }

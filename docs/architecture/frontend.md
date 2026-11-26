@@ -59,8 +59,12 @@ getters over `t()`, so they follow a switch without a reload. ESLint checks ever
 (`no-raw-text`, list `I18N_DONE` in `eslint.config.js`). Moved so far: the app shell, every view
 (dashboard, customers and customer detail, document list, catalog, search, company details,
 template list), the settings overview and all its areas, the customer / company / catalog
-dialogs, the quick search and both tours. Still German: the document dialogs, the document type
-and status names (`data/documentTypes.js`, `utils/documentStatus.js`) and the template editor.
+dialogs, the quick search and both tours, the document dialogs (form, view, conversion, sending,
+customer picker, line rows) and the document type, status and taxation names. `data/documentTypes.js`
+gives each type getters (`label`, `plural`, `newLabel`, `listTitle`, …) over `t()`; only its
+`title` stays a fixed German word, because the PDF prints it (`blockRegistry.documentTitle`).
+Stored or printed data stays German too: default units (`Stk`, `Std`), payment methods, legal
+notes of the taxation. Still German: the template editor and the messages of the backend.
 Amounts and dates keep the German format in both languages (the business runs in Germany).
 
 ## Application bootstrap

@@ -80,7 +80,7 @@ describe('InvoicesView document-type navigation', () => {
 
     expect(wrapper.find('.page-heading-mobile').text()).toBe('Dokumente')
     expect(wrapper.find('h1.nav-destination-page-title').exists()).toBe(true)
-    expect(wrapper.find('.page-heading-desktop').text()).toBe('Kostenvoranschlagverwaltung')
+    expect(wrapper.find('.page-heading-desktop').text()).toBe('Kostenvoranschlagsverwaltung')
     expect(wrapper.find('.filters .btn-primary').text()).toBe('Neuer Kostenvoranschlag')
     expect(wrapper.findAll('.doc-type-tabs button')[2].attributes('aria-pressed')).toBe('true')
 
