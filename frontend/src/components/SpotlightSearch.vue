@@ -11,7 +11,7 @@
             ref="searchInput"
             v-model="query"
             type="text"
-            placeholder="Suche..."
+            :placeholder="$t('spotlight.placeholder')"
             class="spotlight-input"
             @input="debouncedSearch"
             @keydown.escape="close"
@@ -28,7 +28,7 @@
 
         <div v-if="loading" class="spotlight-loading">
           <div class="spinner"></div>
-          <span>Suche läuft...</span>
+          <span>{{ $t('search.running') }}</span>
         </div>
 
         <div v-else-if="error" class="spotlight-error">{{ error }}</div>
@@ -37,7 +37,7 @@
           <div v-if="result.customers?.length" class="result-group">
             <div class="result-group-header">
               <span class="group-icon">👤</span>
-              Kunden
+              {{ $t('nav.customers') }}
             </div>
             <div
               v-for="(c, idx) in result.customers.slice(0, 5)"
@@ -57,7 +57,7 @@
           <div v-if="result.articles?.length" class="result-group">
             <div class="result-group-header">
               <span class="group-icon">📦</span>
-              Artikel
+              {{ $t('catalog.articles') }}
             </div>
             <div
               v-for="(a, idx) in result.articles.slice(0, 5)"
@@ -77,7 +77,7 @@
           <div v-if="result.services?.length" class="result-group">
             <div class="result-group-header">
               <span class="group-icon">🔧</span>
-              Dienstleistungen
+              {{ $t('catalog.services') }}
             </div>
             <div
               v-for="(s, idx) in result.services.slice(0, 5)"
@@ -97,7 +97,7 @@
           <div v-if="result.invoices?.length" class="result-group">
             <div class="result-group-header">
               <span class="group-icon">📄</span>
-              Rechnungen
+              {{ $t('search.kinds.invoices') }}
             </div>
             <div
               v-for="(inv, idx) in result.invoices.slice(0, 5)"
@@ -117,7 +117,7 @@
           <div v-if="result.offers?.length" class="result-group">
             <div class="result-group-header">
               <span class="group-icon">💼</span>
-              Angebote
+              {{ $t('search.kinds.offers') }}
             </div>
             <div
               v-for="(off, idx) in result.offers.slice(0, 5)"
@@ -137,7 +137,7 @@
           <div v-if="result.calculations?.length" class="result-group">
             <div class="result-group-header">
               <span class="group-icon">📊</span>
-              Kostenvoranschläge
+              {{ $t('search.kinds.calculations') }}
             </div>
             <div
               v-for="(calc, idx) in result.calculations.slice(0, 5)"
@@ -156,15 +156,15 @@
         </div>
 
         <div v-else-if="query.length >= 2 && hasSearched" class="spotlight-empty">
-          Keine Ergebnisse für "{{ query }}"
+          {{ $t('spotlight.noResults', { query }) }}
         </div>
 
         <div v-else-if="query.length < 2" class="spotlight-hint">
-          Geben Sie mindestens 2 Zeichen ein
+          {{ $t('spotlight.minLength') }}
         </div>
 
         <div v-else class="spotlight-hint">
-          Drücken Sie <kbd>↑</kbd> <kbd>↓</kbd> zum Navigieren, <kbd>Enter</kbd> zum Auswählen, <kbd>Esc</kbd> zum Schließen
+          {{ $t('spotlight.keys.press') }} <kbd>↑</kbd> <kbd>↓</kbd> {{ $t('spotlight.keys.navigate') }}, <kbd>Enter</kbd> {{ $t('spotlight.keys.select') }}, <kbd>Esc</kbd> {{ $t('spotlight.keys.close') }}
         </div>
       </div>
     </div>
@@ -303,7 +303,7 @@ export default {
         this.result = response.data
         this.hasSearched = true
       } catch (err) {
-        this.error = 'Suche fehlgeschlagen: ' + err.message
+        this.error = this.$t('search.failed', { reason: err.message })
       } finally {
         this.loading = false
       }

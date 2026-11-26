@@ -3,18 +3,18 @@
     <header class="view-header">
       <div class="view-title">
         <router-link to="/settings" class="back-link" data-testid="settings-back">{{ $t('settings.back') }}</router-link>
-        <h1>Dokumentvorlagen</h1>
+        <h1>{{ $t('settings.areas.templates.title') }}</h1>
       </div>
       <div class="header-actions">
         <button type="button" class="btn btn-secondary" data-testid="templates-tour" @click="startTemplateTour">
-          Kurz erklärt
+          {{ $t('templates.explain') }}
         </button>
         <label class="toggle">
           <input v-model="showDocumentSpecific" type="checkbox" @change="loadTemplates" />
-          <span>Dokument-spezifische Vorlagen anzeigen</span>
+          <span>{{ $t('templates.showDocumentSpecific') }}</span>
         </label>
         <button class="btn btn-primary" data-tour="template-new" @click="showStartModal = true">
-          + Neue Vorlage
+          {{ $t('templates.new') }}
         </button>
       </div>
     </header>
@@ -27,7 +27,7 @@
         data-tour="template-card"
         :class="{ 'is-default': template.isDefault, 'is-document-specific': template.documentSpecific }"
       >
-        <button type="button" class="thumb-button" :title="`${template.name} bearbeiten`" @click="editTemplate(template)">
+        <button type="button" class="thumb-button" :title="$t('templates.editNamed', { name: template.name })" @click="editTemplate(template)">
           <TemplateThumbnail
             :blocks="template.blocks || []"
             :css-content="template.cssContent || ''"
@@ -38,36 +38,36 @@
         </button>
         <div class="template-header">
           <h3>{{ template.name }}</h3>
-          <span v-if="template.isDefault" class="default-badge">Standard</span>
-          <span v-if="template.documentSpecific" class="document-specific-badge">Dokument-spezifisch</span>
+          <span v-if="template.isDefault" class="default-badge">{{ $t('templates.default') }}</span>
+          <span v-if="template.documentSpecific" class="document-specific-badge">{{ $t('templates.documentSpecific') }}</span>
           <span class="document-type">{{ getDocumentTypeName(template.documentTypeId) }}</span>
         </div>
 
         <div class="template-meta">
           <small>
-            Ränder: {{ template.marginTopMm }}/{{ template.marginBottomMm }}/{{ template.marginLeftMm }}/{{ template.marginRightMm }} mm
+            {{ $t('templates.margins', { margins: `${template.marginTopMm}/${template.marginBottomMm}/${template.marginLeftMm}/${template.marginRightMm}` }) }}
           </small>
           <small v-if="template.updatedAt">
-            Bearbeitet: {{ formatDate(template.updatedAt) }}
+            {{ $t('templates.edited', { date: formatDate(template.updatedAt) }) }}
           </small>
         </div>
 
         <div class="template-actions">
           <button class="btn btn-small btn-primary" data-tour="template-edit" :data-document-type="template.documentTypeId" @click="editTemplate(template)">
-            Bearbeiten
+            {{ $t('common.edit') }}
           </button>
           <button
             v-if="!template.isDefault"
             class="btn btn-small btn-secondary"
             @click="setAsDefault(template.id)"
           >
-            Als Standard
+            {{ $t('templates.makeDefault') }}
           </button>
           <button
             type="button"
             class="btn btn-small btn-secondary"
             :disabled="exporting === template.id"
-            :aria-label="`Vorlage ${template.name} als Word-Datei (DOCX) exportieren`"
+            :aria-label="$t('templates.exportDocx', { name: template.name })"
             @click="exportTemplate(template, 'docx')"
           >
             DOCX
@@ -76,7 +76,7 @@
             type="button"
             class="btn btn-small btn-secondary"
             :disabled="exporting === template.id"
-            :aria-label="`Vorlage ${template.name} als ODT exportieren`"
+            :aria-label="$t('templates.exportOdt', { name: template.name })"
             @click="exportTemplate(template, 'odt')"
           >
             ODT
@@ -86,21 +86,21 @@
             class="btn btn-small btn-danger"
             @click="deleteTemplate(template.id)"
           >
-            Löschen
+            {{ $t('common.delete') }}
           </button>
         </div>
       </div>
     </div>
 
     <div v-if="templates.length === 0 && !loading" class="empty-state">
-      <p>Keine Vorlagen vorhanden.</p>
+      <p>{{ $t('templates.empty') }}</p>
       <button class="btn btn-primary" @click="showStartModal = true">
-        Erste Vorlage erstellen
+        {{ $t('templates.createFirst') }}
       </button>
     </div>
 
     <div v-if="loading" class="loading">
-      Lade Vorlagen...
+      {{ $t('templates.loading') }}
     </div>
 
     <TemplateStartModal
@@ -125,6 +125,8 @@
 
 <script>
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { getDocumentTypeById } from '../data/documentTypes.js'
 import { useRouter } from 'vue-router'
 import { runTemplateTour } from '../utils/tour.js'
 import TemplateEditor from '../components/TemplateEditor.vue'
@@ -144,6 +146,7 @@ export default {
     TemplateThumbnail
   },
   setup() {
+    const { t } = useI18n()
     const editingTemplate = ref(null)
     const showCreateEditor = ref(false)
     // "Neue Vorlage": the start gallery yields a preset (no id) that seeds the editor.
@@ -154,12 +157,6 @@ export default {
     const templates = ref([])
     const showDocumentSpecific = ref(false)
     const editorRef = ref(null)
-    const documentTypes = ref({
-      1: 'Rechnung',
-      2: 'Angebot',
-      3: 'Kalkulation',
-      4: 'Teilrechnung'
-    })
 
     const cleanEditingTemplate = computed(() => {
       if (!editingTemplate.value) return null
@@ -210,7 +207,7 @@ export default {
         await loadTemplates()
       } catch (error) {
         console.error('Failed to save template:', error)
-        alert('Fehler beim Speichern der Vorlage')
+        alert(t('templates.saveFailed'))
       }
     }
 
@@ -223,14 +220,14 @@ export default {
         templates.value = response.data
       } catch (error) {
         console.error('Failed to load templates:', error)
-        alert('Fehler beim Laden der Vorlagen')
+        alert(t('templates.loadFailed'))
       } finally {
         loading.value = false
       }
     }
 
     const getDocumentTypeName = (id) => {
-      return documentTypes.value[id] || 'Unbekannt'
+      return getDocumentTypeById(id)?.label || t('templates.unknownType')
     }
 
     const formatDate = (dateString) => {
@@ -245,12 +242,12 @@ export default {
         await loadTemplates()
       } catch (error) {
         console.error('Failed to set default template:', error)
-        alert('Fehler beim Setzen der Standardvorlage')
+        alert(t('templates.defaultFailed'))
       }
     }
 
     const deleteTemplate = async (templateId) => {
-      if (!confirm('Möchten Sie diese Vorlage wirklich löschen?')) {
+      if (!confirm(t('templates.confirmDelete'))) {
         return
       }
       try {
@@ -258,7 +255,7 @@ export default {
         await loadTemplates()
       } catch (error) {
         console.error('Failed to delete template:', error)
-        alert('Fehler beim Löschen der Vorlage')
+        alert(t('templates.deleteFailed'))
       }
     }
 
@@ -272,7 +269,7 @@ export default {
     const exportTemplate = async (template, format) => {
       const sections = templateToSections(normalizeBlocks(template.blocks))
       if (!sections.length) {
-        alert('Diese Vorlage enthält keine Texte zum Exportieren.')
+        alert(t('templates.nothingToExport'))
         return
       }
       exporting.value = template.id
@@ -282,7 +279,7 @@ export default {
         downloadBlob(response.data, `${fileName}.${format}`)
       } catch (error) {
         console.error('Failed to export template:', error)
-        alert('Die Vorlage konnte nicht exportiert werden.')
+        alert(t('templates.exportFailed'))
       } finally {
         exporting.value = null
       }
@@ -306,7 +303,6 @@ export default {
       templates,
       showDocumentSpecific,
       editorRef,
-      documentTypes,
       cleanEditingTemplate,
       editTemplate,
       closeEditor,

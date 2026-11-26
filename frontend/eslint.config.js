@@ -17,7 +17,26 @@ const I18N_DONE = [
   'src/views/SettingsView.vue',
   'src/views/SettingsAreaView.vue',
   'src/components/HelpSettings.vue',
-  'src/components/LanguageSettings.vue'
+  'src/components/LanguageSettings.vue',
+  'src/views/DashboardView.vue',
+  'src/views/CustomersView.vue',
+  'src/views/CustomerDetailView.vue',
+  'src/views/OwnersView.vue',
+  'src/views/InvoicesView.vue',
+  'src/views/TemplatesView.vue',
+  'src/views/ArticlesServicesView.vue',
+  'src/views/SearchView.vue',
+  'src/components/AccountSettings.vue',
+  'src/components/AccountMenu.vue',
+  'src/components/NoTenantNotice.vue',
+  'src/components/GobdExportSettings.vue',
+  'src/components/TeamSettings.vue',
+  'src/components/BackupSettings.vue',
+  'src/components/MailSettings.vue',
+  'src/components/CustomerCreateModal.vue',
+  'src/components/OwnerModal.vue',
+  'src/components/ArticleServiceCreateModal.vue',
+  'src/components/SpotlightSearch.vue'
 ]
 export default [
   { ignores: ['dist/**', 'coverage/**', 'test-results/**', 'playwright-report/**'] },
@@ -63,8 +82,15 @@ export default [
       'vue-i18n': { localeDir: './src/locales/*.json', messageSyntaxVersion: '^11.0.0' }
     },
     rules: {
-      // brand, keyboard hints and arrows are no text to translate
-      '@intlify/vue-i18n/no-raw-text': ['error', { ignorePattern: '^[-–—›‹→←·•…⌘K\\s]+$|^Billery$' }]
+      // no text to translate: punctuation, symbols, emoji (icons), currency and percent signs,
+      // and names that are the same in every language (brand, file formats, keys, settings)
+      '@intlify/vue-i18n/no-raw-text': [
+        'error',
+        {
+          ignorePattern: '^[\\s\\p{P}\\p{S}\\p{Extended_Pictographic}\\u{FE0F}]+$',
+          ignoreText: ['Billery', '⌘K', 'DOCX', 'ODT', 'Enter', 'Esc', 'BILLERY_SECRETS_KEY']
+        }
+      ]
     }
   },
   {

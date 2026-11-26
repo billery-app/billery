@@ -56,8 +56,12 @@ installation in self-host and desktop, per user in SaaS. Texts read outside a te
 time (the settings area titles in `settingsAreas.js`, the tour stations in `utils/tour.js`) are
 getters over `t()`, so they follow a switch without a reload. ESLint checks every `$t` / `t` key
 (`@intlify/vue-i18n/no-missing-keys`) and keeps the files already moved free of hard-coded text
-(`no-raw-text`, list `I18N_DONE` in `eslint.config.js`). Moved so far: the app shell, the
-settings overview and sub-page frame, Hilfe, Sprache and both tours; the other screens follow.
+(`no-raw-text`, list `I18N_DONE` in `eslint.config.js`). Moved so far: the app shell, every view
+(dashboard, customers and customer detail, document list, catalog, search, company details,
+template list), the settings overview and all its areas, the customer / company / catalog
+dialogs, the quick search and both tours. Still German: the document dialogs, the document type
+and status names (`data/documentTypes.js`, `utils/documentStatus.js`) and the template editor.
+Amounts and dates keep the German format in both languages (the business runs in Germany).
 
 ## Application bootstrap
 

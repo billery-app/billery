@@ -1,8 +1,8 @@
 <template>
   <div class="articles-services">
-    <h1 class="nav-destination-page-title">Artikel & Leistungen</h1>
+    <h1 class="nav-destination-page-title">{{ $t('catalog.title') }}</h1>
     <label class="mobile-catalog-picker" for="mobile-catalog-section">
-      <span>Katalogbereich</span>
+      <span>{{ $t('catalog.section') }}</span>
       <select
         id="mobile-catalog-section"
         data-tour="catalog-picker"
@@ -10,33 +10,33 @@
         :value="activeTab"
         @change="activeTab = inputValue($event)"
       >
-        <option value="articles">Artikel</option>
-        <option value="services">Leistungen</option>
-        <option value="equipment">Ausstattung</option>
+        <option value="articles">{{ $t('catalog.articles') }}</option>
+        <option value="services">{{ $t('catalog.services') }}</option>
+        <option value="equipment">{{ $t('catalog.equipment') }}</option>
       </select>
     </label>
-    <div class="catalog-section-tabs" data-tour="catalog-tabs" role="group" aria-label="Katalogbereich">
-      <button type="button" :class="['tab-btn', { active: activeTab === 'articles' }]" :aria-pressed="activeTab === 'articles'" @click="activeTab = 'articles'">Artikel</button>
-      <button type="button" :class="['tab-btn', { active: activeTab === 'services' }]" :aria-pressed="activeTab === 'services'" @click="activeTab = 'services'">Leistungen</button>
-      <button type="button" :class="['tab-btn', { active: activeTab === 'equipment' }]" :aria-pressed="activeTab === 'equipment'" data-tour="catalog-equipment" @click="activeTab = 'equipment'">Ausstattung</button>
+    <div class="catalog-section-tabs" data-tour="catalog-tabs" role="group" :aria-label="$t('catalog.section')">
+      <button type="button" :class="['tab-btn', { active: activeTab === 'articles' }]" :aria-pressed="activeTab === 'articles'" @click="activeTab = 'articles'">{{ $t('catalog.articles') }}</button>
+      <button type="button" :class="['tab-btn', { active: activeTab === 'services' }]" :aria-pressed="activeTab === 'services'" @click="activeTab = 'services'">{{ $t('catalog.services') }}</button>
+      <button type="button" :class="['tab-btn', { active: activeTab === 'equipment' }]" :aria-pressed="activeTab === 'equipment'" data-tour="catalog-equipment" @click="activeTab = 'equipment'">{{ $t('catalog.equipment') }}</button>
     </div>
     <div class="filters">
-      <input v-model="searchQuery" type="text" placeholder="Suchen..." class="search-input" />
-      <button class="btn btn-primary" @click="openCreateModal">{{ activeTab === 'articles' ? 'Neuer Artikel' : activeTab === 'services' ? 'Neue Leistung' : 'Neue Ausstattung' }}</button>
+      <input v-model="searchQuery" type="text" :placeholder="$t('common.search')" class="search-input" />
+      <button class="btn btn-primary" @click="openCreateModal">{{ activeTab === 'articles' ? $t('catalog.newArticle') : activeTab === 'services' ? $t('catalog.newService') : $t('catalog.newEquipment') }}</button>
     </div>
-    <div v-if="loading" class="loading">Lade...</div>
+    <div v-if="loading" class="loading">{{ $t('common.loading') }}</div>
     <div v-if="error" class="error">{{ error }}</div>
-    <div v-if="activeTab === 'articles' && filteredArticles.length" class="table-scroll" role="region" aria-label="Artikeltabelle" tabindex="0">
+    <div v-if="activeTab === 'articles' && filteredArticles.length" class="table-scroll" role="region" :aria-label="$t('catalog.articlesTable')" tabindex="0">
     <table class="data-table">
       <thead>
         <tr>
-          <th>ID</th>
-          <th>Name</th>
-          <th>Beschreibung</th>
-          <th>Einheit</th>
-          <th>Einkaufspreis</th>
-          <th>Verkaufspreis</th>
-          <th>USt.</th>
+          <th>{{ $t('common.columns.id') }}</th>
+          <th>{{ $t('common.columns.name') }}</th>
+          <th>{{ $t('catalog.columns.description') }}</th>
+          <th>{{ $t('catalog.columns.unit') }}</th>
+          <th>{{ $t('catalog.columns.purchasePrice') }}</th>
+          <th>{{ $t('catalog.columns.salesPrice') }}</th>
+          <th>{{ $t('catalog.columns.vat') }}</th>
         </tr>
       </thead>
       <tbody>
@@ -45,7 +45,7 @@
           :key="article.id"
           class="clickable-row"
           tabindex="0"
-          :aria-label="`Artikel ${article.name} bearbeiten`"
+          :aria-label="$t('catalog.editArticle', { name: article.name })"
           @click="editArticle(article)"
           @keydown.enter.prevent="editArticle(article)"
           @keydown.space.prevent="editArticle(article)"
@@ -61,17 +61,17 @@
       </tbody>
     </table>
     </div>
-    <div v-if="activeTab === 'services' && filteredServices.length" class="table-scroll" role="region" aria-label="Leistungstabelle" tabindex="0">
+    <div v-if="activeTab === 'services' && filteredServices.length" class="table-scroll" role="region" :aria-label="$t('catalog.servicesTable')" tabindex="0">
     <table class="data-table">
       <thead>
         <tr>
-          <th>ID</th>
-          <th>Name</th>
-          <th>Beschreibung</th>
-          <th>Stundensatz</th>
-          <th>USt.</th>
-          <th>Verknüpfter Artikel</th>
-          <th>Verknüpfte Ausstattung</th>
+          <th>{{ $t('common.columns.id') }}</th>
+          <th>{{ $t('common.columns.name') }}</th>
+          <th>{{ $t('catalog.columns.description') }}</th>
+          <th>{{ $t('catalog.columns.hourlyRate') }}</th>
+          <th>{{ $t('catalog.columns.vat') }}</th>
+          <th>{{ $t('catalog.columns.linkedArticle') }}</th>
+          <th>{{ $t('catalog.columns.linkedEquipment') }}</th>
         </tr>
       </thead>
       <tbody>
@@ -80,7 +80,7 @@
           :key="service.id"
           class="clickable-row"
           tabindex="0"
-          :aria-label="`Leistung ${service.name} bearbeiten`"
+          :aria-label="$t('catalog.editService', { name: service.name })"
           @click="editService(service)"
           @keydown.enter.prevent="editService(service)"
           @keydown.space.prevent="editService(service)"
@@ -97,21 +97,19 @@
     </table>
     </div>
     <p v-if="activeTab === 'equipment' && equipmentList.length" id="amortisation-hint" class="amort-hint">
-      Amortisation: Netto-Umsatz der verknüpften Leistungen aus vollständig bezahlten Rechnungen im Verhältnis zum Kaufpreis.
-      Offene und teilbezahlte Rechnungen zählen nicht, monatliche Kosten werden nicht abgezogen.
-      Ein Klick auf den Wert zeigt die Einsätze.
+      {{ $t('catalog.amortisationHint') }}
     </p>
-    <div v-if="activeTab === 'equipment' && equipmentList.length" class="table-scroll" role="region" aria-label="Ausstattungstabelle" tabindex="0">
+    <div v-if="activeTab === 'equipment' && equipmentList.length" class="table-scroll" role="region" :aria-label="$t('catalog.equipmentTable')" tabindex="0">
     <table class="data-table">
       <thead>
         <tr>
-          <th>ID</th>
-          <th>Name</th>
-          <th>Kaufpreis</th>
-          <th>Kaufdatum</th>
-          <th>Monatliche Kosten</th>
-          <th aria-describedby="amortisation-hint">Amortisation</th>
-          <th>Status</th>
+          <th>{{ $t('common.columns.id') }}</th>
+          <th>{{ $t('common.columns.name') }}</th>
+          <th>{{ $t('catalog.columns.price') }}</th>
+          <th>{{ $t('catalog.columns.purchaseDate') }}</th>
+          <th>{{ $t('catalog.columns.monthlyCost') }}</th>
+          <th aria-describedby="amortisation-hint">{{ $t('catalog.columns.amortisation') }}</th>
+          <th>{{ $t('documents.columns.status') }}</th>
         </tr>
       </thead>
       <tbody>
@@ -120,7 +118,7 @@
           :key="eq.id"
           class="clickable-row"
           tabindex="0"
-          :aria-label="`Ausstattung ${eq.name} bearbeiten`"
+          :aria-label="$t('catalog.editEquipment', { name: eq.name })"
           @click="editEquipment(eq)"
           @keydown.enter.prevent="editEquipment(eq)"
           @keydown.space.prevent="editEquipment(eq)"
@@ -137,22 +135,22 @@
                 <div class="amort-bar">
                   <div class="amort-fill" :style="{ width: amortisation.barWidth + '%' }" :class="{ paid: amortisation.done }"></div>
                 </div>
-                <span v-if="amortisation.done" class="amort-text amort-done"><span aria-hidden="true">✓</span> amortisiert</span>
+                <span v-if="amortisation.done" class="amort-text amort-done"><span aria-hidden="true">✓</span> {{ $t('catalog.amortised') }}</span>
                 <span v-else class="amort-text">{{ amortisation.percentText }}</span>
               </div>
-              <div v-else class="amort-text text-muted">ohne Kaufpreis</div>
+              <div v-else class="amort-text text-muted">{{ $t('catalog.noPrice') }}</div>
               <div class="amort-sub">{{ formatAmount(amortisation.revenue) }} · {{ usageCountLabel(amortisation.usageCount) }}</div>
             </template>
             <span v-else class="text-muted">-</span>
             </button>
           </td>
-          <td>{{ eq.status === 'active' ? 'Aktiv' : eq.status }}</td>
+          <td>{{ $t(`catalog.status.${eq.status}`) }}</td>
         </tr>
       </tbody>
     </table>
     </div>
     <div v-if="activeTab === 'equipment' && !equipmentList.length && !loading" class="empty-state">
-      Keine Ausstattung vorhanden.
+      {{ $t('catalog.noEquipment') }}
     </div>
     <ArticleServiceCreateModal
       v-model:visible="showModal"
@@ -167,48 +165,48 @@
 
     <div v-if="showEquipmentModal" class="modal-backdrop" @click.self="resetEquipmentForm">
       <div class="modal-panel modal-panel-lg">
-        <h2>{{ equipmentForm.id ? 'Ausstattung bearbeiten' : 'Neue Ausstattung' }}</h2>
+        <h2>{{ equipmentForm.id ? $t('catalog.editEquipmentTitle') : $t('catalog.newEquipment') }}</h2>
         <form @submit.prevent="saveEquipment">
           <div class="form-group">
-            <label>Name:</label>
+            <label>{{ $t('catalog.form.name') }}</label>
             <input v-model="equipmentForm.name" required />
           </div>
           <div class="form-group">
-            <label>Kaufpreis (€):</label>
+            <label>{{ $t('catalog.form.price') }}</label>
             <input v-model="equipmentForm.purchaseValue" type="number" step="0.01" />
           </div>
           <div class="form-group">
-            <label>Kaufdatum:</label>
+            <label>{{ $t('catalog.form.purchaseDate') }}</label>
             <input v-model="equipmentForm.acquisitionDate" type="date" />
           </div>
           <div class="form-group">
-            <label>Nutzungsdauer (Monate):</label>
+            <label>{{ $t('catalog.form.lifetime') }}</label>
             <input v-model="equipmentForm.expectedLifetimeMonths" type="number" />
           </div>
           <div class="form-group">
-            <label>Monatliche Betriebskosten (€):</label>
+            <label>{{ $t('catalog.form.monthlyCost') }}</label>
             <input v-model="equipmentForm.monthlyOperatingCost" type="number" step="0.01" />
           </div>
           <div class="form-group">
-            <label>Restwert (€):</label>
+            <label>{{ $t('catalog.form.residualValue') }}</label>
             <input v-model="equipmentForm.residualValue" type="number" step="0.01" />
           </div>
           <div class="form-group">
-            <label>Status:</label>
+            <label>{{ $t('catalog.form.status') }}</label>
             <select v-model="equipmentForm.status">
-              <option value="active">Aktiv</option>
-              <option value="sold">Verkauft</option>
-              <option value="retired">Ausgemustert</option>
+              <option value="active">{{ $t('catalog.status.active') }}</option>
+              <option value="sold">{{ $t('catalog.status.sold') }}</option>
+              <option value="retired">{{ $t('catalog.status.retired') }}</option>
             </select>
           </div>
           <div class="form-group">
-            <label>Notizen:</label>
+            <label>{{ $t('catalog.form.notes') }}</label>
             <textarea v-model="equipmentForm.notes"></textarea>
           </div>
           <div class="form-actions">
-            <button type="submit" class="btn btn-primary">Speichern</button>
-            <button v-if="equipmentForm.id" type="button" class="btn btn-danger" @click="deleteEquipment(equipmentForm.id)">Löschen</button>
-            <button type="button" class="btn btn-secondary" @click="resetEquipmentForm">Abbrechen</button>
+            <button type="submit" class="btn btn-primary">{{ $t('common.save') }}</button>
+            <button v-if="equipmentForm.id" type="button" class="btn btn-danger" @click="deleteEquipment(equipmentForm.id)">{{ $t('common.delete') }}</button>
+            <button type="button" class="btn btn-secondary" @click="resetEquipmentForm">{{ $t('common.cancel') }}</button>
           </div>
         </form>
       </div>
@@ -216,24 +214,24 @@
 
     <div v-if="showUsageModal" class="modal-backdrop" @click.self="closeUsage" @keydown.esc="closeUsage">
       <div ref="usageDialog" class="modal-panel usage-modal" role="dialog" aria-modal="true" aria-labelledby="usage-title" tabindex="-1">
-        <h2 id="usage-title">Einsätze: {{ usageEquipment?.name }}</h2>
-        <div v-if="usageLoading" class="loading">Lade...</div>
+        <h2 id="usage-title">{{ $t('catalog.usageTitle', { name: usageEquipment?.name }) }}</h2>
+        <div v-if="usageLoading" class="loading">{{ $t('common.loading') }}</div>
         <div v-else-if="usageError" class="error" role="alert">{{ usageError }}</div>
         <template v-else-if="usageItems.length">
         <p class="usage-summary" data-testid="usage-summary">
           <strong>{{ usageCountLabel(usageItems.length) }}</strong> · <strong>{{ formatAmount(usageTotal) }}</strong>
-          Netto-Umsatz aus vollständig bezahlten Rechnungen
+          {{ $t('catalog.usageSummary') }}
         </p>
-        <div class="table-scroll" role="region" aria-label="Einsatztabelle" tabindex="0">
+        <div class="table-scroll" role="region" :aria-label="$t('catalog.usageTable')" tabindex="0">
         <table class="data-table">
           <thead>
             <tr>
-              <th>Rechnung</th>
-              <th>Datum</th>
-              <th>Leistung</th>
-              <th>Menge</th>
-              <th>Preis</th>
-              <th>Gesamt</th>
+              <th>{{ $t('dashboard.invoice') }}</th>
+              <th>{{ $t('documents.columns.date') }}</th>
+              <th>{{ $t('catalog.columns.service') }}</th>
+              <th>{{ $t('catalog.columns.quantity') }}</th>
+              <th>{{ $t('catalog.columns.unitPrice') }}</th>
+              <th>{{ $t('catalog.columns.total') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -248,7 +246,7 @@
           </tbody>
           <tfoot>
             <tr class="usage-total">
-              <th scope="row" colspan="5">Summe · {{ usageCountLabel(usageItems.length) }}</th>
+              <th scope="row" colspan="5">{{ $t('catalog.usageSum', { count: usageCountLabel(usageItems.length) }) }}</th>
               <td>{{ formatAmount(usageTotal) }}</td>
             </tr>
           </tfoot>
@@ -256,10 +254,10 @@
         </div>
         </template>
         <div v-else class="empty-state">
-          Keine Einsätze gefunden. Gezählt werden nur Leistungen auf vollständig bezahlten Rechnungen.
+          {{ $t('catalog.noUsage') }}
         </div>
         <div class="form-actions">
-          <button type="button" class="btn btn-secondary" @click="closeUsage">Schließen</button>
+          <button type="button" class="btn btn-secondary" @click="closeUsage">{{ $t('common.close') }}</button>
         </div>
       </div>
     </div>
@@ -404,7 +402,7 @@ export default {
           this.equipmentSummary = summaryRes.data
         }
       } catch (err) {
-        this.error = 'Fehler beim Laden: ' + err.message
+        this.error = this.$t('common.loadFailed', { reason: err.message })
       } finally {
         this.loading = false
       }
@@ -433,7 +431,7 @@ export default {
           this.showModal = true
         }
       } catch (err) {
-        this.error = 'Fehler beim Laden des Artikels: ' + err.message
+        this.error = this.$t('catalog.loadArticleFailed', { reason: err.message })
       }
     },
     editService(service) {
@@ -454,7 +452,7 @@ export default {
           this.showModal = true
         }
       } catch (err) {
-        this.error = 'Fehler beim Laden der Leistung: ' + err.message
+        this.error = this.$t('catalog.loadServiceFailed', { reason: err.message })
       }
     },
     getArticleName(articleId) {
@@ -477,25 +475,25 @@ export default {
       this.loadItems()
     },
     async deleteArticle(id) {
-      if (!confirm('Wirklich löschen?')) return
+      if (!confirm(this.$t('common.confirmDelete'))) return
       try {
         await articleAPI.deleteArticle(id)
         this.showModal = false
         this.editingItem = null
         this.loadItems()
       } catch (err) {
-        this.error = 'Fehler beim Löschen: ' + err.message
+        this.error = this.$t('common.deleteFailed', { reason: err.message })
       }
     },
     async deleteService(id) {
-      if (!confirm('Wirklich löschen?')) return
+      if (!confirm(this.$t('common.confirmDelete'))) return
       try {
         await articleAPI.deleteService(id)
         this.showModal = false
         this.editingItem = null
         this.loadItems()
       } catch (err) {
-        this.error = 'Fehler beim Löschen: ' + err.message
+        this.error = this.$t('common.deleteFailed', { reason: err.message })
       }
     },
     deleteCatalogItem({ id, itemType }) {
@@ -524,17 +522,17 @@ export default {
         this.resetEquipmentForm()
         this.loadItems()
       } catch (err) {
-        this.error = 'Fehler beim Speichern: ' + err.message
+        this.error = this.$t('common.saveFailed', { reason: err.message })
       }
     },
     async deleteEquipment(id) {
-      if (!confirm('Wirklich löschen?')) return
+      if (!confirm(this.$t('common.confirmDelete'))) return
       try {
         await equipmentAPI.delete(id)
         this.resetEquipmentForm()
         this.loadItems()
       } catch (err) {
-        this.error = 'Fehler beim Löschen: ' + err.message
+        this.error = this.$t('common.deleteFailed', { reason: err.message })
       }
     },
     /**
@@ -555,7 +553,7 @@ export default {
         const response = await equipmentAPI.getUsage(eq.id)
         this.usageItems = response.data
       } catch (err) {
-        this.usageError = 'Fehler beim Laden der Einsätze: ' + err.message
+        this.usageError = this.$t('catalog.usageFailed', { reason: err.message })
       } finally {
         this.usageLoading = false
       }
@@ -575,13 +573,13 @@ export default {
      * @returns {string}
      */
     usageButtonLabel(eq, amortisation) {
-      const base = `Einsätze für ${eq.name} anzeigen`
+      const base = this.$t('catalog.showUsage', { name: eq.name })
       if (!amortisation) return base
       const state = !amortisation.hasPurchaseValue
-        ? 'ohne Kaufpreis'
+        ? this.$t('catalog.noPrice')
         : amortisation.done
-          ? 'amortisiert'
-          : `${amortisation.percentText} amortisiert`
+          ? this.$t('catalog.amortised')
+          : this.$t('catalog.amortisedPercent', { percent: amortisation.percentText })
       return `${base}: ${state}, ${this.formatAmount(amortisation.revenue)}, ${this.usageCountLabel(amortisation.usageCount)}`
     },
     /**
@@ -590,7 +588,7 @@ export default {
      */
     usageCountLabel(count) {
       const n = Number(count) || 0
-      return n === 1 ? '1 Einsatz' : `${n} Einsätze`
+      return this.$t('catalog.usageCount', n)
     },
     /**
      * A quantity with its unit in German notation ("1,5 Std"), without trailing zeros.

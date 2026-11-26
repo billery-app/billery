@@ -7,28 +7,26 @@
 
       <template v-if="status">
         <p v-if="status.restorePending" class="backup-notice backup-notice--warning" role="status">
-          Beim nächsten Start von Billery wird eine Sicherung wiederhergestellt. Der jetzige Stand
-          wird vorher gesichert. Bis dahin wird nichts mehr gespeichert: bitte Billery jetzt
-          beenden und neu starten.
-          <button type="button" class="btn btn-small btn-secondary" @click="cancelRestore">Wiederherstellung abbrechen</button>
+          {{ $t('backup.pending') }}
+          <button type="button" class="btn btn-small btn-secondary" @click="cancelRestore">{{ $t('backup.cancelRestore') }}</button>
         </p>
 
         <div class="backup-last" :class="{ 'backup-last--old': isOld }" data-testid="backup-last">
           <span v-if="latest">
-            Letzte Sicherung: <strong>{{ formatDate(latest.createdAt) }}</strong> ({{ reasonLabel(latest.reason) }})
+            {{ $t('backup.last') }} <strong>{{ formatDate(latest.createdAt) }}</strong> ({{ reasonLabel(latest.reason) }})
           </span>
-          <span v-else>Noch keine Sicherung vorhanden.</span>
+          <span v-else>{{ $t('backup.none') }}</span>
           <span v-if="isOld" class="backup-warning">
-            {{ latest ? 'Die letzte Sicherung ist älter als 7 Tage.' : 'Bitte jetzt eine Sicherung anlegen.' }}
+            {{ latest ? $t('backup.old') : $t('backup.createNow') }}
           </span>
           <button type="button" class="btn btn-primary btn-small" :disabled="busy || status.restorePending" @click="backupNow">
-            {{ busy ? 'Sichere …' : 'Jetzt sichern' }}
+            {{ busy ? $t('backup.saving') : $t('backup.now') }}
           </button>
         </div>
 
         <form class="backup-form" @submit.prevent="saveSettings">
           <div class="form-group">
-            <label for="backup-directory">Sicherungsordner</label>
+            <label for="backup-directory">{{ $t('backup.directory') }}</label>
             <input
               id="backup-directory"
               v-model="form.directory"
@@ -38,60 +36,54 @@
               :placeholder="status.defaultDirectory"
             />
             <small>
-              Leer lassen für den Ordner der App. Besser ein externes Laufwerk oder ein
-              Cloud-Ordner, damit die Sicherung den Verlust des Rechners übersteht.
+              {{ $t('backup.directoryHint') }}
             </small>
           </div>
           <div class="form-row">
             <div class="form-group">
-              <label for="backup-keep">Aufbewahren (Anzahl)</label>
+              <label for="backup-keep">{{ $t('backup.keep') }}</label>
               <input id="backup-keep" v-model.number="form.keep" class="form-control" type="number" min="1" max="100" inputmode="numeric" />
             </div>
             <label class="checkbox-label">
               <input v-model="form.onExit" type="checkbox" />
-              Beim Beenden sichern
+              {{ $t('backup.onExit') }}
             </label>
           </div>
           <div class="form-group">
             <label class="checkbox-label">
               <input v-model="form.encrypt" type="checkbox" data-testid="backup-encrypt" />
-              Sicherungen mit Passwort verschlüsseln
+              {{ $t('backup.encrypt') }}
             </label>
             <template v-if="form.encrypt">
-              <label for="backup-password">{{ status.encrypted ? 'Neues Passwort (leer lassen: unverändert)' : 'Passwort (mindestens 8 Zeichen)' }}</label>
+              <label for="backup-password">{{ status.encrypted ? $t('backup.newPassword') : $t('backup.password') }}</label>
               <input id="backup-password" v-model="form.password" class="form-control" type="password" autocomplete="new-password" />
               <small class="backup-warning">
-                Das Passwort wird nicht gespeichert; Billery braucht es nur zum Wiederherstellen.
-                Ohne das Passwort lässt sich eine verschlüsselte Sicherung nicht wiederherstellen.
-                Bitte getrennt aufbewahren.
+                {{ $t('backup.passwordHint') }}
               </small>
             </template>
           </div>
-          <button type="submit" class="btn btn-secondary" :disabled="busy || status.restorePending">Einstellungen speichern</button>
+          <button type="submit" class="btn btn-secondary" :disabled="busy || status.restorePending">{{ $t('backup.saveSettings') }}</button>
         </form>
 
-        <h3 class="backup-heading">Vorhandene Sicherungen</h3>
+        <h3 class="backup-heading">{{ $t('backup.list') }}</h3>
         <p class="backup-hint">
-          Eine Sicherung von einem anderen Rechner: die Datei in den Sicherungsordner legen, dann
-          erscheint sie hier. Vor jeder Wiederherstellung wird der jetzige Stand gesichert; diese
-          Sicherheitskopien werden nie automatisch gelöscht, denn sie enthalten, was nach der
-          wiederhergestellten Sicherung erfasst wurde (Aufbewahrungspflicht).
+          {{ $t('backup.listHint') }}
         </p>
         <div v-if="loss" class="backup-notice backup-notice--warning backup-loss" role="alert" data-testid="backup-loss">
           <p>{{ loss.message }}</p>
           <div class="backup-loss-actions">
-            <button type="button" class="btn btn-small btn-danger" :disabled="busy" @click="restore(loss.backup, true)">Trotzdem wiederherstellen</button>
-            <button type="button" class="btn btn-small btn-secondary" @click="loss = null">Abbrechen</button>
+            <button type="button" class="btn btn-small btn-danger" :disabled="busy" @click="restore(loss.backup, true)">{{ $t('backup.restoreAnyway') }}</button>
+            <button type="button" class="btn btn-small btn-secondary" @click="loss = null">{{ $t('common.cancel') }}</button>
           </div>
         </div>
         <div v-if="status.backups.length" class="table-scroll">
-          <table class="data-table" aria-label="Sicherungen">
+          <table class="data-table" :aria-label="$t('backup.list')">
             <thead>
-              <tr><th>Datum</th><th>Anlass</th><th>Größe</th><th><span class="visually-hidden">Aktionen</span></th></tr>
+              <tr><th>{{ $t('documents.columns.date') }}</th><th>{{ $t('backup.reason') }}</th><th>{{ $t('backup.size') }}</th><th><span class="visually-hidden">{{ $t('team.actions') }}</span></th></tr>
             </thead>
             <tbody>
               <tr v-for="backup in status.backups" :key="backup.name" :data-testid="`backup-${backup.name}`">
-                <td>{{ formatDate(backup.createdAt) }}<span v-if="backup.encrypted" class="badge badge-neutral">verschlüsselt</span></td>
+                <td>{{ formatDate(backup.createdAt) }}<span v-if="backup.encrypted" class="badge badge-neutral">{{ $t('backup.encrypted') }}</span></td>
                 <td>{{ reasonLabel(backup.reason) }}</td>
                 <td>{{ formatSize(backup.size) }}</td>
                 <td class="actions">
@@ -102,19 +94,19 @@
                       class="form-control"
                       type="password"
                       autocomplete="off"
-                      :aria-label="`Passwort der Sicherung vom ${formatDate(backup.createdAt)}`"
-                      placeholder="Passwort"
+                      :aria-label="$t('backup.passwordOf', { date: formatDate(backup.createdAt) })"
+                      :placeholder="$t('backup.passwordPlaceholder')"
                     />
-                    <button type="button" class="btn btn-small btn-danger" :disabled="busy" @click="restore(backup)">Beim nächsten Start wiederherstellen</button>
-                    <button type="button" class="btn btn-small btn-secondary" @click="restoring = null">Abbrechen</button>
+                    <button type="button" class="btn btn-small btn-danger" :disabled="busy" @click="restore(backup)">{{ $t('backup.restoreAtStart') }}</button>
+                    <button type="button" class="btn btn-small btn-secondary" @click="restoring = null">{{ $t('common.cancel') }}</button>
                   </template>
-                  <button v-else type="button" class="btn btn-small btn-outline" @click="startRestore(backup)">Wiederherstellen …</button>
+                  <button v-else type="button" class="btn btn-small btn-outline" @click="startRestore(backup)">{{ $t('backup.restore') }}</button>
                 </td>
               </tr>
             </tbody>
           </table>
         </div>
-        <p v-else class="backup-hint">Im Sicherungsordner liegt noch keine Sicherung.</p>
+        <p v-else class="backup-hint">{{ $t('backup.empty') }}</p>
       </template>
     </div>
   </section>
@@ -127,7 +119,8 @@ import { formatFileSize } from '../utils/fileValidation.js'
 /** Days after which the last backup is shown as too old. */
 const MAX_AGE_DAYS = 7
 
-const REASONS = { beenden: 'beim Beenden', manuell: 'manuell', 'vor-wiederherstellung': 'vor einer Wiederherstellung' }
+/** Reasons in the backup file names (`billery-<time>-<reason>.zip`); their names are in the message files. */
+const REASONS = ['beenden', 'manuell', 'vor-wiederherstellung']
 
 /**
  * The backup section of the desktop app's settings: last backup with a warning when it is old,
@@ -167,7 +160,7 @@ export default {
         const { data } = await backupAPI.getStatus()
         this.apply(data)
       } catch {
-        this.error = 'Die Sicherungen konnten nicht gelesen werden.'
+        this.error = this.$t('backup.readFailed')
       }
     },
     apply(status) {
@@ -189,24 +182,24 @@ export default {
         this.notice = success
         await this.load()
       } catch (error) {
-        this.error = error.response?.data?.message || 'Das hat nicht geklappt.'
+        this.error = error.response?.data?.message || this.$t('common.failed')
       } finally {
         this.busy = false
       }
     },
     backupNow() {
-      return this.run(() => backupAPI.backupNow(), 'Die Sicherung wurde angelegt.')
+      return this.run(() => backupAPI.backupNow(), this.$t('backup.created'))
     },
     saveSettings() {
       if (this.form.encrypt && !this.status.encrypted && !this.form.password) {
-        this.error = 'Bitte ein Passwort für die Verschlüsselung angeben.'
+        this.error = this.$t('backup.passwordMissing')
         return Promise.resolve()
       }
       // null keeps the stored password, '' removes it.
       const password = !this.form.encrypt ? '' : (this.form.password || null)
       return this.run(
         () => backupAPI.updateSettings({ directory: this.form.directory, keep: this.form.keep, onExit: this.form.onExit, password }),
-        'Die Einstellungen wurden gespeichert.'
+        this.$t('backup.saved')
       )
     },
     startRestore(backup) {
@@ -226,20 +219,20 @@ export default {
         await backupAPI.restore(backup.name, this.restorePassword, confirmLoss)
         this.restoring = null
         this.loss = null
-        this.notice = 'Die Sicherung wird beim nächsten Start wiederhergestellt. Bitte Billery jetzt beenden und neu starten.'
+        this.notice = this.$t('backup.restoreStaged')
         await this.load()
       } catch (error) {
         if (error.response?.status === 409) {
           this.loss = { backup, message: error.response.data.message }
         } else {
-          this.error = error.response?.data?.message || 'Das hat nicht geklappt.'
+          this.error = error.response?.data?.message || this.$t('common.failed')
         }
       } finally {
         this.busy = false
       }
     },
     cancelRestore() {
-      return this.run(() => backupAPI.cancelRestore(), 'Die Wiederherstellung wurde abgebrochen.')
+      return this.run(() => backupAPI.cancelRestore(), this.$t('backup.restoreCancelled'))
     },
     formatDate(value) {
       return value ? new Date(value).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' }) : ''
@@ -248,7 +241,7 @@ export default {
       return formatFileSize(bytes)
     },
     reasonLabel(reason) {
-      return REASONS[reason] || reason
+      return REASONS.includes(reason) ? this.$t(`backup.reasons.${reason}`) : reason
     }
   }
 }

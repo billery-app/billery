@@ -1,21 +1,21 @@
 <template>
   <div class="customers">
-    <h1 class="nav-destination-page-title">Kundenverwaltung</h1>
+    <h1 class="nav-destination-page-title">{{ $t('customers.title') }}</h1>
     <div class="filters">
-      <input v-model="searchQuery" type="text" placeholder="Suchen..." class="search-input" />
-      <button class="btn btn-primary" data-tour="customer-new" @click="openCreateModal">Neuer Kunde</button>
+      <input v-model="searchQuery" type="text" :placeholder="$t('common.search')" class="search-input" />
+      <button class="btn btn-primary" data-tour="customer-new" @click="openCreateModal">{{ $t('customers.new') }}</button>
     </div>
-    <div v-if="loading" class="loading">Lade Kunden...</div>
+    <div v-if="loading" class="loading">{{ $t('customers.loading') }}</div>
     <div v-if="error" class="error">{{ error }}</div>
-    <div v-if="customers.length" class="table-scroll" role="region" aria-label="Kundentabelle" tabindex="0">
+    <div v-if="customers.length" class="table-scroll" role="region" :aria-label="$t('customers.tableLabel')" tabindex="0">
     <table class="data-table">
       <thead>
         <tr>
-          <th>ID</th>
-          <th>Name</th>
-          <th>Adresse</th>
-          <th>Telefon</th>
-          <th>Email</th>
+          <th>{{ $t('common.columns.id') }}</th>
+          <th>{{ $t('common.columns.name') }}</th>
+          <th>{{ $t('common.columns.address') }}</th>
+          <th>{{ $t('common.columns.phone') }}</th>
+          <th>{{ $t('common.columns.email') }}</th>
         </tr>
       </thead>
       <tbody>
@@ -24,7 +24,7 @@
           :key="customer.id"
           class="clickable-row"
           tabindex="0"
-          :aria-label="`Kunde ${customer.firstName} ${customer.lastName} bearbeiten`"
+          :aria-label="$t('customers.edit', { name: `${customer.firstName} ${customer.lastName}` })"
           @click="editCustomer(customer)"
           @keydown.enter.prevent="editCustomer(customer)"
           @keydown.space.prevent="editCustomer(customer)"
@@ -38,10 +38,10 @@
       </tbody>
     </table>
     </div>
-    <nav v-if="total > pageSize" class="pager" aria-label="Seiten" data-testid="pager">
-      <button class="btn btn-small btn-secondary" :disabled="page === 0 || loading" @click="goToPage(page - 1)">Zurück</button>
-      <span class="pager-info" data-testid="pager-info">Seite {{ page + 1 }} von {{ pageCount }} · {{ total }} Kunden</span>
-      <button class="btn btn-small btn-secondary" :disabled="page + 1 >= pageCount || loading" @click="goToPage(page + 1)">Weiter</button>
+    <nav v-if="total > pageSize" class="pager" :aria-label="$t('common.pages')" data-testid="pager">
+      <button class="btn btn-small btn-secondary" :disabled="page === 0 || loading" @click="goToPage(page - 1)">{{ $t('common.previous') }}</button>
+      <span class="pager-info" data-testid="pager-info">{{ $t('customers.pager', { page: page + 1, pages: pageCount, total }) }}</span>
+      <button class="btn btn-small btn-secondary" :disabled="page + 1 >= pageCount || loading" @click="goToPage(page + 1)">{{ $t('common.next') }}</button>
     </nav>
     <CustomerCreateModal
       v-model:visible="showModal"
@@ -131,7 +131,7 @@ export default {
         this.customers = items
         this.total = total
       } catch (err) {
-        if (request === this.listRequest) this.error = 'Fehler beim Laden: ' + err.message
+        if (request === this.listRequest) this.error = this.$t('common.loadFailed', { reason: err.message })
       } finally {
         if (request === this.listRequest) this.loading = false
       }
@@ -154,7 +154,7 @@ export default {
         this.editingCustomer = response.data
         this.showModal = true
       } catch (err) {
-        this.error = 'Fehler beim Laden des Kunden: ' + err.message
+        this.error = this.$t('customers.loadOneFailed', { reason: err.message })
       }
     },
     editCustomer(customer) {
@@ -171,14 +171,14 @@ export default {
       this.loadCustomers()
     },
     async deleteCustomer(id) {
-      if (!confirm('Wirklich löschen?')) return
+      if (!confirm(this.$t('common.confirmDelete'))) return
       try {
         await customerAPI.deleteCustomer(id)
         this.showModal = false
         this.editingCustomer = null
         this.loadCustomers()
       } catch (err) {
-        this.error = 'Fehler beim Löschen: ' + err.message
+        this.error = this.$t('common.deleteFailed', { reason: err.message })
       }
     }
   }

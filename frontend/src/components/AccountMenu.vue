@@ -1,8 +1,8 @@
 <template>
-  <div class="account-menu" role="group" aria-label="Konto und Mandant">
+  <div class="account-menu" role="group" :aria-label="$t('account.menuLabel')">
     <label v-if="session.memberships.length > 1" class="tenant-select">
-      <span class="visually-hidden">Mandant</span>
-      <select :value="session.activeTenantId" aria-label="Mandant wechseln" @change="switchTenant">
+      <span class="visually-hidden">{{ $t('account.company') }}</span>
+      <select :value="session.activeTenantId" :aria-label="$t('account.switchCompany')" @change="switchTenant">
         <option v-for="m in session.memberships" :key="m.tenantId" :value="m.tenantId">
           {{ m.tenantName }}
         </option>
@@ -10,17 +10,17 @@
     </label>
     <details v-if="session.invitations.length" class="invitations" data-testid="account-invitations">
       <summary>
-        Einladungen <span class="count">{{ session.invitations.length }}</span>
+        {{ $t('account.invitations') }} <span class="count">{{ session.invitations.length }}</span>
       </summary>
       <ul>
         <li v-for="invitation in session.invitations" :key="invitation.id">
           <span><strong>{{ invitation.tenantName }}</strong> – {{ roleLabel(invitation.role) }}</span>
-          <button type="button" class="btn btn-primary btn-small" :disabled="busy" @click="accept(invitation)">Annehmen</button>
+          <button type="button" class="btn btn-primary btn-small" :disabled="busy" @click="accept(invitation)">{{ $t('account.accept') }}</button>
         </li>
       </ul>
       <p v-if="error" class="error" role="alert">{{ error }}</p>
     </details>
-    <button type="button" class="sign-out" @click="signOut">Abmelden</button>
+    <button type="button" class="sign-out" @click="signOut">{{ $t('account.signOut') }}</button>
   </div>
 </template>
 
@@ -52,7 +52,7 @@ export default {
       try {
         openTenant((await teamService.acceptInvitation(invitation.id)).tenantId)
       } catch (error) {
-        this.error = error.message || 'Das ging leider schief.'
+        this.error = error.message || this.$t('common.failed')
         this.busy = false
       }
     },

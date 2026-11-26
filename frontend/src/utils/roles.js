@@ -1,17 +1,14 @@
-/** German labels of the tenant roles (see `Role` in the backend). */
-const LABELS = {
-  OWNER: 'Inhaber',
-  ADMIN: 'Administrator',
-  ACCOUNTANT: 'Buchhaltung / Steuerberatung',
-  READER: 'Nur lesen'
-}
+import { t } from '../i18n/index.js'
+
+/** The tenant roles (see `Role` in the backend); their names are in the message files. */
+const ROLES = ['OWNER', 'ADMIN', 'ACCOUNTANT', 'READER']
 
 /**
  * @param {string} role - OWNER, ADMIN, ACCOUNTANT or READER
- * @returns {string} - The label shown to users
+ * @returns {string} - The label shown to users, in the interface language
  */
 export function roleLabel(role) {
-  return LABELS[role] || role
+  return ROLES.includes(role) ? t(`roles.${role}`) : role
 }
 
 /**

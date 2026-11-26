@@ -4,142 +4,137 @@
       <p v-if="error" class="notice notice-error" role="alert">{{ error }}</p>
       <p v-if="notice" class="notice notice-success" role="status">{{ notice }}</p>
       <p v-if="demo" class="notice notice-warning" data-testid="mail-demo">
-        In der Demo ist der Mailversand abgeschaltet: Mailkonten können nicht angelegt werden. Die
-        Vorlagen für Ihre Mails können Sie trotzdem ausprobieren.
+        {{ $t('mail.demo') }}
       </p>
       <p v-if="loaded && !passwordsStorable" class="notice notice-warning" data-testid="no-secrets-key">
-        Passwörter können hier nicht gespeichert werden: Der Betreiber hat keinen Schlüssel dafür
-        eingerichtet (<code>BILLERY_SECRETS_KEY</code>). Konten ohne Anmeldung funktionieren trotzdem.
+        {{ $t('mail.noKeyBefore') }} <code>BILLERY_SECRETS_KEY</code>{{ $t('mail.noKeyAfter') }}
       </p>
 
-      <h3 class="mail-heading">Mailkonten</h3>
+      <h3 class="mail-heading">{{ $t('mail.accounts') }}</h3>
       <p class="muted">
-        Rechnungen und Angebote werden über Ihr eigenes Mailkonto an Kunden gesendet, mit Ihrer
-        Adresse als Absender. Das Passwort wird verschlüsselt gespeichert und nie wieder angezeigt.
+        {{ $t('mail.accountsHint') }}
       </p>
       <div v-if="accounts.length" class="table-scroll">
-        <table class="data-table" aria-label="Mailkonten">
+        <table class="data-table" :aria-label="$t('mail.accounts')">
           <thead>
-            <tr><th>Name</th><th>Absender</th><th>Server</th><th class="actions"><span class="visually-hidden">Aktionen</span></th></tr>
+            <tr><th>{{ $t('common.columns.name') }}</th><th>{{ $t('mail.sender') }}</th><th>{{ $t('mail.server') }}</th><th class="actions"><span class="visually-hidden">{{ $t('team.actions') }}</span></th></tr>
           </thead>
           <tbody>
             <tr v-for="account in accounts" :key="account.id" :data-testid="`mail-account-${account.id}`">
               <td>
                 {{ account.name }}
-                <span v-if="account.isDefault" class="badge badge-success">Standard</span>
+                <span v-if="account.isDefault" class="badge badge-success">{{ $t('templates.default') }}</span>
               </td>
               <td>{{ sender(account) }}</td>
               <td>{{ account.host }}:{{ account.port }} · {{ securityLabel(account.security) }}</td>
               <td class="actions">
-                <button type="button" class="btn btn-secondary btn-small" :disabled="busy" @click="test(account)">Testmail</button>
-                <button type="button" class="btn btn-secondary btn-small" :disabled="busy" @click="edit(account)">Bearbeiten</button>
-                <button v-if="!account.isDefault" type="button" class="btn btn-secondary btn-small" :disabled="busy" @click="makeDefault(account)">Als Standard</button>
-                <button type="button" class="btn btn-outline btn-small" :disabled="busy" @click="remove(account)">Löschen</button>
+                <button type="button" class="btn btn-secondary btn-small" :disabled="busy" @click="test(account)">{{ $t('mail.test') }}</button>
+                <button type="button" class="btn btn-secondary btn-small" :disabled="busy" @click="edit(account)">{{ $t('common.edit') }}</button>
+                <button v-if="!account.isDefault" type="button" class="btn btn-secondary btn-small" :disabled="busy" @click="makeDefault(account)">{{ $t('templates.makeDefault') }}</button>
+                <button type="button" class="btn btn-outline btn-small" :disabled="busy" @click="remove(account)">{{ $t('common.delete') }}</button>
               </td>
             </tr>
           </tbody>
         </table>
       </div>
-      <p v-else-if="loaded" class="muted" data-testid="no-mail-accounts">Noch kein Mailkonto eingerichtet.</p>
+      <p v-else-if="loaded" class="muted" data-testid="no-mail-accounts">{{ $t('mail.noAccounts') }}</p>
 
       <form v-if="!demo" class="account-form" data-testid="mail-account-form" @submit.prevent="save">
-        <h4 class="mail-subheading">{{ form.id ? `Konto „${form.originalName}“ bearbeiten` : 'Neues Mailkonto' }}</h4>
+        <h4 class="mail-subheading">{{ form.id ? $t('mail.editAccount', { name: form.originalName }) : $t('mail.newAccount') }}</h4>
         <div class="form-grid">
           <div class="form-group">
-            <label for="mail-name">Name</label>
-            <input id="mail-name" v-model="form.name" class="form-control" placeholder="z. B. Buchhaltung" maxlength="100" required />
+            <label for="mail-name">{{ $t('common.columns.name') }}</label>
+            <input id="mail-name" v-model="form.name" class="form-control" :placeholder="$t('mail.namePlaceholder')" maxlength="100" required />
           </div>
           <div class="form-group">
-            <label for="mail-from-name">Absendername</label>
-            <input id="mail-from-name" v-model="form.fromName" class="form-control" placeholder="Ihre Firma" maxlength="255" />
+            <label for="mail-from-name">{{ $t('mail.fromName') }}</label>
+            <input id="mail-from-name" v-model="form.fromName" class="form-control" :placeholder="$t('mail.fromNamePlaceholder')" maxlength="255" />
           </div>
           <div class="form-group">
-            <label for="mail-from">Absenderadresse</label>
-            <input id="mail-from" v-model="form.fromAddress" class="form-control" type="email" placeholder="rechnung@firma.de" required />
+            <label for="mail-from">{{ $t('mail.fromAddress') }}</label>
+            <input id="mail-from" v-model="form.fromAddress" class="form-control" type="email" :placeholder="$t('mail.fromAddressPlaceholder')" required />
           </div>
           <div class="form-group">
-            <label for="mail-host">Mailserver (SMTP)</label>
+            <label for="mail-host">{{ $t('mail.host') }}</label>
             <input id="mail-host" v-model="form.host" class="form-control" placeholder="smtp.example.com" autocomplete="off" required />
           </div>
           <div class="form-group">
-            <label for="mail-security">Verschlüsselung</label>
+            <label for="mail-security">{{ $t('mail.security') }}</label>
             <select id="mail-security" v-model="form.security" class="form-control" @change="onSecurityChange">
-              <option value="STARTTLS">STARTTLS (meist Port 587)</option>
-              <option value="SSL">SSL/TLS (meist Port 465)</option>
-              <option v-if="!restricted" value="NONE">Keine (nur lokales Relay)</option>
+              <option value="STARTTLS">{{ $t('mail.starttls') }}</option>
+              <option value="SSL">{{ $t('mail.ssl') }}</option>
+              <option v-if="!restricted" value="NONE">{{ $t('mail.none') }}</option>
             </select>
           </div>
           <div class="form-group">
-            <label for="mail-port">Port</label>
+            <label for="mail-port">{{ $t('mail.port') }}</label>
             <input id="mail-port" v-model.number="form.port" class="form-control" type="number" min="1" max="65535" />
           </div>
           <div class="form-group">
-            <label for="mail-user">Benutzername</label>
+            <label for="mail-user">{{ $t('mail.username') }}</label>
             <input id="mail-user" v-model="form.username" class="form-control" autocomplete="off" />
           </div>
           <div class="form-group">
-            <label for="mail-password">Passwort</label>
+            <label for="mail-password">{{ $t('backup.passwordPlaceholder') }}</label>
             <input
               id="mail-password"
               v-model="form.password"
               class="form-control"
               type="password"
               autocomplete="new-password"
-              :placeholder="form.hasPassword ? 'gespeichert – leer lassen, um es zu behalten' : ''"
+              :placeholder="form.hasPassword ? $t('mail.passwordStored') : ''"
               :disabled="form.removePassword"
             />
             <label v-if="form.hasPassword" class="inline-check">
-              <input v-model="form.removePassword" type="checkbox" /> Gespeichertes Passwort entfernen
+              <input v-model="form.removePassword" type="checkbox" /> {{ $t('mail.removePassword') }}
             </label>
           </div>
         </div>
-        <p class="muted">Ändern Sie Server, Port, Verschlüsselung oder Benutzernamen, geben Sie das Passwort bitte erneut ein.</p>
+        <p class="muted">{{ $t('mail.reenterPassword') }}</p>
         <div class="form-actions">
-          <button type="submit" class="btn btn-primary" :disabled="busy">{{ form.id ? 'Änderungen speichern' : 'Konto anlegen' }}</button>
-          <button v-if="form.id" type="button" class="btn btn-secondary" :disabled="busy" @click="resetForm">Abbrechen</button>
+          <button type="submit" class="btn btn-primary" :disabled="busy">{{ form.id ? $t('mail.saveChanges') : $t('mail.createAccount') }}</button>
+          <button v-if="form.id" type="button" class="btn btn-secondary" :disabled="busy" @click="resetForm">{{ $t('common.cancel') }}</button>
         </div>
       </form>
 
-      <h3 class="mail-heading">Vorlagen für Mails an Kunden</h3>
+      <h3 class="mail-heading">{{ $t('mail.templates') }}</h3>
       <p class="muted">
-        Betreff und Text, mit denen der Versanddialog beginnt; Sie können beides vor dem Senden
-        ändern. Platzhalter wie Rechnungsnummer, Kundenname oder Betrag fügen Sie mit
-        „+ Platzhalter“ oder @ ein; sie werden beim Senden durch die Werte des Dokuments ersetzt.
+        {{ $t('mail.templatesHint') }}
       </p>
-      <div class="kinds" role="tablist" aria-label="Dokumentart">
+      <div class="kinds" role="tablist" :aria-label="$t('mail.kind')">
         <button
           v-for="kind in kinds"
-          :key="kind.key"
+          :key="kind"
           type="button"
           role="tab"
-          :aria-selected="kind.key === activeKind ? 'true' : 'false'"
-          :class="['btn', 'btn-small', kind.key === activeKind ? 'btn-primary' : 'btn-secondary']"
-          @click="activeKind = kind.key"
-        >{{ kind.label }}</button>
+          :aria-selected="kind === activeKind ? 'true' : 'false'"
+          :class="['btn', 'btn-small', kind === activeKind ? 'btn-primary' : 'btn-secondary']"
+          @click="activeKind = kind"
+        >{{ $t(`mail.kinds.${kind}`) }}</button>
       </div>
       <form v-if="templates[activeKind]" class="template-form" data-testid="mail-template-form" @submit.prevent="saveTemplates">
         <!-- chips instead of {{braces}}, like the template editor; the stored text keeps {{name}} -->
         <div class="form-group">
-          <span class="field-label" aria-hidden="true">Betreff</span>
+          <span class="field-label" aria-hidden="true">{{ $t('mail.subject') }}</span>
           <VariableTextInput
             id="mail-template-subject"
             :key="`subject-${activeKind}`"
             v-model="templates[activeKind].subject"
-            label="Betreff"
+            :label="$t('mail.subject')"
           />
         </div>
         <div class="form-group">
-          <span class="field-label" aria-hidden="true">Text</span>
+          <span class="field-label" aria-hidden="true">{{ $t('mail.text') }}</span>
           <VariableTextInput
             id="mail-template-text"
             :key="`text-${activeKind}`"
             v-model="templates[activeKind].text"
-            label="Text"
+            :label="$t('mail.text')"
             multiline
           />
         </div>
         <div class="form-actions">
-          <button type="submit" class="btn btn-primary" :disabled="busy">Vorlagen speichern</button>
+          <button type="submit" class="btn btn-primary" :disabled="busy">{{ $t('mail.saveTemplates') }}</button>
         </div>
       </form>
     </div>
@@ -151,15 +146,11 @@ import mailService from '../services/mailService.js'
 import VariableTextInput from './editor/VariableTextInput.vue'
 import { session } from '../services/session.js'
 
-/** The kinds of document with a mail template of their own, in display order. */
-const KINDS = [
-  { key: 'invoice', label: 'Rechnung' },
-  { key: 'credit_note', label: 'Stornorechnung' },
-  { key: 'offer', label: 'Angebot' },
-  { key: 'cost_calculation', label: 'Kostenberechnung' }
-]
+/** The kinds of document with a mail template of their own, in display order (names: `mail.kinds`). */
+const KINDS = ['invoice', 'credit_note', 'offer', 'cost_calculation']
 
-const SECURITY_LABELS = { STARTTLS: 'STARTTLS', SSL: 'SSL/TLS', NONE: 'unverschlüsselt' }
+/** How the account list names the encryption; NONE is translated (`mail.unencrypted`). */
+const SECURITY_LABELS = { STARTTLS: 'STARTTLS', SSL: 'SSL/TLS' }
 const DEFAULT_PORTS = { STARTTLS: 587, SSL: 465, NONE: 25 }
 
 function emptyForm() {
@@ -213,7 +204,7 @@ export default {
   },
   methods: {
     securityLabel(security) {
-      return SECURITY_LABELS[security] || security
+      return security === 'NONE' ? this.$t('mail.unencrypted') : SECURITY_LABELS[security] || security
     },
     sender(account) {
       return account.fromName ? `${account.fromName} <${account.fromAddress}>` : account.fromAddress
@@ -278,7 +269,7 @@ export default {
         editing ? mailService.updateAccount(editing, this.payload()) : mailService.createAccount(this.payload())
       )
       if (done) {
-        this.notice = editing ? 'Mailkonto gespeichert.' : 'Mailkonto angelegt. Senden Sie eine Testmail, um es zu prüfen.'
+        this.notice = editing ? this.$t('mail.saved') : this.$t('mail.created')
         this.resetForm()
         await this.load()
       }
@@ -286,7 +277,7 @@ export default {
     async test(account) {
       this.notice = null
       const done = await this.attempt(() => mailService.testAccount(account.id))
-      if (done) this.notice = `Testmail an ${account.fromAddress} gesendet. Kommt sie an, ist das Konto bereit.`
+      if (done) this.notice = this.$t('mail.testSent', { address: account.fromAddress })
     },
     async makeDefault(account) {
       this.notice = null
@@ -295,7 +286,7 @@ export default {
     },
     async remove(account) {
       this.notice = null
-      if (!window.confirm(`Mailkonto „${account.name}“ wirklich löschen?`)) return
+      if (!window.confirm(this.$t('mail.confirmDelete', { name: account.name }))) return
       await this.attempt(() => mailService.deleteAccount(account.id))
       if (this.form.id === account.id) this.resetForm()
       await this.load()
@@ -305,7 +296,7 @@ export default {
       const done = await this.attempt(async () => {
         this.templates = await mailService.saveTemplates(this.templates)
       })
-      if (done) this.notice = 'Vorlagen gespeichert.'
+      if (done) this.notice = this.$t('mail.templatesSaved')
     },
     /** Runs a call and shows the backend's message when it fails; true if it worked. */
     async attempt(action) {
@@ -315,7 +306,7 @@ export default {
         await action()
         return true
       } catch (error) {
-        this.error = error.message || 'Das ging leider schief.'
+        this.error = error.message || this.$t('common.failed')
         return false
       } finally {
         this.busy = false

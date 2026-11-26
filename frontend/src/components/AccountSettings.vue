@@ -2,19 +2,19 @@
   <section class="settings-section" data-testid="account-settings">
     <div class="card account-card">
       <dl class="account-facts">
-        <dt>Angemeldet als</dt>
+        <dt>{{ $t('account.signedInAs') }}</dt>
         <dd data-testid="account-email">{{ session.user ? session.user.email : '–' }}</dd>
-        <dt>Unternehmen</dt>
+        <dt>{{ $t('account.company') }}</dt>
         <dd data-testid="account-company">{{ active ? active.tenantName : '–' }}</dd>
-        <dt>Ihre Rolle</dt>
+        <dt>{{ $t('account.role') }}</dt>
         <dd><span v-if="active" class="badge badge-neutral">{{ roleLabel(active.role) }}</span></dd>
       </dl>
       <div v-if="others.length" class="other-companies">
-        <h3 class="account-heading">Weitere Unternehmen</h3>
+        <h3 class="account-heading">{{ $t('account.otherCompanies') }}</h3>
         <ul>
           <li v-for="membership in others" :key="membership.tenantId">
             <span>{{ membership.tenantName }} <span class="badge badge-neutral">{{ roleLabel(membership.role) }}</span></span>
-            <button type="button" class="btn btn-secondary btn-small" @click="switchTo(membership.tenantId)">Wechseln</button>
+            <button type="button" class="btn btn-secondary btn-small" @click="switchTo(membership.tenantId)">{{ $t('account.switch') }}</button>
           </li>
         </ul>
       </div>
