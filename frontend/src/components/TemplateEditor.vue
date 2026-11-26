@@ -164,7 +164,7 @@
           <div class="sheet-zoom" :style="{ zoom }">
             <div class="sheet" @click.self="deselectBlock">
               <!-- eslint-disable vue/no-v-html -- reviewed, see the nosemgrep reason below -->
-              <!-- nosemgrep: javascript.vue.security.audit.xss.templates.avoid-v-html.avoid-v-html -- scoped template CSS (scopeCss strips @import and remote url()) -->
+              <!-- nosemgrep: javascript.vue.security.audit.xss.templates.avoid-v-html.avoid-v-html -- scoped template CSS (scopeCss strips @import and remote url(); styleElement keeps it inside the style element) -->
               <div v-html="previewStyleTag"></div>
               <!-- eslint-enable vue/no-v-html -->
               <div class="invoice-box" :style="previewMarginStyle" @click.self="deselectBlock">
@@ -304,7 +304,7 @@ import {
 import { validateBlocks, canAddBlock } from '../utils/blockValidation.js'
 import { buildPreviewContext } from '../utils/previewData.js'
 import { renderBlockPreview } from '../utils/renderBlockPreview.js'
-import { scopeCss } from '../utils/scopeCss.js'
+import { scopeCss, styleElement } from '../utils/scopeCss.js'
 import { TEMPLATE_BASE_CSS } from '../utils/templateBaseCss.js'
 import { escapeBlockData } from '../utils/sanitize.js'
 import { INVOICE, DOCUMENT_TYPES, CREDIT_NOTE } from '../data/documentTypes.js'
@@ -460,8 +460,7 @@ export default {
     },
     previewStyleTag() {
       const css = scopeCss(TEMPLATE_BASE_CSS + '\n' + (this.form.globalCss || ''), PREVIEW_SCOPE)
-      // A literal "</style" in user CSS must not close the element.
-      return `<style>${css.replace(/<\/style/gi, '<\\/style')}</style>`
+      return styleElement(css)
     },
     previewMarginStyle() {
       const m = this.form

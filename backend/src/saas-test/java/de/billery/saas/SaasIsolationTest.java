@@ -667,6 +667,8 @@ class SaasIsolationTest extends SaasApiTestBase {
           "GET /api/health/ready",
           "GET /api/config",
           "GET /api/me",
+          "GET /api/preferences",
+          "PUT /api/preferences",
           "POST /api/tenants",
           "POST /api/invitations/{id}/accept");
 

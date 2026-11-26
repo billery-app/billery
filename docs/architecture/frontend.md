@@ -41,6 +41,24 @@ templates and views typed access to `$event.target` and the router's parameters.
 `flat/recommended` without its layout rules. The `@` import alias maps to `./src` (see
 `jsconfig.json`); use it for any non-trivial import path.
 
+## Languages (#15)
+
+The user interface speaks German (default and fallback) and English; documents, mail templates
+and XRechnung stay German. `src/i18n/index.js` creates vue-i18n (Composition mode, `$t` injected
+into every component) and offers `t()` for code outside components and `applyLanguage()`, which
+also sets `<html lang>`. The messages live in `src/locales/de.json` and `en.json` with the same keys
+(`locales.spec.js` compares them, finds keys the code uses but the files lack, empty messages and
+messages that do not compile; `@`, `{`, `}` and `|` are message syntax and are written `{'@'}`).
+`main.js` applies the stored language before mounting (`loadLanguage` →
+`GET /api/preferences`; German if none or unreadable). Einstellungen → Sprache
+(`LanguageSettings.vue`) stores a new choice (`PUT /api/preferences`) and switches at once: per
+installation in self-host and desktop, per user in SaaS. Texts read outside a template at run
+time (the settings area titles in `settingsAreas.js`, the tour stations in `utils/tour.js`) are
+getters over `t()`, so they follow a switch without a reload. ESLint checks every `$t` / `t` key
+(`@intlify/vue-i18n/no-missing-keys`) and keeps the files already moved free of hard-coded text
+(`no-raw-text`, list `I18N_DONE` in `eslint.config.js`). Moved so far: the app shell, the
+settings overview and sub-page frame, Hilfe, Sprache and both tours; the other screens follow.
+
 ## Application bootstrap
 
 `main.js` first calls `initAuth()` (see "Sign-in (SaaS mode)" below), then creates the

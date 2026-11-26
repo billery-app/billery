@@ -3,6 +3,7 @@ import 'driver.js/dist/driver.css'
 import '../styles/tour.css'
 import tourService from '../services/tourService.js'
 import { isSaas, session } from '../services/session.js'
+import { t } from '../i18n/index.js'
 
 /**
  * The introductory tour (#14): five short stations, from the catalog to an invoice, from an offer
@@ -20,8 +21,8 @@ import { isSaas, session } from '../services/session.js'
  * A second, shorter tour ({@link TEMPLATE_TOUR_STEPS}) explains the document templates and the
  * editor. It never starts by itself: Einstellungen → Hilfe and the templates page start it.
  *
- * The texts are constants: driver.js writes title and description as HTML, so nothing from the
- * database or the address may ever go into them.
+ * The texts come from the message files (`tour.*`, `src/locales/`): driver.js writes title and
+ * description as HTML, so nothing from the database or the address may ever go into them.
  */
 
 /** Set in `sessionStorage` when the tour has started in this browser session. */
@@ -48,58 +49,49 @@ export function firstVisible(...selectors) {
   return undefined
 }
 
+/**
+ * A station's title and text from the message files, read when driver.js renders the station,
+ * so the tour speaks the current interface language.
+ * @param {string} key - e.g. `tour.intro.welcome` (with `.title` and `.description` below it)
+ * @returns {{title: string, description: string}}
+ */
+function popoverText(key) {
+  return {
+    get title() {
+      return t(`${key}.title`)
+    },
+    get description() {
+      return t(`${key}.description`)
+    }
+  }
+}
+
 /** The stations: where the app goes first (`route`), what is highlighted, what is said. */
 export const TOUR_STEPS = [
   {
     route: null,
     element: () => firstVisible('[data-tour="nav"]', '[data-tour="nav-mobile"]'),
-    popover: {
-      title: 'Willkommen bei Billery',
-      description:
-        'In fünf kurzen Stationen sehen Sie, wie aus Stammdaten Angebote, Rechnungen und PDFs werden. ' +
-        'Über diese Navigation erreichen Sie Kunden, Dokumente, Katalog und Einstellungen.'
-    }
+    popover: popoverText('tour.intro.welcome')
   },
   {
     route: { path: '/articles-services', query: { tab: 'articles' } },
     element: () => firstVisible('[data-tour="catalog-tabs"]', '[data-tour="catalog-picker"]'),
-    popover: {
-      title: 'Stammdaten und Katalog',
-      description:
-        'Legen Sie hier Ihre Artikel und Leistungen mit Preis und Steuersatz an, Ihre Kunden unter ' +
-        '„Kunden“. Beim Schreiben einer Rechnung wählen Sie beides nur noch aus.'
-    }
+    popover: popoverText('tour.intro.catalog')
   },
   {
     route: { path: '/invoices', query: { type: 'invoice' } },
     element: '[data-tour="document-new"]',
-    popover: {
-      title: 'Eine Rechnung zusammenklicken',
-      description:
-        'Kunde wählen, Positionen aus dem Katalog hinzufügen, speichern: Die Rechnung ist ein Entwurf. ' +
-        'Erst beim Ausstellen bekommt sie ihre fortlaufende Nummer und ist danach unveränderbar (GoBD).'
-    }
+    popover: popoverText('tour.intro.invoice')
   },
   {
     route: { path: '/invoices', query: { type: 'offer' } },
     element: () => firstVisible('[data-tour="doc-tab-offer"]', '[data-tour="doc-type-picker"]'),
-    popover: {
-      title: 'Vom Angebot zur Rechnung',
-      description:
-        'Ein angenommenes Angebot öffnen und mit „In Rechnung“ übernehmen, ohne etwas neu ' +
-        'einzugeben. „PDF“ zeigt jedes Dokument so, wie Ihr Kunde es erhält.'
-    }
+    popover: popoverText('tour.intro.offer')
   },
   {
     route: { path: '/articles-services', query: { tab: 'equipment' } },
     element: () => firstVisible('[data-tour="catalog-equipment"]', '[data-tour="catalog-picker"]'),
-    popover: {
-      title: 'Ausstattung und Amortisation',
-      description:
-        'Erfassen Sie Geräte und Werkzeuge mit Kaufpreis und verknüpfen Sie sie mit Leistungen: ' +
-        'Billery zeigt, wie weit bezahlte Rechnungen sie schon eingespielt haben. Wie Ihre Dokumente ' +
-        'aussehen, zeigt die Vorlagen-Tour: gleich hier oder später unter Einstellungen → Hilfe.'
-    }
+    popover: popoverText('tour.intro.equipment')
   }
 ]
 
@@ -138,23 +130,13 @@ export const TEMPLATE_TOUR_STEPS = [
     route: { path: '/templates' },
     prepare: closeEditor,
     element: '[data-tour="template-new"]',
-    popover: {
-      title: 'Ihre Dokumentvorlagen',
-      description:
-        'Vorlagen bestimmen, wie Rechnungen, Angebote und Kostenvoranschläge aussehen. Eine neue ' +
-        'Vorlage beginnt mit einem Stil aus der Galerie oder mit einer Word- bzw. LibreOffice-Datei.'
-    }
+    popover: popoverText('tour.templates.list')
   },
   {
     route: { path: '/templates' },
     prepare: closeEditor,
     element: '[data-tour="template-card"]',
-    popover: {
-      title: 'Eine Vorlage pro Dokumenttyp',
-      description:
-        'Die Standardvorlage eines Dokumenttyps gilt für alle neuen Dokumente dieses Typs. ' +
-        '„Als Standard“ wechselt sie, „DOCX“ und „ODT“ geben die Texte zum Bearbeiten in Word oder LibreOffice aus.'
-    }
+    popover: popoverText('tour.templates.defaults')
   },
   {
     route: { path: '/templates' },
@@ -162,34 +144,19 @@ export const TEMPLATE_TOUR_STEPS = [
     // the open tools; on a narrower screen the button that opens them, on a phone the tabs
     element: () =>
       firstVisible('[data-tour="editor-tools"]', '[data-tour="editor-tools-toggle"]', '[data-tour="editor-workspace-tabs"]'),
-    popover: {
-      title: 'Design und Blöcke',
-      description:
-        'In den Werkzeugen stellen Sie unter „Design“ Logo, Farbe, Schrift und Ränder für das ganze Dokument ein. ' +
-        'Unter „Blöcke“ ordnen Sie Absender, Positionen, Summen und Fußzeile per Ziehen an und stellen jeden Block einzeln ein.'
-    }
+    popover: popoverText('tour.templates.tools')
   },
   {
     route: { path: '/templates' },
     prepare: openEditor,
     element: () => firstVisible('[data-tour="editor-preview"]', '[data-tour="editor-workspace-tabs"]'),
-    popover: {
-      title: 'Vorschau und Platzhalter',
-      description:
-        'Die Vorschau zeigt die Vorlage mit Beispieldaten; ein Klick auf einen Block wählt ihn aus. ' +
-        'Texte enthalten Platzhalter wie „Kundenname“ oder „Rechnungsnummer“: mit „+ Platzhalter“ oder @ einfügen.'
-    }
+    popover: popoverText('tour.templates.preview')
   },
   {
     route: { path: '/templates' },
     prepare: openEditor,
     element: '[data-tour="editor-actions"]',
-    popover: {
-      title: 'PDF-Vorschau und Speichern',
-      description:
-        '„PDF-Vorschau“ zeigt das fertige PDF genau so, wie Ihr Kunde es erhält. „Speichern“ übernimmt ' +
-        'die Vorlage, „Abbrechen“ verwirft die Änderungen.'
-    }
+    popover: popoverText('tour.templates.actions')
   }
 ]
 
@@ -226,11 +193,11 @@ export function startTour({ router, onEnd = () => {}, createDriver = driver, ste
     steps: steps.map(step => ({ element: step.element, popover: step.popover, waitForElement: WAIT_FOR_ELEMENT_MS })),
     popoverClass: 'billery-tour',
     showProgress: true,
-    progressText: '{{current}} von {{total}}',
-    nextBtnText: 'Weiter',
-    prevBtnText: 'Zurück',
-    doneBtnText: 'Fertig',
-    closeBtnLabel: 'Tour schließen',
+    progressText: t('tour.progress'),
+    nextBtnText: t('tour.next'),
+    prevBtnText: t('tour.previous'),
+    doneBtnText: t('tour.done'),
+    closeBtnLabel: t('tour.close'),
     allowClose: true,
     stageRadius: 8,
     onPopoverRender: popover => {
@@ -287,7 +254,7 @@ function addSkipButton(popover, skip) {
   const button = document.createElement('button')
   button.type = 'button'
   button.className = 'driver-popover-footer-btn billery-tour-skip'
-  button.textContent = 'Überspringen'
+  button.textContent = t('tour.skip')
   button.addEventListener('click', skip)
   popover.footer.prepend(button)
 }
@@ -387,7 +354,7 @@ export function runTour(router, deps = {}) {
     router,
     createDriver,
     onEnd: () => recordTourSeen({ localStore, api }),
-    followUp: { label: 'Vorlagen-Tour starten', run: () => runTemplateTour(router, { createDriver }) }
+    followUp: { label: t('tour.toTemplates'), run: () => runTemplateTour(router, { createDriver }) }
   })
 }
 

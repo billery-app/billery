@@ -6,6 +6,8 @@ import App from './App.vue'
 import { createAppRouter } from './router'
 import { initAuth } from './services/authService.js'
 import { captureDesktopToken } from './services/desktopToken.js'
+import { i18n } from './i18n/index.js'
+import { loadLanguage } from './services/preferencesService.js'
 
 // Self-hosted installs mount at once. In SaaS mode the app first completes or starts the sign-in
 // (a redirect to the identity provider) and mounts once the user and their tenants are known.
@@ -18,7 +20,10 @@ async function start() {
     showStartError()
     return
   }
+  // the stored interface language before the first paint (German if none or unreadable, #15)
+  await loadLanguage()
   const app = createApp(App)
+  app.use(i18n)
   // Created after initAuth: see createAppRouter.
   app.use(createAppRouter())
   app.mount('#app')

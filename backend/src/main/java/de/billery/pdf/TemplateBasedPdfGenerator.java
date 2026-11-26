@@ -499,14 +499,37 @@ public class TemplateBasedPdfGenerator {
     }
   }
 
-  private String fixSelfClosingTags(String html) {
+  /**
+   * Closes the void elements the XHTML parser of Flying Saucer needs closed ({@code <br>}, {@code
+   * <hr>}, {@code <img …>}). The images are closed by a scan, not a regular expression: every
+   * {@code <img} is closed at its first {@code >}, and once one has no {@code >} the later ones
+   * cannot have one either, so the scan ends there. One pass over the text, whatever it contains;
+   * the former pattern {@code <img([^>]*?)/?>} backtracked polynomially on many unclosed {@code
+   * <img} (CodeQL java/polynomial-redos), and so would any pattern searching each of them to the
+   * end.
+   *
+   * @param html the rendered document
+   * @return the same document with those elements self-closed
+   */
+  static String fixSelfClosingTags(String html) {
     if (html == null) {
       return html;
     }
-    return html.replaceAll("<br>", "<br/>")
-        .replaceAll("<br/>", "<br/>")
-        .replaceAll("<hr>", "<hr/>")
-        .replaceAll("<img([^>]*?)/?>", "<img$1/>");
+    String closed = html.replace("<br>", "<br/>").replace("<hr>", "<hr/>");
+    StringBuilder out = new StringBuilder(closed.length() + 16);
+    int from = 0;
+    int tag = closed.indexOf("<img", from);
+    while (tag >= 0) {
+      int end = closed.indexOf('>', tag);
+      if (end < 0) {
+        break;
+      }
+      int attributesEnd = closed.charAt(end - 1) == '/' && end - 1 >= tag + 4 ? end - 1 : end;
+      out.append(closed, from, attributesEnd).append("/>");
+      from = end + 1;
+      tag = closed.indexOf("<img", from);
+    }
+    return out.append(closed, from, closed.length()).toString();
   }
 
   private List<Map<String, Object>> parseBlocks(String blocksJson) {

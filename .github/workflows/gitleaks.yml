@@ -10,6 +10,10 @@ on:
   schedule:
     - cron: '37 4 * * 1'
 
+# Only reads the repository (checkout); nothing is written back (CodeQL: missing workflow permissions).
+permissions:
+  contents: read
+
 # A newer push to the same pull request cancels the run of the older one (Actions minutes).
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}

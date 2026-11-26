@@ -13,6 +13,7 @@ import {
   startTour
 } from './tour.js'
 import { session } from '../services/session.js'
+import { applyLanguage } from '../i18n/index.js'
 
 /** A storage like `sessionStorage`, in memory. */
 function memoryStore(initial = {}) {
@@ -120,6 +121,30 @@ describe('the stations', () => {
     tabs.getClientRects = () => [{}]
     expect(firstVisible('[data-tour="catalog-tabs"]', '[data-tour="catalog-picker"]')).toBe(tabs)
     expect(firstVisible('[data-tour="missing"]')).toBeUndefined()
+  })
+})
+
+describe('the tour language (#15)', () => {
+  it('speaks the interface language, read when a station is shown', () => {
+    expect(TOUR_STEPS[0].popover.title).toBe('Willkommen bei Billery')
+    applyLanguage('en')
+    expect(TOUR_STEPS[0].popover.title).toBe('Welcome to Billery')
+    expect(TEMPLATE_TOUR_STEPS[0].popover.title).toBe('Your document templates')
+    applyLanguage('de')
+  })
+
+  it('labels the buttons in the interface language', async () => {
+    applyLanguage('en')
+    const fake = fakeDriver()
+    startTour({ router: fakeRouter(), createDriver: fake.create })
+    await flush()
+    expect(fake.config.nextBtnText).toBe('Next')
+    expect(fake.config.progressText).toBe('{{current}} of {{total}}')
+    const footer = document.createElement('div')
+    fake.config.onPopoverRender({ footer, footerButtons: document.createElement('div') })
+    expect(footer.querySelector('.billery-tour-skip').textContent).toBe('Skip')
+    fake.instance.destroy()
+    applyLanguage('de')
   })
 })
 

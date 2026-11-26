@@ -138,3 +138,15 @@ export function scopeCss(css, scope) {
   }
   return out
 }
+
+/**
+ * The markup of a `<style>` element for template CSS that goes into the page through `v-html`.
+ * The CSS is the user's: a literal `</style` (in any case) would end the element and let the rest
+ * be parsed as HTML (`</style><img src=x onerror=…>`), so it is written as `<\/style`, which CSS
+ * reads the same and the HTML parser does not take as an end tag.
+ * @param {string} css - already scoped CSS ({@link scopeCss})
+ * @returns {string} `<style>…</style>`
+ */
+export function styleElement(css) {
+  return `<style>${(css || '').replace(/<\/style/gi, '<\\/style')}</style>`
+}

@@ -1,51 +1,51 @@
 <template>
   <div class="app">
-    <nav class="navbar" aria-label="Hauptnavigation">
-      <router-link class="nav-title" to="/" aria-label="Billery – Dashboard">Billery</router-link>
+    <nav class="navbar" :aria-label="$t('nav.main')">
+      <router-link class="nav-title" to="/" :aria-label="$t('nav.homeLabel')">Billery</router-link>
       <div class="search-wrapper">
-        <button class="search-btn" type="button" aria-label="Suche öffnen (Strg+K oder ⌘K)" @click="showSearch = true">
+        <button class="search-btn" type="button" :aria-label="$t('nav.openSearch')" @click="showSearch = true">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <circle cx="11" cy="11" r="8"/>
             <path d="M21 21l-4.35-4.35"/>
           </svg>
-          <span>Suche</span>
+          <span>{{ $t('nav.search') }}</span>
           <kbd>⌘K</kbd>
         </button>
       </div>
       <div class="nav-links" data-tour="nav">
-        <router-link to="/" class="nav-dashboard-link">Dashboard</router-link>
-        <router-link to="/customers">Kunden</router-link>
-        <router-link to="/invoices">Dokumente</router-link>
-        <router-link to="/articles-services">Katalog</router-link>
-        <router-link to="/settings">Einstellungen</router-link>
+        <router-link to="/" class="nav-dashboard-link">{{ $t('nav.dashboard') }}</router-link>
+        <router-link to="/customers">{{ $t('nav.customers') }}</router-link>
+        <router-link to="/invoices">{{ $t('nav.documents') }}</router-link>
+        <router-link to="/articles-services">{{ $t('nav.catalog') }}</router-link>
+        <router-link to="/settings">{{ $t('nav.settings') }}</router-link>
       </div>
       <AccountMenu v-if="session.mode === 'saas' && session.status === 'ready'" />
     </nav>
-    <nav class="mobile-bottom-nav" data-tour="nav-mobile" aria-label="Hauptnavigation mobil">
-      <router-link to="/" exact-active-class="router-link-exact-active" class="mobile-nav-link" aria-label="Dashboard">
+    <nav class="mobile-bottom-nav" data-tour="nav-mobile" :aria-label="$t('nav.mainMobile')">
+      <router-link to="/" exact-active-class="router-link-exact-active" class="mobile-nav-link" :aria-label="$t('nav.dashboard')">
         <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-        <span>Start</span>
+        <span>{{ $t('nav.start') }}</span>
       </router-link>
-      <router-link to="/customers" class="mobile-nav-link" aria-label="Kunden">
+      <router-link to="/customers" class="mobile-nav-link" :aria-label="$t('nav.customers')">
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20v-1.5a6.5 6.5 0 0 1 13 0V20zM16 5a3.5 3.5 0 0 1 0 6.8M18 14a5.5 5.5 0 0 1 3.5 5.1V20h-4"/></svg>
-        <span>Kunden</span>
+        <span>{{ $t('nav.customers') }}</span>
       </router-link>
-      <router-link to="/invoices" class="mobile-nav-link" aria-label="Dokumente">
+      <router-link to="/invoices" class="mobile-nav-link" :aria-label="$t('nav.documents')">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2.75h8l4 4V21H6zM14 3v5h5M9 12h6M9 16h6"/></svg>
-        <span>Dokumente</span>
+        <span>{{ $t('nav.documents') }}</span>
       </router-link>
-      <router-link to="/articles-services" class="mobile-nav-link" aria-label="Katalog">
+      <router-link to="/articles-services" class="mobile-nav-link" :aria-label="$t('nav.catalog')">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 7 9-4 9 4-9 4zM3 7v10l9 4 9-4V7M12 11v10"/></svg>
-        <span>Katalog</span>
+        <span>{{ $t('nav.catalog') }}</span>
       </router-link>
-      <router-link to="/settings" class="mobile-nav-link" aria-label="Einstellungen">
+      <router-link to="/settings" class="mobile-nav-link" :aria-label="$t('nav.settings')">
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="m19.4 15 .1.1 1.4 1.1-1.4 2.4-1.7-.6a8 8 0 0 1-1.7 1l-.3 1.8h-2.8l-.3-1.8a8 8 0 0 1-1.7-1l-1.7.6-1.4-2.4 1.4-1.1a7 7 0 0 1 0-2l-1.4-1.1 1.4-2.4 1.7.6a8 8 0 0 1 1.7-1l.3-1.8h2.8l.3 1.8a8 8 0 0 1 1.7 1l1.7-.6 1.4 2.4-1.4 1.1a7 7 0 0 1 0 2Z"/></svg>
-        <span>Einstell.</span>
+        <span>{{ $t('nav.settingsShort') }}</span>
       </router-link>
     </nav>
     <div v-if="session.demo" class="demo-banner" role="note" data-testid="demo-banner">
-      <span><strong>Demo</strong> – die Daten werden regelmäßig zurückgesetzt. Bitte keine echten Daten eingeben.</span>
-      <button type="button" class="btn btn-secondary btn-small" data-testid="demo-tour" @click="startTour">Tour erneut starten</button>
+      <span><strong>{{ $t('demo.label') }}</strong> – {{ $t('demo.notice') }}</span>
+      <button type="button" class="btn btn-secondary btn-small" data-testid="demo-tour" @click="startTour">{{ $t('demo.restartTour') }}</button>
     </div>
     <main>
       <NoTenantNotice v-if="session.status === 'no-tenant'" />
