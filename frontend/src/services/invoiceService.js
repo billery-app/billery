@@ -33,7 +33,7 @@ export default {
 
   /**
    * Gets next invoice number preview
-   * @returns {Promise<string>} - Next invoice number
+   * @returns {Promise<import('axios').AxiosResponse<string>>} - Next invoice number
    */
   getNextInvoiceNumber(documentTypeId = INVOICE) {
     return apiClient.get('/invoices/next-number', { params: { documentTypeId } })
@@ -51,7 +51,7 @@ export default {
   /**
    * Gets invoices by customer
    * @param {number} customerId - Customer ID
-   * @returns {Promise<Array>} - Array of customer invoices
+   * @returns {Promise<import('axios').AxiosResponse<Object[]>>} - Array of customer invoices
    */
   getInvoicesByCustomer(customerId) {
     return apiClient.get(`/invoices/by-customer/${customerId}`)
@@ -132,7 +132,7 @@ export default {
   /**
    * Lists the payments of an invoice, reversals included.
    * @param {number} id - Invoice ID
-   * @returns {Promise<Array>} - Payments, oldest first
+   * @returns {Promise<import('axios').AxiosResponse<Object[]>>} - Payments, oldest first
    */
   getPayments(id) {
     return apiClient.get(`/invoices/${id}/payments`)
@@ -163,7 +163,7 @@ export default {
    * Downloads the XRechnung (e-invoice, UBL XML) of an issued invoice or credit
    * note. Fails with a message listing missing master data when incomplete.
    * @param {number} id - Document ID
-   * @returns {Promise<Blob>} - The XML
+   * @returns {Promise<import('axios').AxiosResponse<Blob>>} - The XML
    */
   downloadXRechnung(id) {
     return apiClient.get(`/invoices/${id}/xrechnung`, { responseType: 'blob' })
@@ -172,7 +172,7 @@ export default {
   /**
    * Lists what an XRechnung of the document still lacks (works for drafts).
    * @param {number} id - Document ID
-   * @returns {Promise<{missing: string[]}>}
+   * @returns {Promise<import('axios').AxiosResponse<{missing: string[]}>>}
    */
   checkXRechnung(id) {
     return apiClient.get(`/invoices/${id}/xrechnung/check`)
@@ -181,7 +181,7 @@ export default {
   /**
    * Returns a document's audit trail.
    * @param {number} id - Document ID
-   * @returns {Promise<Array>} - History entries, oldest first
+   * @returns {Promise<import('axios').AxiosResponse<Object[]>>} - History entries, oldest first
    */
   getHistory(id) {
     return apiClient.get(`/invoices/${id}/history`)
@@ -190,7 +190,7 @@ export default {
   /**
    * Downloads invoice as PDF
    * @param {number} id - Invoice ID
-   * @returns {Promise<Blob>} - PDF blob
+   * @returns {Promise<import('axios').AxiosResponse<Blob>>} - PDF blob
    */
   downloadInvoicePdf(id) {
     return apiClient.get(`/invoices/${id}/pdf`, { responseType: 'blob' })

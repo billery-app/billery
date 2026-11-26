@@ -32,7 +32,13 @@ composables/            reusable composition functions (useDocumentType, useUnsa
 data/                   static lookup tables (documentTypes)
 ```
 
-There is no TypeScript. The `@` import alias maps to `./src` (see
+The code is JavaScript, type-checked by TypeScript through `checkJs` (`jsconfig.json`, `npm run
+typecheck` = `vue-tsc`); JSDoc annotations are the types. `strict` is off and the spec files are not
+checked yet (#39, later steps). Shared JSDoc types are in `src/types.js`; `utils/dom.js`
+(`inputValue($event)`, `inputChecked($event)`) and `utils/route.js` (`param`, `numberParam`) give
+templates and views typed access to `$event.target` and the router's parameters. ESLint
+(`eslint.config.js`, `npm run lint`) runs the recommended rules and `eslint-plugin-vue`'s
+`flat/recommended` without its layout rules. The `@` import alias maps to `./src` (see
 `jsconfig.json`); use it for any non-trivial import path.
 
 ## Application bootstrap
@@ -664,6 +670,7 @@ what is specific to the view (layout). A full-screen modal on phones sets `paddi
   interaction that was the reason for the change.
 - `npm run test:run` for a single run, `npm run test` for watch mode,
   `npm run test:coverage` for V8 coverage.
+- `npm run lint` and `npm run typecheck` run in the same CI job (`frontend-test`) before the tests.
 
 ## Build and dev
 

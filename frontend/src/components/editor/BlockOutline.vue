@@ -59,10 +59,10 @@ export const MOVE_TYPE = 'application/x-template-block-index'
 export default {
   name: 'BlockOutline',
   props: {
-    blocks: { type: Array, required: true },
+    blocks: { type: /** @type {import('vue').PropType<import('@/types.js').TemplateBlock[]>} */ (Array), required: true },
     selectedId: { type: String, default: null },
     /** Validation issues ({ blockId, message }). */
-    issues: { type: Array, default: () => [] }
+    issues: { type: /** @type {import('vue').PropType<import('@/utils/blockValidation.js').Issue[]>} */ (Array), default: () => [] }
   },
   emits: ['select', 'move', 'remove', 'add'],
   data() {

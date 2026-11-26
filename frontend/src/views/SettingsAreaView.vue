@@ -38,7 +38,7 @@ export default {
   computed: {
     /** The area of the current route (title, description). */
     area() {
-      return findArea(this.$route.meta.area)
+      return findArea(/** @type {string} */ (this.$route.meta.area))
     },
     /** The component that shows the area's settings. */
     areaComponent() {

@@ -11,6 +11,7 @@ import SettingsView from '../views/SettingsView.vue'
 import SettingsAreaView from '../views/SettingsAreaView.vue'
 import { guardSettingsArea } from '../utils/settingsAreas.js'
 
+/** @type {import('vue-router').RouteRecordRaw[]} */
 const routes = [
   { path: '/', component: DashboardView },
   { path: '/customers', component: CustomersView },

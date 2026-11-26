@@ -218,11 +218,16 @@ export default {
     isOpen(val) {
       if (val) {
         this.$nextTick(() => {
-          this.$refs.searchInput?.focus()
+          /** @type {HTMLInputElement | undefined} */ (this.$refs.searchInput)?.focus()
         })
       } else {
         this.clearSearch()
       }
+    }
+  },
+  beforeUnmount() {
+    if (this.debounceTimer) {
+      clearTimeout(this.debounceTimer)
     }
   },
   methods: {
@@ -331,11 +336,6 @@ export default {
     goToInvoice(id) {
       this.close()
       this.$router.push(`/invoices?edit=${id}`)
-    }
-  },
-  beforeUnmount() {
-    if (this.debounceTimer) {
-      clearTimeout(this.debounceTimer)
     }
   }
 }

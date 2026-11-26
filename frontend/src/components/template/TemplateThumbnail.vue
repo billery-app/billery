@@ -1,10 +1,14 @@
 <template>
   <div ref="thumbnail" class="template-thumbnail" :class="scopeClass" :style="frameStyle" aria-hidden="true">
     <div class="thumb-page" :style="{ transform: `scale(${scale})` }">
+      <!-- eslint-disable vue/no-v-html -- reviewed, see the nosemgrep reason below -->
       <!-- nosemgrep: javascript.vue.security.audit.xss.templates.avoid-v-html.avoid-v-html -- scoped template CSS (scopeCss strips @import and remote url()) -->
       <div v-html="styleTag"></div>
+      <!-- eslint-enable vue/no-v-html -->
+      <!-- eslint-disable vue/no-v-html -- reviewed, see the nosemgrep reason below -->
       <!-- nosemgrep: javascript.vue.security.audit.xss.templates.avoid-v-html.avoid-v-html -- block HTML built from escapeBlockData() output -->
       <div class="invoice-box" :style="padding" v-html="bodyHtml"></div>
+      <!-- eslint-enable vue/no-v-html -->
     </div>
   </div>
 </template>
@@ -89,7 +93,7 @@ export default {
   methods: {
     /** Scale the fixed-size A4 rendering to the thumbnail's available width. */
     updateScale() {
-      const width = this.$refs.thumbnail?.clientWidth
+      const width = /** @type {HTMLElement | undefined} */ (this.$refs.thumbnail)?.clientWidth
       if (width > 0 && width !== this.measuredWidth) this.measuredWidth = width
     }
   }

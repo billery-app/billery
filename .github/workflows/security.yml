@@ -121,6 +121,9 @@ jobs:
         if: always() && steps.diff.outputs.deps == 'true'
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
+          # the first Trivy step of this job restores and saves the database cache; a second save
+          # of the same key only fails ("Unable to reserve cache")
+          cache: 'false'
           scan-type: fs
           scan-ref: .
           scanners: vuln
@@ -206,6 +209,9 @@ jobs:
         if: always()
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
+          # the first Trivy step of this job restores and saves the database cache; a second save
+          # of the same key only fails ("Unable to reserve cache")
+          cache: 'false'
           scan-type: image
           image-ref: billery-${{ matrix.image }}:scan
           format: cyclonedx

@@ -55,7 +55,7 @@ Three core user flows cover almost all day-to-day work:
 | XRechnung validator | KoSIT validationtool 1.5.0 (`scripts/fetch-kosit-validator.sh`) | Not part of the build; the `xrechnung` CI job validates generated invoices with it. |
 | Mail | Simple Java Mail | `SmtpMailProvider` sends the SaaS invitation mails. Invoices cannot be sent by mail yet. |
 | API docs | SpringDoc OpenAPI 3.0.3 | Swagger UI auto-mounted at `/swagger-ui.html`; OpenAPI JSON at `/v3/api-docs`. |
-| Frontend language | JavaScript (no TypeScript) | Per `AGENTS.md`. |
+| Frontend language | JavaScript with JSDoc, type-checked by TypeScript (`checkJs`, `vue-tsc`) | #39; a gradual move to TypeScript is planned. |
 | Frontend framework | Vue 3.5.27 | Composition API, single-file components. |
 | Build tool | Vite ^8.0.0 | Dev server on `:5173`. |
 | Router | Vue Router 5.0.0 | Intentional choice; do **not** downgrade to 4.x. The project pins `^5.0.0`. |

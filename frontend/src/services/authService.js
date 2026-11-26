@@ -39,7 +39,7 @@ function isInFrame() {
 
 /**
  * Test hook: swap the OIDC client factory, the page reload and the frame detection.
- * @param {{createManager?: Function, reload?: Function, inFrame?: Function}} overrides
+ * @param {{createManager?: (settings: any) => import('oidc-client-ts').UserManager, reload?: () => void, inFrame?: () => boolean}} overrides
  */
 export function configureForTests(overrides = {}) {
   if (overrides.createManager) createManager = overrides.createManager
@@ -185,7 +185,10 @@ function forgetRetry() {
   }
 }
 
-/** Reads `/api/me` and chooses the active tenant. */
+/**
+ * Reads `/api/me` and chooses the active tenant.
+ * @param {{get: Function}} [http] - axios or a test double
+ */
 async function loadMemberships(http = axios) {
   const { data: me } = await http.get(`${apiBaseUrl()}/me`, { headers: await authorizationOnly() })
   session.user = { id: me.userId, email: me.email }

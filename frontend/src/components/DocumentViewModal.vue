@@ -70,9 +70,9 @@
                 <td>
                   <button
                     v-if="!p.reversesPaymentId && !isReversed(p)"
-                    @click="reversePayment(p)"
                     class="btn btn-small btn-secondary"
                     :disabled="statusUpdating"
+                    @click="reversePayment(p)"
                   >Stornieren</button>
                 </td>
               </tr>
@@ -190,8 +190,8 @@
             </div>
           </div>
           <div class="footer-form-buttons">
-            <button type="button" @click="savePayment" class="btn btn-primary" :disabled="statusUpdating">Speichern</button>
-            <button type="button" @click="showPaymentForm = false" class="btn btn-secondary">Abbrechen</button>
+            <button type="button" class="btn btn-primary" :disabled="statusUpdating" @click="savePayment">Speichern</button>
+            <button type="button" class="btn btn-secondary" @click="showPaymentForm = false">Abbrechen</button>
           </div>
         </div>
 
@@ -208,10 +208,10 @@
             </div>
           </div>
           <div class="footer-form-buttons">
-            <button type="button" @click="cloneDocument" class="btn btn-primary" :disabled="cloneLoading">
+            <button type="button" class="btn btn-primary" :disabled="cloneLoading" @click="cloneDocument">
               {{ cloneLoading ? 'Dupliziere...' : 'Bestätigen' }}
             </button>
-            <button type="button" @click="showCloneForm = false" class="btn btn-secondary">Abbrechen</button>
+            <button type="button" class="btn btn-secondary" @click="showCloneForm = false">Abbrechen</button>
           </div>
         </div>
 
@@ -236,19 +236,19 @@
           <div v-if="doc" class="action-group action-group-document" role="group" aria-label="Dokument">
             <button
               type="button"
-              @click="downloadPdf"
               :class="['btn', lifecycleActions.length ? 'btn-secondary' : 'btn-primary']"
               :disabled="pdfLoading"
               title="PDF herunterladen"
               data-testid="pdf-download"
+              @click="downloadPdf"
             >{{ pdfLoading ? 'Lade...' : 'PDF' }}</button>
             <button
               v-if="isIssuedInvoice || isCreditNoteDoc"
               type="button"
-              @click="downloadXRechnung"
               class="btn btn-secondary"
               title="E-Rechnung im Format XRechnung (UBL) für Geschäftskunden und Behörden"
               data-testid="xrechnung-download"
+              @click="downloadXRechnung"
             >E-Rechnung</button>
             <button
               v-if="canSendMail"
@@ -258,9 +258,9 @@
               data-testid="send-mail-button"
               @click="showSendMail = true"
             >Per E-Mail</button>
-            <button v-if="!isCreditNoteDoc" type="button" @click="openCloneForm" class="btn btn-secondary">Duplizieren</button>
-            <button v-if="listActions.edit" type="button" @click="emit('edit-request', doc)" class="btn btn-secondary">Bearbeiten</button>
-            <button v-if="listActions.restore" type="button" @click="emit('restore-request', doc.id)" class="btn btn-secondary">Wiederherstellen</button>
+            <button v-if="!isCreditNoteDoc" type="button" class="btn btn-secondary" @click="openCloneForm">Duplizieren</button>
+            <button v-if="listActions.edit" type="button" class="btn btn-secondary" @click="emit('edit-request', doc)">Bearbeiten</button>
+            <button v-if="listActions.restore" type="button" class="btn btn-secondary" @click="emit('restore-request', doc.id)">Wiederherstellen</button>
           </div>
 
           <div class="action-group action-group-end">
@@ -296,7 +296,7 @@
                 </li>
               </ul>
             </div>
-            <button type="button" @click="close" class="btn btn-secondary">Schließen</button>
+            <button type="button" class="btn btn-secondary" @click="close">Schließen</button>
           </div>
         </div>
       </div>
@@ -519,10 +519,10 @@ const lifecycleActions = computed(() => {
     }))
   // Converting is the step after "Angenommen"; the list decides whether it is possible.
   if (listActions.value.convertToInvoice) {
-    actions.push({ key: 'to-invoice', label: 'In Rechnung', kind: 'step', run: () => emit('convert-to-invoice', doc.value) })
+    actions.push({ key: 'to-invoice', label: 'In Rechnung', kind: 'step', run: async () => emit('convert-to-invoice', doc.value) })
   }
   if (listActions.value.convertToOffer) {
-    actions.push({ key: 'to-offer', label: 'In Angebot', kind: 'step', run: () => emit('convert-to-offer', doc.value) })
+    actions.push({ key: 'to-offer', label: 'In Angebot', kind: 'step', run: async () => emit('convert-to-offer', doc.value) })
   }
   return actions
 })
@@ -925,7 +925,7 @@ function formatDate(dateStr) {
 function formatDateTime(value) {
   if (!value) return '-'
   const date = new Date(String(value).replace(' ', 'T'))
-  return isNaN(date) ? value : date.toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })
+  return isNaN(date.getTime()) ? value : date.toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })
 }
 
 function formatCurrency(value) {

@@ -51,7 +51,7 @@
       <NoTenantNotice v-if="session.status === 'no-tenant'" />
       <router-view v-else />
     </main>
-    <SpotlightSearch :isOpen="showSearch" @close="showSearch = false" />
+    <SpotlightSearch :is-open="showSearch" @close="showSearch = false" />
   </div>
 </template>
 

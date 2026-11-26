@@ -112,6 +112,9 @@ jobs:
       - name: Scan the SaaS image (blocks the release)
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
+          # the first Trivy step of this job restores and saves the database cache; a second save
+          # of the same key only fails ("Unable to reserve cache")
+          cache: 'false'
           scan-type: image
           image-ref: billery-saas:${{ github.ref_name }}
           scanners: vuln
@@ -125,6 +128,9 @@ jobs:
         if: always()
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
+          # the first Trivy step of this job restores and saves the database cache; a second save
+          # of the same key only fails ("Unable to reserve cache")
+          cache: 'false'
           scan-type: image
           image-ref: billery:${{ github.ref_name }}
           scanners: vuln
@@ -138,6 +144,9 @@ jobs:
         if: always()
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
+          # the first Trivy step of this job restores and saves the database cache; a second save
+          # of the same key only fails ("Unable to reserve cache")
+          cache: 'false'
           scan-type: image
           image-ref: billery-saas:${{ github.ref_name }}
           scanners: vuln
@@ -150,6 +159,9 @@ jobs:
       - name: SBOM of the self-host image
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
+          # the first Trivy step of this job restores and saves the database cache; a second save
+          # of the same key only fails ("Unable to reserve cache")
+          cache: 'false'
           scan-type: image
           image-ref: billery:${{ github.ref_name }}
           format: cyclonedx
@@ -158,6 +170,9 @@ jobs:
       - name: SBOM of the SaaS image
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
+          # the first Trivy step of this job restores and saves the database cache; a second save
+          # of the same key only fails ("Unable to reserve cache")
+          cache: 'false'
           scan-type: image
           image-ref: billery-saas:${{ github.ref_name }}
           format: cyclonedx
@@ -168,6 +183,9 @@ jobs:
       - name: SBOM of the source tree
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
+          # the first Trivy step of this job restores and saves the database cache; a second save
+          # of the same key only fails ("Unable to reserve cache")
+          cache: 'false'
           scan-type: fs
           scan-ref: .
           skip-dirs: XRechnung

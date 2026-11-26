@@ -20,6 +20,8 @@ function sanitizeDiagnosticValue(value, key = '', depth = 0) {
   if (PRIVATE_KEY_PATTERN.test(key) || depth > 4) return undefined
   if (value === null || typeof value === 'boolean') return value
   if (typeof value === 'number') return Number.isFinite(value) ? rounded(value) : null
+  // control characters are what this strips on purpose (log injection)
+  // eslint-disable-next-line no-control-regex
   if (typeof value === 'string') return value.replace(/[\u0000-\u001f\u007f]/g, ' ').slice(0, 240)
   if (Array.isArray(value)) {
     return value.slice(-30).map(item => sanitizeDiagnosticValue(item, '', depth + 1))
@@ -90,7 +92,7 @@ export function captureKeyboardZoomSnapshot(virtualKeyboardApi = null) {
       tag: activeElement.tagName?.toLowerCase() || null,
       type: activeElement.getAttribute?.('type') || null,
       className: typeof activeElement.className === 'string' ? activeElement.className.slice(0, 120) : null,
-      isContentEditable: Boolean(activeElement.isContentEditable),
+      isContentEditable: Boolean(/** @type {HTMLElement} */ (activeElement).isContentEditable),
       rect: rectSnapshot(activeRect),
       fontSize: activeStyle?.fontSize || null,
       lineHeight: activeStyle?.lineHeight || null
@@ -105,7 +107,7 @@ export function captureKeyboardZoomSnapshot(virtualKeyboardApi = null) {
       supported: Boolean(virtualKeyboardApi),
       rect: keyboardRect ? rectSnapshot(keyboardRect) : null
     },
-    viewportMeta: document.querySelector('meta[name="viewport"]')?.content?.slice(0, 240) || null
+    viewportMeta: /** @type {HTMLMetaElement | null} */ (document.querySelector('meta[name="viewport"]'))?.content?.slice(0, 240) || null
   }
 }
 

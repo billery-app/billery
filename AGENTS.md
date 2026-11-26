@@ -46,9 +46,11 @@ npm run test:run         # single Vitest run
 npm run test:coverage    # Vitest with V8 coverage
 npm run test             # Vitest in watch mode
 npm run test:e2e         # Playwright smoke suite against E2E_BASE_URL (default :5173); see e2e/README.md
+npm run lint             # ESLint (eslint.config.js), no warnings allowed
+npm run typecheck        # vue-tsc over jsconfig.json (checkJs, source only, not yet strict)
 ```
 
-**There is no `npm run lint` or `npm run typecheck`.** The project uses JavaScript (no TypeScript), has no ESLint, and no Prettier. `frontend.yml` runs `npm run test:run` and `npm run build` in CI.
+**Lint and type check (#39, step 1).** The code is JavaScript checked by TypeScript (`checkJs` in `jsconfig.json`, `vue-tsc`): JSDoc types count, so a wrong `@param` / `@returns` is an error. `strict` is off and the `*.spec.js` files are not type-checked yet (their errors come from `wrapper.vm` on Options API components); both come with the later steps of #39. Shared JSDoc types live in `src/types.js` (`PropType` casts for array props), `utils/dom.js` types `$event.target` for templates (`inputValue($event)`), `utils/route.js` reads `$route.query` / `params` (`param`, `numberParam`). ESLint uses the recommended rules plus `eslint-plugin-vue`'s `flat/recommended` without its layout rules (there is no formatter, no Prettier). A suppression always carries its reason (`-- …`). `frontend.yml` runs lint, type check, `npm run test:run` and `npm run build`.
 
 ### Desktop shell (`app-desktop/`)
 

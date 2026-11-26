@@ -12,8 +12,8 @@
       </div>
       <div v-if="validationError" class="error-msg">{{ validationError }}</div>
       <div class="form-actions">
-        <button @click="confirm" class="btn btn-primary">Umwandeln</button>
-        <button @click="cancel" class="btn btn-secondary">Abbrechen</button>
+        <button class="btn btn-primary" @click="confirm">Umwandeln</button>
+        <button class="btn btn-secondary" @click="cancel">Abbrechen</button>
       </div>
     </div>
   </div>

@@ -21,9 +21,9 @@
                   class="form-control"
                   :value="member.role"
                   :aria-label="`Rolle von ${member.email}`"
-                  @change="changeRole(member, $event.target.value)"
+                  @change="changeRole(member, inputValue($event))"
                 >
-                  <option v-for="role in roles" :key="role" :value="role">{{ roleLabel(role) }}</option>
+                  <option v-for="choice in roles" :key="choice" :value="choice">{{ roleLabel(choice) }}</option>
                 </select>
                 <span v-else class="badge badge-neutral">{{ roleLabel(member.role) }}</span>
               </td>
@@ -93,6 +93,7 @@
 </template>
 
 <script>
+import { inputValue } from '../utils/dom.js'
 import { activeRole, session } from '../services/session.js'
 import teamService from '../services/teamService.js'
 import { manageableRoles, roleLabel } from '../utils/roles.js'
@@ -130,6 +131,7 @@ export default {
     await this.load()
   },
   methods: {
+    inputValue,
     roleLabel,
     /** "19.11.2026" for an ISO timestamp. */
     formatDate(value) {

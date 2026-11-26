@@ -56,7 +56,7 @@
             :id="fieldId(field)"
             class="form-select"
             :value="block.data[field.key]"
-            @change="onSelectData(field.key, $event.target.value)"
+            @change="onSelectData(field.key, inputValue($event))"
           >
             <option v-for="opt in field.options" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
           </select>
@@ -97,14 +97,14 @@
                 type="checkbox"
                 :checked="col.show !== false"
                 :aria-label="`Spalte ${col.label} anzeigen`"
-                @change="setColumn(index, { show: $event.target.checked })"
+                @change="setColumn(index, { show: inputChecked($event) })"
               />
               <input
                 type="text"
                 class="form-input"
                 :value="col.label"
                 :aria-label="`Überschrift der Spalte ${col.key}`"
-                @input="setColumn(index, { label: $event.target.value })"
+                @input="setColumn(index, { label: inputValue($event) })"
               />
               <button type="button" class="btn-mini" :disabled="index === 0" title="Nach links" @click="moveColumn(index, -1)">↑</button>
               <button type="button" class="btn-mini" :disabled="index === columns.length - 1" title="Nach rechts" @click="moveColumn(index, 1)">↓</button>
@@ -123,7 +123,7 @@
               :id="settingId(setting)"
               type="checkbox"
               :checked="!!block.config[setting.key]"
-              @change="setConfig(setting.key, $event.target.checked)"
+              @change="setConfig(setting.key, inputChecked($event))"
             />
             <span class="toggle-switch"></span>
             {{ setting.label }}
@@ -135,7 +135,7 @@
               :id="settingId(setting)"
               class="form-select"
               :value="block.config[setting.key] ?? setting.default"
-              @change="setConfig(setting.key, $event.target.value)"
+              @change="setConfig(setting.key, inputValue($event))"
             >
               <option v-for="opt in setting.options" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
             </select>
@@ -144,7 +144,7 @@
                 :id="settingId(setting)"
                 type="color"
                 :value="block.config[setting.key]"
-                @input="setConfig(setting.key, $event.target.value)"
+                @input="setConfig(setting.key, inputValue($event))"
               />
               <span class="color-value">{{ block.config[setting.key] }}</span>
             </div>
@@ -154,7 +154,7 @@
               type="text"
               class="form-input"
               :value="block.config[setting.key]"
-              @input="setConfig(setting.key, $event.target.value)"
+              @input="setConfig(setting.key, inputValue($event))"
             />
           </template>
           <p v-if="setting.help" class="field-help">{{ setting.help }}</p>
@@ -164,7 +164,7 @@
           <legend>Schrift</legend>
           <div class="format-row">
             <label for="fmt-family">Schriftart</label>
-            <select id="fmt-family" class="form-select" :value="format.fontFamily" @change="setFormat({ fontFamily: $event.target.value })">
+            <select id="fmt-family" class="form-select" :value="format.fontFamily" @change="setFormat({ fontFamily: inputValue($event) })">
               <option v-for="font in fontFamilies" :key="font" :value="font">{{ font }}</option>
             </select>
           </div>
@@ -180,7 +180,7 @@
                 max="72"
                 step="0.5"
                 :value="format.fontSize"
-                @change="setSize($event.target.value)"
+                @change="setSize(inputValue($event))"
               />
               <button type="button" class="btn-mini" aria-label="Größer" @click="changeSize(0.5)">+</button>
             </div>
@@ -188,12 +188,12 @@
           <div class="format-row">
             <label for="fmt-color">Farbe</label>
             <div class="color-wrap">
-              <input id="fmt-color" type="color" :value="format.fontColor" @input="setFormat({ fontColor: $event.target.value })" />
+              <input id="fmt-color" type="color" :value="format.fontColor" @input="setFormat({ fontColor: inputValue($event) })" />
               <span class="color-value">{{ format.fontColor }}</span>
             </div>
           </div>
           <label class="toggle-label">
-            <input type="checkbox" :checked="format.fontWeight === 'bold'" @change="setFormat({ fontWeight: $event.target.checked ? 'bold' : 'normal' })" />
+            <input type="checkbox" :checked="format.fontWeight === 'bold'" @change="setFormat({ fontWeight: inputChecked($event) ? 'bold' : 'normal' })" />
             <span class="toggle-switch"></span>
             Fett
           </label>
@@ -209,6 +209,7 @@
 </template>
 
 <script>
+import { inputChecked, inputValue } from '../../utils/dom.js'
 import { uploadLogo } from '../../services/uploadService.js'
 import VariableTextInput from './VariableTextInput.vue'
 import { FONT_FAMILIES, getFormat, blockDisplayName } from '../../utils/blockRegistry.js'
@@ -234,7 +235,7 @@ export default {
     /** Preview values, shown as examples in the variable picker. */
     previewValues: { type: Object, default: () => ({}) },
     /** Validation issues of this block ({ message }). */
-    issues: { type: Array, default: () => [] }
+    issues: { type: /** @type {import('vue').PropType<import('@/utils/blockValidation.js').Issue[]>} */ (Array), default: () => [] }
   },
   emits: ['update', 'close', 'duplicate', 'remove', 'notify'],
   data() {
@@ -275,6 +276,7 @@ export default {
     }
   },
   methods: {
+    inputChecked, inputValue,
     fieldId(field) {
       return `field-${this.block.id}-${field.key}`
     },

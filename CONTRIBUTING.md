@@ -24,7 +24,7 @@ described in [`SECURITY.md`](./SECURITY.md).
 
   ```bash
   cd backend && mvn spotless:apply && mvn verify    # tests, formatting, PMD
-  cd frontend && npm run test:run && npm run build
+  cd frontend && npm run lint && npm run typecheck && npm run test:run && npm run build
   ```
 
   For changes to the SaaS code, the schema or the database layer, also run the suite against a
