@@ -11,8 +11,8 @@ import org.springframework.stereotype.Component;
 /**
  * SaaS: the preferences of the signed-in user, in {@code app_user} ({@code
  * V11__user_language.sql}). Only ever the row of the user of the request ({@link
- * TenantContext#userId()}); {@code app_user} has no row-level security, the {@code WHERE id} is
- * the boundary.
+ * TenantContext#userId()}); {@code app_user} has no row-level security, the {@code WHERE id} is the
+ * boundary.
  */
 @Component
 @Profile("saas")

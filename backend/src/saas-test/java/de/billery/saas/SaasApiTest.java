@@ -635,5 +635,4 @@ class SaasApiTest extends SaasApiTestBase {
         400, call("PUT", "/api/preferences", anna, null, "{\"language\":\"xx\"}").status());
     assertEquals(401, get("/api/preferences", null, null).status());
   }
-
 }
