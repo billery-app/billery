@@ -15,6 +15,6 @@ export async function uploadLogo(file) {
     const response = await apiClient.post('/upload', formData)
     return response.data.url
   } catch (error) {
-    throw new Error('Logo-Upload fehlgeschlagen: ' + (error.response?.data?.message || error.message))
+    throw new Error('Logo-Upload fehlgeschlagen: ' + (error.response?.data?.message || error.message), { cause: error })
   }
 }

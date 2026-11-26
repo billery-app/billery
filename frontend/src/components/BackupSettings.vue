@@ -166,7 +166,7 @@ export default {
       try {
         const { data } = await backupAPI.getStatus()
         this.apply(data)
-      } catch (error) {
+      } catch {
         this.error = 'Die Sicherungen konnten nicht gelesen werden.'
       }
     },

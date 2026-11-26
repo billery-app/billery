@@ -72,7 +72,7 @@ export default {
     }
   },
   mounted() {
-    this.$nextTick(() => this.$refs.search && this.$refs.search.focus())
+    this.$nextTick(() => /** @type {HTMLInputElement | undefined} */ (this.$refs.search)?.focus())
   },
   methods: {
     /**

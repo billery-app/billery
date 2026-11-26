@@ -30,18 +30,18 @@
       <li v-if="loading && !results.length" class="hint" role="presentation">Suche…</li>
       <li v-else-if="!results.length" class="hint" role="presentation">Kein Kunde gefunden</li>
       <li
-        v-for="(customer, index) in results"
+        v-for="(match, index) in results"
         :id="optionId(index)"
-        :key="customer.id"
+        :key="match.id"
         role="option"
         :aria-selected="index === activeIndex ? 'true' : 'false'"
         :class="['option', { active: index === activeIndex }]"
         @mousedown.prevent
-        @click="select(customer)"
+        @click="select(match)"
         @mouseenter="activeIndex = index"
       >
-        <span class="name">{{ label(customer) }}</span>
-        <span v-if="customer.city" class="city">{{ customer.postalCode }} {{ customer.city }}</span>
+        <span class="name">{{ label(match) }}</span>
+        <span v-if="match.city" class="city">{{ match.postalCode }} {{ match.city }}</span>
       </li>
       <li v-if="total > results.length" class="hint" role="presentation">
         {{ total - results.length }} weitere – Suche verfeinern

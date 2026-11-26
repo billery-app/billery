@@ -99,11 +99,11 @@ function formatPeriod(workStart, workEnd) {
  */
 
 /**
- * @param {Object} params
- * @param {Object|null} params.invoice - Invoice DTO (`invoiceDate`, `dueDate`,
+ * @param {Object} [params]
+ * @param {Object|null} [params.invoice] - Invoice DTO (`invoiceDate`, `dueDate`,
  *   `workStartDate`, `workEndDate`, `notes`, `netAmount`, `taxRate`,
  *   `taxAmount`, `grossAmount`, `invoiceNumber`).
- * @param {Object|null} params.customer - Customer DTO (`firstName`, `lastName`,
+ * @param {Object|null} [params.customer] - Customer DTO (`firstName`, `lastName`,
  *   `street`, `houseNumber`, `postalCode`, `city`, `email`, `phone`).
  * @returns {{ variables: Object, totals: Object }} live data to feed to the
  *   editor:

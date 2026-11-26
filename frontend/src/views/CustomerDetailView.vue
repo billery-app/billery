@@ -1,7 +1,7 @@
 <template>
   <div class="customer-detail">
     <div class="header">
-      <button @click="goBack" class="btn btn-secondary">← Zurück</button>
+      <button class="btn btn-secondary" @click="goBack">← Zurück</button>
       <h1>Kundendetails</h1>
     </div>
 
@@ -39,10 +39,10 @@
           </div>
         </div>
         <div class="actions">
-          <button @click="editCustomer" class="btn btn-primary">Bearbeiten</button>
-          <button @click="createInvoice" class="btn btn-success">Neue Rechnung</button>
-          <button @click="createOffer" class="btn btn-secondary">Neues Angebot</button>
-          <button @click="createCostCalculation" class="btn btn-secondary">Neuer Kostenvoranschlag</button>
+          <button class="btn btn-primary" @click="editCustomer">Bearbeiten</button>
+          <button class="btn btn-success" @click="createInvoice">Neue Rechnung</button>
+          <button class="btn btn-secondary" @click="createOffer">Neues Angebot</button>
+          <button class="btn btn-secondary" @click="createCostCalculation">Neuer Kostenvoranschlag</button>
         </div>
       </div>
 
@@ -250,6 +250,7 @@
 </template>
 
 <script>
+import { numberParam } from '../utils/route.js'
 import customerAPI from '../services/customerService.js'
 import articleAPI from '../services/articleService.js'
 import invoiceAPI from '../services/invoiceService.js'
@@ -258,7 +259,7 @@ import DocumentViewModal from '../components/DocumentViewModal.vue'
 import ConvertModal from '../components/ConvertModal.vue'
 import { useDocumentType } from '../composables/useDocumentType.js'
 import { isAccepted as _isAccepted, isPaid, isOpenInvoice } from '../utils/documentStatus.js'
-import { isInvoice, isOffer, isCostCalc, INVOICE, OFFER, COST_CALCULATION } from '../data/documentTypes.js'
+import { isInvoice, isOffer, isCostCalc } from '../data/documentTypes.js'
 import { convertDocument } from '../utils/documentConversion.js'
 
 export default {
@@ -288,7 +289,7 @@ export default {
       return useDocumentType()
     },
     customerId() {
-      return parseInt(this.$route.params.id)
+      return numberParam(this.$route.params.id)
     },
     // Issued, not cancelled invoices: INVOICE (1), PARTED_INVOICE (4), FINAL_INVOICE (5)
     trueInvoices() {

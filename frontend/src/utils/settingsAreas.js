@@ -149,6 +149,6 @@ export function findArea(id) {
  * @returns {true|string} true to open it, otherwise the overview's path
  */
 export function guardSettingsArea(to) {
-  const area = findArea(to.meta.area)
+  const area = findArea(/** @type {string} */ (to.meta.area))
   return area && !area.upcoming && isAvailable(area) ? true : '/settings'
 }

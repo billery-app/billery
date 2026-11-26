@@ -57,7 +57,7 @@
           data-testid="template-import-file"
           @change="onFile"
         />
-        <button type="button" class="btn btn-outline" :disabled="importing" @click="$refs.file.click()">
+        <button type="button" class="btn btn-outline" :disabled="importing" @click="openFilePicker">
           {{ importing ? 'Datei wird gelesen …' : 'Aus Datei übernehmen …' }}
         </button>
         <p v-if="importError" class="import-error" role="alert">{{ importError }}</p>
@@ -107,9 +107,13 @@ export default {
     }
   },
   mounted() {
-    this.$nextTick(() => this.$refs.confirm && this.$refs.confirm.focus())
+    this.$nextTick(() => /** @type {HTMLElement | undefined} */ (this.$refs.confirm)?.focus())
   },
   methods: {
+    /** Opens the browser's file dialog of the hidden file input. */
+    openFilePicker() {
+      /** @type {HTMLInputElement} */ (this.$refs.file).click()
+    },
     /**
      * Reads the chosen DOCX / ODT (nothing is stored), applies its sections to the blocks of the
      * selected style and opens the editor with the result, like a style without file.

@@ -80,7 +80,7 @@
         <div class="form-actions">
           <button type="submit" class="btn btn-primary">Speichern</button>
           <button v-if="isEditMode && showDeleteAction" type="button" class="btn btn-danger" @click="emit('delete', { id: item.id, itemType })">Löschen</button>
-          <button type="button" @click="cancel" class="btn btn-secondary">Abbrechen</button>
+          <button type="button" class="btn btn-secondary" @click="cancel">Abbrechen</button>
         </div>
       </form>
     </div>
@@ -96,7 +96,7 @@ import { VAT_RATES } from '../utils/vat.js'
 const props = defineProps({
   visible: Boolean,
   articles: {
-    type: Array,
+    type: /** @type {import('vue').PropType<import('@/types.js').CatalogArticle[]>} */ (Array),
     default: () => []
   },
   item: {
@@ -149,7 +149,7 @@ onMounted(async () => {
   try {
     const response = await equipmentAPI.getAll()
     equipmentList.value = response.data
-  } catch (e) {
+  } catch {
     // Equipment feature may not be available yet
   }
 })

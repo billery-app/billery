@@ -3,7 +3,7 @@
     <h1 class="nav-destination-page-title">Kundenverwaltung</h1>
     <div class="filters">
       <input v-model="searchQuery" type="text" placeholder="Suchen..." class="search-input" />
-      <button @click="openCreateModal" class="btn btn-primary" data-tour="customer-new">Neuer Kunde</button>
+      <button class="btn btn-primary" data-tour="customer-new" @click="openCreateModal">Neuer Kunde</button>
     </div>
     <div v-if="loading" class="loading">Lade Kunden...</div>
     <div v-if="error" class="error">{{ error }}</div>
@@ -57,6 +57,7 @@
 </template>
 
 <script>
+import { numberParam } from '../utils/route.js'
 import customerAPI from '../services/customerService.js'
 import CustomerCreateModal from '../components/CustomerCreateModal.vue'
 
@@ -65,6 +66,10 @@ export default {
   components: { CustomerCreateModal },
   data() {
     return {
+      // not shown: the debounce timer of the search and the number of the latest list request
+      // (an older answer is dropped)
+      searchTimer: null,
+      listRequest: 0,
       // One page of customers, searched on the server (GET /api/customers/page).
       customers: [],
       page: 0,
@@ -77,16 +82,6 @@ export default {
       editingCustomer: null
     }
   },
-  mounted() {
-    this.loadCustomers()
-    if (this.$route.query.create === 'true') {
-      this.openCreateModal()
-    }
-    const editId = this.$route.query.edit
-    if (editId) {
-      this.loadCustomerForEdit(parseInt(editId))
-    }
-  },
   computed: {
     pageCount() {
       return Math.max(1, Math.ceil(this.total / this.pageSize))
@@ -94,21 +89,31 @@ export default {
   },
   watch: {
     searchQuery() {
-      clearTimeout(this._searchTimer)
-      this._searchTimer = setTimeout(() => {
+      clearTimeout(this.searchTimer)
+      this.searchTimer = setTimeout(() => {
         this.page = 0
         this.loadCustomers()
       }, 300)
     }
   },
+  mounted() {
+    this.loadCustomers()
+    if (this.$route.query.create === 'true') {
+      this.openCreateModal()
+    }
+    const editId = numberParam(this.$route.query.edit)
+    if (editId) {
+      this.loadCustomerForEdit(editId)
+    }
+  },
   beforeUnmount() {
-    clearTimeout(this._searchTimer)
+    clearTimeout(this.searchTimer)
   },
   methods: {
     /** Loads the current page; a response of a superseded request is dropped. */
     async loadCustomers() {
-      const request = (this._listRequest || 0) + 1
-      this._listRequest = request
+      const request = this.listRequest + 1
+      this.listRequest = request
       this.loading = true
       try {
         const response = await customerAPI.getCustomerPage({
@@ -116,7 +121,7 @@ export default {
           size: this.pageSize,
           q: this.searchQuery.trim()
         })
-        if (request !== this._listRequest) return
+        if (request !== this.listRequest) return
         const { items, total } = response.data
         if (!items.length && this.page > 0 && total > 0) {
           // The page became empty (e.g. its last customer was deleted): show the last page.
@@ -126,9 +131,9 @@ export default {
         this.customers = items
         this.total = total
       } catch (err) {
-        if (request === this._listRequest) this.error = 'Fehler beim Laden: ' + err.message
+        if (request === this.listRequest) this.error = 'Fehler beim Laden: ' + err.message
       } finally {
-        if (request === this._listRequest) this.loading = false
+        if (request === this.listRequest) this.loading = false
       }
     },
     goToPage(page) {

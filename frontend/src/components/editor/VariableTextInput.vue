@@ -95,7 +95,7 @@ export default {
   methods: {
     /** Rebuilds the editable DOM from `modelValue`. */
     render() {
-      const root = this.$refs.editable
+      const root = /** @type {HTMLElement} */ (this.$refs.editable)
       if (!root) return
       root.textContent = ''
       for (const segment of parseVariableText(this.modelValue)) {
@@ -127,12 +127,12 @@ export default {
      * @returns {string}
      */
     serialize() {
-      const root = this.$refs.editable
+      const root = /** @type {HTMLElement} */ (this.$refs.editable)
       let out = ''
       const walk = (node) => {
         for (const child of node.childNodes) {
           if (child.nodeType === Node.TEXT_NODE) {
-            out += child.nodeValue.replace(/ /g, ' ')
+            out += child.nodeValue.replace(/\u00a0/g, ' ')
           } else if (child.nodeType === Node.ELEMENT_NODE) {
             if (child.dataset && child.dataset.var) {
               out += `{{${child.dataset.var}}}`
@@ -169,7 +169,7 @@ export default {
     onBlur() {
       this.focused = false
       // Turn typed `{{name}}` into chips once the user leaves the field.
-      if (/\{\{[^{}]+\}\}/.test(Array.from(this.$refs.editable.childNodes)
+      if (/\{\{[^{}]+\}\}/.test(Array.from(/** @type {HTMLElement} */ (this.$refs.editable).childNodes)
         .filter(n => n.nodeType === Node.TEXT_NODE).map(n => n.nodeValue).join(''))) {
         this.render()
       }
@@ -178,7 +178,7 @@ export default {
     /** Remembers the cursor so a picked variable lands where the user was typing. */
     saveSelection() {
       const selection = window.getSelection && window.getSelection()
-      if (selection && selection.rangeCount > 0 && this.$refs.editable.contains(selection.anchorNode)) {
+      if (selection && selection.rangeCount > 0 && /** @type {HTMLElement} */ (this.$refs.editable).contains(selection.anchorNode)) {
         this.savedRange = selection.getRangeAt(0).cloneRange()
       }
     },
@@ -231,7 +231,7 @@ export default {
       const node = range.startContainer
       const offset = range.startOffset
       if (node.nodeType === Node.TEXT_NODE && offset > 0 && node.nodeValue[offset - 1] === char) {
-        node.deleteData(offset - 1, 1)
+        /** @type {Text} */ (node).deleteData(offset - 1, 1)
         range.setStart(node, offset - 1)
         range.collapse(true)
         selection.removeAllRanges()
@@ -240,7 +240,7 @@ export default {
     },
 
     restoreFocus() {
-      const root = this.$refs.editable
+      const root = /** @type {HTMLElement} */ (this.$refs.editable)
       if (!root) return
       root.focus()
       const selection = window.getSelection && window.getSelection()
@@ -262,7 +262,7 @@ export default {
      * @param {Node} node
      */
     insertNodeAtCursor(node) {
-      const root = this.$refs.editable
+      const root = /** @type {HTMLElement} */ (this.$refs.editable)
       const selection = window.getSelection && window.getSelection()
       let range = selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null
       if (!range || !root.contains(range.commonAncestorContainer)) {

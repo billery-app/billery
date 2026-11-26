@@ -28,7 +28,10 @@ export const MARGIN_PRESETS = [
   { key: 'wide', label: 'Breit', value: 25 }
 ]
 
-/** Page arrangements of the simple mode. */
+/**
+ * Page arrangements of the simple mode.
+ * @type {{key: 'stacked'|'compact', label: string}[]}
+ */
 export const LAYOUTS = [
   { key: 'stacked', label: 'Untereinander' },
   { key: 'compact', label: 'Nebeneinander' }
@@ -98,7 +101,7 @@ function mapBlocks(blocks, patch) {
 /**
  * Reads the current design from the blocks (for the controls' values).
  * @param {Object[]} blocks
- * @returns {{accentColor: string, fontFamily: string, textSize: string, parts: Object<string, boolean>, logoUrl: string}}
+ * @returns {{accentColor: string, fontFamily: string, textSize: string, parts: Object<string, boolean>, layout: 'stacked'|'compact', logoUrl: string}}
  */
 export function readDesign(blocks) {
   const header = blocks.find(b => b.type === 'header')
@@ -111,6 +114,7 @@ export function readDesign(blocks) {
     const ratio = formatOf(items).fontSize / getBlockByType('line-items').formatDefaults.fontSize
     textSize = TEXT_SIZES.reduce((best, s) => (Math.abs(s.factor - ratio) < Math.abs(best.factor - ratio) ? s : best)).key
   }
+  /** @type {Object<string, boolean>} */
   const parts = {}
   for (const part of OPTIONAL_PARTS) parts[part.key] = blocks.some(part.match)
   return { accentColor, fontFamily, textSize, parts, layout: readLayout(blocks), logoUrl: header ? header.data.logoUrl || '' : '' }

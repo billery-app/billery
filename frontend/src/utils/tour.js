@@ -114,16 +114,17 @@ function editorOpen() {
  */
 function closeEditor() {
   if (editorOpen()) {
-    document.querySelector('[data-tour="editor-cancel"]')?.click()
+    /** @type {HTMLElement | null} */ (document.querySelector('[data-tour="editor-cancel"]'))?.click()
   }
 }
 
 /** Opens an invoice template (else the first template) in the editor, unless it is open already. */
 function openEditor() {
   if (!editorOpen()) {
-    const edit =
+    const edit = /** @type {HTMLElement | null} */ (
       document.querySelector('[data-tour="template-edit"][data-document-type="1"]') ||
-      document.querySelector('[data-tour="template-edit"]')
+        document.querySelector('[data-tour="template-edit"]')
+    )
     edit?.click()
   }
 }
@@ -280,7 +281,7 @@ export function startTour({ router, onEnd = () => {}, createDriver = driver, ste
 /**
  * "Tour überspringen" as a visible text button in every station (the × alone is easy to miss).
  * @param {{footer: HTMLElement}} popover - driver.js's popover elements
- * @param {Function} skip
+ * @param {() => void} skip
  */
 function addSkipButton(popover, skip) {
   const button = document.createElement('button')
@@ -308,7 +309,7 @@ function browserStorage(name) {
  * The button of the last station that leads to the next tour, left of "Fertig".
  * @param {{footerButtons: HTMLElement}} popover - driver.js's popover elements
  * @param {string} label
- * @param {Function} run
+ * @param {() => void} run
  */
 function addFollowUpButton(popover, label, run) {
   const button = document.createElement('button')

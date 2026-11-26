@@ -15,7 +15,7 @@
           data-testid="help-every-session"
           :checked="everySession"
           :disabled="!loaded || busy"
-          @change="setEverySession($event.target.checked)"
+          @change="setEverySession(inputChecked($event))"
         />
         Tour bei jedem Start zeigen
       </label>
@@ -35,6 +35,7 @@
 </template>
 
 <script>
+import { inputChecked } from '../utils/dom.js'
 import tourService from '../services/tourService.js'
 import { isSaas, session } from '../services/session.js'
 import { runTemplateTour, runTour } from '../utils/tour.js'
@@ -70,6 +71,7 @@ export default {
     }
   },
   methods: {
+    inputChecked,
     start() {
       runTour(this.$router)
     },

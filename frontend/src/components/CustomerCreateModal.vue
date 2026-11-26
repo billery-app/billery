@@ -5,39 +5,39 @@
       <form @submit.prevent="submit">
         <div class="form-group">
           <label for="customer-firstName">Vorname:</label>
-          <input id="customer-firstName" name="firstName" autocomplete="given-name" v-model="form.firstName" required />
+          <input id="customer-firstName" v-model="form.firstName" name="firstName" autocomplete="given-name" required />
         </div>
         <div class="form-group">
           <label for="customer-lastName">Nachname:</label>
-          <input id="customer-lastName" name="lastName" autocomplete="family-name" v-model="form.lastName" required />
+          <input id="customer-lastName" v-model="form.lastName" name="lastName" autocomplete="family-name" required />
         </div>
         <div class="form-group">
           <label for="customer-street">Straße:</label>
-          <input id="customer-street" name="street" autocomplete="address-line1" v-model="form.street" @change="splitStreetAndNumber(form)" />
+          <input id="customer-street" v-model="form.street" name="street" autocomplete="address-line1" @change="splitStreetAndNumber(form)" />
         </div>
         <div class="form-group">
           <label for="customer-houseNumber">Hausnummer:</label>
-          <input id="customer-houseNumber" name="houseNumber" autocomplete="off" inputmode="numeric" v-model="form.houseNumber" type="number" />
+          <input id="customer-houseNumber" v-model="form.houseNumber" name="houseNumber" autocomplete="off" inputmode="numeric" type="number" />
         </div>
         <div class="form-group">
           <label for="customer-postalCode">PLZ:</label>
-          <input id="customer-postalCode" name="postalCode" autocomplete="postal-code" inputmode="numeric" v-model="form.postalCode" />
+          <input id="customer-postalCode" v-model="form.postalCode" name="postalCode" autocomplete="postal-code" inputmode="numeric" />
         </div>
         <div class="form-group">
           <label for="customer-city">Ort:</label>
-          <input id="customer-city" name="city" autocomplete="address-level2" v-model="form.city" />
+          <input id="customer-city" v-model="form.city" name="city" autocomplete="address-level2" />
         </div>
         <div class="form-group">
           <label for="customer-phone">Telefon:</label>
-          <input id="customer-phone" name="phone" autocomplete="tel" type="tel" v-model="form.phone" />
+          <input id="customer-phone" v-model="form.phone" name="phone" autocomplete="tel" type="tel" />
         </div>
         <div class="form-group">
           <label for="customer-email">Email:</label>
-          <input id="customer-email" name="email" autocomplete="email" v-model="form.email" type="email" />
+          <input id="customer-email" v-model="form.email" name="email" autocomplete="email" type="email" />
         </div>
         <div class="form-group">
           <label for="customer-taxId">USt-IdNr. / Steuernummer:</label>
-          <input id="customer-taxId" name="taxId" autocomplete="off" v-model="form.taxId" placeholder="z. B. DE123456789" />
+          <input id="customer-taxId" v-model="form.taxId" name="taxId" autocomplete="off" placeholder="z. B. DE123456789" />
         </div>
         <div class="form-group">
           <label for="customer-buyerReference">Leitweg-ID / Käuferreferenz:</label>
@@ -52,13 +52,13 @@
         </div>
         <div class="form-group">
           <label for="customer-note">Notiz:</label>
-          <textarea id="customer-note" name="note" autocomplete="off" v-model="form.note"></textarea>
+          <textarea id="customer-note" v-model="form.note" name="note" autocomplete="off"></textarea>
         </div>
         <div class="form-actions">
           <button type="submit" class="btn btn-primary">Speichern</button>
           <button v-if="isEditMode && showDetailsAction" type="button" class="btn btn-secondary" @click="emit('details', customer.id)">Kundendetails</button>
           <button v-if="isEditMode && showDeleteAction" type="button" class="btn btn-danger" @click="emit('delete', customer.id)">Löschen</button>
-          <button type="button" @click="cancel" class="btn btn-secondary">Abbrechen</button>
+          <button type="button" class="btn btn-secondary" @click="cancel">Abbrechen</button>
         </div>
       </form>
     </div>
@@ -84,7 +84,7 @@ const emit = defineEmits(['update:visible', 'created', 'updated', 'delete', 'det
 
 const isEditMode = computed(() => !!props.customer)
 
-const form = ref({
+const form = ref(/** @type {Record<string, any>} */ ({
   firstName: '',
   lastName: '',
   street: '',
@@ -96,7 +96,7 @@ const form = ref({
   taxId: '',
   note: '',
   buyerReference: ''
-})
+}))
 
 watch(() => props.visible, (newVal) => {
   if (newVal) {

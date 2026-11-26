@@ -5,7 +5,7 @@
     <div class="filters">
       <input v-model="searchQuery" type="text" placeholder="Suchen..." class="search-input" />
       <!-- One owner per company (the database refuses a second): offered only while there is none. -->
-      <button v-if="!loading && !owners.length" @click="openCreateModal" class="btn btn-primary">Neuer Inhaber</button>
+      <button v-if="!loading && !owners.length" class="btn btn-primary" @click="openCreateModal">Neuer Inhaber</button>
     </div>
     <div v-if="loading" class="loading">Lade Inhaber...</div>
     <div v-if="error" class="error">{{ error }}</div>
@@ -71,9 +71,6 @@ export default {
       editingOwner: null
     }
   },
-  mounted() {
-    this.loadOwners()
-  },
   computed: {
     filteredOwners() {
       if (!this.searchQuery) return this.owners
@@ -88,6 +85,9 @@ export default {
         (o.email && o.email.toLowerCase().includes(query))
       )
     }
+  },
+  mounted() {
+    this.loadOwners()
   },
   methods: {
     async loadOwners() {

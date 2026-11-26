@@ -16,7 +16,7 @@
           class="type-select"
           :value="form.documentTypeId"
           aria-label="Dokumenttyp"
-          @change="changeDocumentType(Number($event.target.value))"
+          @change="changeDocumentType(Number(inputValue($event)))"
         >
           <option v-for="dt in documentTypeOptions" :key="dt.id" :value="dt.id">{{ dt.label }}</option>
         </select>
@@ -163,8 +163,10 @@
         >
           <div class="sheet-zoom" :style="{ zoom }">
             <div class="sheet" @click.self="deselectBlock">
+              <!-- eslint-disable vue/no-v-html -- reviewed, see the nosemgrep reason below -->
               <!-- nosemgrep: javascript.vue.security.audit.xss.templates.avoid-v-html.avoid-v-html -- scoped template CSS (scopeCss strips @import and remote url()) -->
               <div v-html="previewStyleTag"></div>
+              <!-- eslint-enable vue/no-v-html -->
               <div class="invoice-box" :style="previewMarginStyle" @click.self="deselectBlock">
                 <div
                   v-for="row in previewRows"
@@ -196,8 +198,10 @@
                     <button type="button" title="Duplizieren (Strg+D)" aria-label="Duplizieren" @click="duplicateSelected">⧉</button>
                     <button type="button" title="Entfernen (Entf)" aria-label="Entfernen" @click="removeBlock(item.block.id)">✕</button>
                   </div>
+                  <!-- eslint-disable vue/no-v-html -- reviewed, see the nosemgrep reason below -->
                   <!-- nosemgrep: javascript.vue.security.audit.xss.templates.avoid-v-html.avoid-v-html -- block HTML built from escapeBlockData() output; ctx values are escaped in render() -->
                   <div class="preview-block" v-html="item.html || emptyBlockHtml(item.block)"></div>
+                  <!-- eslint-enable vue/no-v-html -->
                 </div>
                 <div v-if="row.half && row.items.length === 1" class="half-filler"></div>
                 </div>
@@ -284,6 +288,7 @@
 </template>
 
 <script>
+import { inputValue } from '../utils/dom.js'
 import { markRaw } from 'vue'
 import BlockLibrary from './editor/BlockLibrary.vue'
 import BlockConfigPanel from './editor/BlockConfigPanel.vue'
@@ -347,6 +352,8 @@ export default {
   emits: ['save', 'cancel'],
   data() {
     return {
+      // watches the preview's width for the zoom (not shown)
+      resizeObserver: null,
       form: {
         name: '',
         documentTypeId: INVOICE,
@@ -376,12 +383,6 @@ export default {
       guard: null,
       history: null
     }
-  },
-
-  created() {
-    this.guard = markRaw(useUnsavedChangesGuard(() => this.form))
-    this.history = markRaw(useHistory())
-    this.loadTemplate()
   },
 
   computed: {
@@ -480,8 +481,14 @@ export default {
       }
     },
     'guard.showConfirm.value'(open) {
-      if (open) this.$nextTick(() => this.$refs.confirmDialog && this.$refs.confirmDialog.focus())
+      if (open) this.$nextTick(() => /** @type {HTMLElement | undefined} */ (this.$refs.confirmDialog)?.focus())
     }
+  },
+
+  created() {
+    this.guard = markRaw(useUnsavedChangesGuard(() => this.form))
+    this.history = markRaw(useHistory())
+    this.loadTemplate()
   },
 
   async mounted() {
@@ -490,7 +497,7 @@ export default {
       this.resizeObserver = new ResizeObserver(() => {
         if (this.zoomMode === 'fit') this.fitZoom()
       })
-      this.resizeObserver.observe(this.$refs.previewContainer)
+      this.resizeObserver.observe(/** @type {HTMLElement} */ (this.$refs.previewContainer))
     }
     this.$nextTick(this.fitZoom)
     await this.loadOwner()
@@ -503,6 +510,7 @@ export default {
   },
 
   methods: {
+    inputValue,
     /** Initialises `form` from the `template` prop (or a default template). */
     loadTemplate() {
       const t = this.template
@@ -732,7 +740,7 @@ export default {
 
     /** Drop position from the pointer: before the block under it, or after the last one. */
     dropIndexFromEvent(event) {
-      const wrappers = Array.from(this.$refs.previewContainer.querySelectorAll('.preview-block-wrapper'))
+      const wrappers = Array.from(/** @type {HTMLElement} */ (this.$refs.previewContainer).querySelectorAll('.preview-block-wrapper'))
       for (const [i, el] of wrappers.entries()) {
         const rect = el.getBoundingClientRect()
         if (event.clientY < rect.top + rect.height / 2) return i
@@ -748,7 +756,7 @@ export default {
 
     onSheetDragLeave(event) {
       // dragleave also fires when entering a child; only reset when leaving the container.
-      if (!this.$refs.previewContainer.contains(event.relatedTarget)) this.dropIndex = null
+      if (!/** @type {HTMLElement} */ (this.$refs.previewContainer).contains(event.relatedTarget)) this.dropIndex = null
     },
 
     onSheetDrop(event) {
@@ -779,7 +787,7 @@ export default {
     /** Fits the page to the preview width (at most 100 %) and keeps following it. */
     fitZoom() {
       this.zoomMode = 'fit'
-      const container = this.$refs.previewContainer
+      const container = /** @type {HTMLElement | undefined} */ (this.$refs.previewContainer)
       const styles = container ? window.getComputedStyle(container) : null
       const horizontalPadding = styles
         ? (parseFloat(styles.paddingLeft) || 0) + (parseFloat(styles.paddingRight) || 0)

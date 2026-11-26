@@ -11,7 +11,7 @@ export default {
    * @param {string} from - First document date (YYYY-MM-DD)
    * @param {string} to - Last document date (YYYY-MM-DD)
    * @param {boolean} documents - Include PDFs and XRechnungs
-   * @returns {Promise<Blob>} - The ZIP file
+   * @returns {Promise<import('axios').AxiosResponse<Blob>>} - The ZIP file
    */
   gobdExport(from, to, documents) {
     return apiClient.get('/export/gobd', { params: { from, to, documents }, responseType: 'blob' })

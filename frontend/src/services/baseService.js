@@ -108,7 +108,7 @@ export class BaseService {
 
   /**
    * Handles API errors consistently
-   * @param {Error} error - The error object
+   * @param {Error & {response?: {data?: {message?: string}}}} error - The error object (axios adds `response`)
    * @param {string} context - Context for error message
    * @returns {Error} - Formatted error
    */

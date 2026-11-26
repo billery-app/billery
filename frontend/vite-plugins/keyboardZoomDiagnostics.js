@@ -21,6 +21,8 @@ function finiteNumber(value) {
 
 function safeText(value, maxLength = 160) {
   if (typeof value !== 'string') return null
+  // control characters are what this strips on purpose (log injection)
+  // eslint-disable-next-line no-control-regex
   return value.replace(/[\u0000-\u001f\u007f]/g, ' ').slice(0, maxLength)
 }
 
@@ -177,7 +179,7 @@ export function keyboardZoomDiagnosticsPlugin({ logFile = null } = {}) {
       }
     },
     configureServer(server) {
-      server.middlewares.use('/__keyboard-zoom-logs', (request, response, next) => {
+      server.middlewares.use('/__keyboard-zoom-logs', (request, response) => {
         if (request.method !== 'POST') return jsonResponse(response, 405, { error: 'POST required' })
         if (!request.headers.origin || !request.headers.host) {
           return jsonResponse(response, 403, { error: 'Same-origin diagnostics only' })

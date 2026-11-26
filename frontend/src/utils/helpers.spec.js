@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { generateId, formatCurrency, formatDate, debounce, deepClone } from './helpers.js'
 
 describe('helpers - Real Workflows', () => {

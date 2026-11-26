@@ -17,6 +17,7 @@ const VARIABLE_PATTERN = /\{\{\s*([^{}]+?)\s*\}\}/g
  */
 export function parseVariableText(text) {
   const source = text == null ? '' : String(text)
+  /** @type {({type: 'text', value: string}|{type: 'var', name: string})[]} */
   const segments = []
   let last = 0
   for (const match of source.matchAll(VARIABLE_PATTERN)) {

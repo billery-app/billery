@@ -241,6 +241,8 @@ export default {
   name: 'SearchView',
   data() {
     return {
+      // the debounce timer of the search (not shown)
+      debounceTimer: null,
       query: '',
       result: {},
       loading: false,
@@ -257,6 +259,11 @@ export default {
              !this.result.invoices?.length &&
              !this.result.offers?.length &&
              !this.result.calculations?.length
+    }
+  },
+  beforeUnmount() {
+    if (this.debounceTimer) {
+      clearTimeout(this.debounceTimer)
     }
   },
   methods: {
@@ -314,11 +321,6 @@ export default {
         path: '/articles-services',
         query: type === 'article' ? { article: id } : { service: id }
       })
-    }
-  },
-  beforeUnmount() {
-    if (this.debounceTimer) {
-      clearTimeout(this.debounceTimer)
     }
   }
 }

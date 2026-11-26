@@ -1,4 +1,5 @@
 <template>
+  <!-- eslint-disable vue/no-mutating-props -- the row edits its item in place: the line-item tree is one reactive structure owned by DocumentModal (sub-items, AGENTS.md); copying it per row is a refactor of its own -->
   <div class="invoice-item-row" :class="{ 'is-child': depth > 0, 'is-note': isNote }" :style="indentStyle">
     <div class="row-fields">
       <input
@@ -129,7 +130,7 @@
         :key="child._key"
         :item="child"
         :parent-array="item.children"
-        :index="cIdx"
+        :index="Number(cIdx)"
         :articles="articles"
         :services="services"
         :depth="depth + 1"
@@ -148,8 +149,8 @@ const props = defineProps({
   item: { type: Object, required: true },
   parentArray: { type: Array, required: true },
   index: { type: Number, required: true },
-  articles: { type: Array, default: () => [] },
-  services: { type: Array, default: () => [] },
+  articles: { type: /** @type {import('vue').PropType<import('@/types.js').CatalogArticle[]>} */ (Array), default: () => [] },
+  services: { type: /** @type {import('vue').PropType<import('@/types.js').CatalogService[]>} */ (Array), default: () => [] },
   depth: { type: Number, default: 0 },
   maxDepth: { type: Number, default: 2 },
   // Only regularly taxed documents have a VAT rate per line (see utils/vat.js).
@@ -171,9 +172,9 @@ const removeTitle = computed(() => {
 
 const showChildPicker = ref(false)
 const childTab = ref('custom')
-const childArticleId = ref('')
+const childArticleId = ref(/** @type {number|''} */ (''))
 const childArticle = ref(null)
-const childServiceId = ref('')
+const childServiceId = ref(/** @type {number|''} */ (''))
 const childService = ref(null)
 
 function onChildArticleSelect() {
@@ -186,6 +187,7 @@ function onChildServiceSelect() {
 
 function ensureChildrenArray() {
   if (!props.item.children) {
+    // eslint-disable-next-line vue/no-mutating-props -- see the template: the tree is edited in place
     props.item.children = []
   }
 }
@@ -194,6 +196,7 @@ function addChild(child) {
   ensureChildrenArray()
   child._key = generateKey()
   child.parentItemId = props.item.id || null
+  // eslint-disable-next-line vue/no-mutating-props -- see the template: the tree is edited in place
   props.item.children.push(child)
 }
 
@@ -257,6 +260,7 @@ function closeChildPicker() {
 }
 
 function onRemoveClick() {
+  // eslint-disable-next-line vue/no-mutating-props -- see the template: the tree is edited in place
   props.parentArray.splice(props.index, 1)
 }
 

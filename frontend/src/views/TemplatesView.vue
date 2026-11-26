@@ -10,10 +10,10 @@
           Kurz erklärt
         </button>
         <label class="toggle">
-          <input type="checkbox" v-model="showDocumentSpecific" @change="loadTemplates" />
+          <input v-model="showDocumentSpecific" type="checkbox" @change="loadTemplates" />
           <span>Dokument-spezifische Vorlagen anzeigen</span>
         </label>
-        <button @click="showStartModal = true" class="btn btn-primary" data-tour="template-new">
+        <button class="btn btn-primary" data-tour="template-new" @click="showStartModal = true">
           + Neue Vorlage
         </button>
       </div>
@@ -53,13 +53,13 @@
         </div>
 
         <div class="template-actions">
-          <button @click="editTemplate(template)" class="btn btn-small btn-primary" data-tour="template-edit" :data-document-type="template.documentTypeId">
+          <button class="btn btn-small btn-primary" data-tour="template-edit" :data-document-type="template.documentTypeId" @click="editTemplate(template)">
             Bearbeiten
           </button>
           <button
             v-if="!template.isDefault"
-            @click="setAsDefault(template.id)"
             class="btn btn-small btn-secondary"
+            @click="setAsDefault(template.id)"
           >
             Als Standard
           </button>
@@ -83,8 +83,8 @@
           </button>
           <button
             v-if="!template.isDefault"
-            @click="deleteTemplate(template.id)"
             class="btn btn-small btn-danger"
+            @click="deleteTemplate(template.id)"
           >
             Löschen
           </button>
@@ -94,7 +94,7 @@
 
     <div v-if="templates.length === 0 && !loading" class="empty-state">
       <p>Keine Vorlagen vorhanden.</p>
-      <button @click="showStartModal = true" class="btn btn-primary">
+      <button class="btn btn-primary" @click="showStartModal = true">
         Erste Vorlage erstellen
       </button>
     </div>
@@ -130,7 +130,6 @@ import { runTemplateTour } from '../utils/tour.js'
 import TemplateEditor from '../components/TemplateEditor.vue'
 import TemplateStartModal from '../components/template/TemplateStartModal.vue'
 import TemplateThumbnail from '../components/template/TemplateThumbnail.vue'
-import { sanitizeHtml } from '../utils/sanitize.js'
 import templateAPI from '../services/templateService.js'
 import documentAPI from '../services/documentService.js'
 import { normalizeBlocks } from '../utils/blockModel.js'
@@ -143,18 +142,6 @@ export default {
     TemplateEditor,
     TemplateStartModal,
     TemplateThumbnail
-  },
-  data() {
-    return {
-      templates: [],
-      loading: false,
-      documentTypes: {
-        1: 'Rechnung',
-        2: 'Angebot',
-        3: 'Kalkulation',
-        4: 'Teilrechnung'
-      }
-    }
   },
   setup() {
     const editingTemplate = ref(null)

@@ -350,6 +350,7 @@ const tableTitle = computed(() => {
 })
 
 const invoicesLink = computed(() => {
+  /** @type {Record<string, string>} */
   const query = {}
   if (selectedFilter.value) {
     // The document list knows "open" (sent or partly paid), not the card's "unpaid".
@@ -357,18 +358,18 @@ const invoicesLink = computed(() => {
   }
   // Add year for year-based periods
   if (selectedPeriod.value === 'currentYear') {
-    query.year = new Date().getFullYear()
+    query.year = String(new Date().getFullYear())
   } else if (selectedPeriod.value === 'lastYear') {
-    query.year = new Date().getFullYear() - 1
+    query.year = String(new Date().getFullYear() - 1)
   } else if (selectedPeriod.value === 'custom' && customStartDate.value) {
     const year = new Date(customStartDate.value).getFullYear()
     if (customEndDate.value) {
       const endYear = new Date(customEndDate.value).getFullYear()
       if (year === endYear) {
-        query.year = year
+        query.year = String(year)
       }
     } else {
-      query.year = year
+      query.year = String(year)
     }
   }
   return { path: '/invoices', query }

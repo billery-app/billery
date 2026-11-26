@@ -17,7 +17,7 @@
         data-tour="doc-type-picker"
         data-testid="mobile-document-type"
         :value="documentTypeTab"
-        @change="switchDocumentTypeTab($event.target.value)"
+        @change="switchDocumentTypeTab(inputValue($event))"
       >
         <option v-for="tab in documentTypeTabs" :key="tab.key" :value="tab.key">{{ tab.label }}</option>
       </select>
@@ -39,7 +39,7 @@
       <select v-model="selectedFilter" class="filter-select">
         <option v-for="opt in filterOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
       </select>
-      <button v-if="!showArchived" @click="openCreateModal" class="btn btn-primary" data-tour="document-new">{{ newButtonLabel }}</button>
+      <button v-if="!showArchived" class="btn btn-primary" data-tour="document-new" @click="openCreateModal">{{ newButtonLabel }}</button>
     </div>
     <div v-if="loading" class="loading">Lade Rechnungen...</div>
     <div v-if="error" class="error">{{ error }}</div>
@@ -126,6 +126,8 @@
 </template>
 
 <script>
+import { numberParam, param } from '../utils/route.js'
+import { inputValue } from '../utils/dom.js'
 import invoiceAPI from '../services/invoiceService.js'
 import articleAPI from '../services/articleService.js'
 import DocumentModal from '../components/DocumentModal.vue'
@@ -141,6 +143,11 @@ export default {
   components: { DocumentModal, DocumentViewModal, ConvertModal },
   data() {
     return {
+      // not shown: the debounce timer of the search, the number of the latest list request (an
+      // older answer is dropped) and the stop handle of the route watcher
+      searchTimer: null,
+      listRequest: 0,
+      routeWatcher: null,
       // One page of the list, filtered by the backend (GET /api/invoices/page).
       invoices: [],
       page: 0,
@@ -176,34 +183,6 @@ export default {
       CANCELLED,
       CONVERTED,
       ACCEPTED
-    }
-  },
-  async mounted() {
-    this.setupRouteWatch()
-    // Apply tab / filter / year from the URL first, so the first page is loaded with them.
-    this.handleRouteQuery()
-    await this.loadData()
-    this.listReady = true
-  },
-  beforeUnmount() {
-    if (this._routeWatcher) {
-      this._routeWatcher()
-    }
-    clearTimeout(this._searchTimer)
-  },
-  watch: {
-    listFilters() {
-      if (!this.listReady) return
-      this.page = 0
-      this.loadInvoices()
-    },
-    searchQuery() {
-      if (!this.listReady) return
-      clearTimeout(this._searchTimer)
-      this._searchTimer = setTimeout(() => {
-        this.page = 0
-        this.loadInvoices()
-      }, 300)
     }
   },
   computed: {
@@ -261,40 +240,70 @@ export default {
       }
     }
   },
+  watch: {
+    listFilters() {
+      if (!this.listReady) return
+      this.page = 0
+      this.loadInvoices()
+    },
+    searchQuery() {
+      if (!this.listReady) return
+      clearTimeout(this.searchTimer)
+      this.searchTimer = setTimeout(() => {
+        this.page = 0
+        this.loadInvoices()
+      }, 300)
+    }
+  },
+  async mounted() {
+    this.setupRouteWatch()
+    // Apply tab / filter / year from the URL first, so the first page is loaded with them.
+    this.handleRouteQuery()
+    await this.loadData()
+    this.listReady = true
+  },
+  beforeUnmount() {
+    if (this.routeWatcher) {
+      this.routeWatcher()
+    }
+    clearTimeout(this.searchTimer)
+  },
   methods: {
+    inputValue,
     setupRouteWatch() {
-      this._routeWatcher = this.$watch(
+      this.routeWatcher = this.$watch(
         () => this.$route.query,
         () => this.handleRouteQuery(),
         { deep: true }
       )
     },
     handleRouteQuery() {
-      let type = this.$route.query.type
+      let type = param(this.$route.query.type)
       if (type === 'cost-calculation') type = 'costCalculation'
       if (type) this.documentTypeTab = type
       this.newDocumentType = this.tabToDocType(this.documentTypeTab)
 
       if (this.$route.query.create === 'true') {
-        this.selectedCustomerId = this.$route.query.customerId ? parseInt(this.$route.query.customerId) : null
+        this.selectedCustomerId = numberParam(this.$route.query.customerId)
         this.openCreateModal()
       }
       // Only keys the current tab offers: an unknown key (an old link) would be refused by the
       // backend, so it falls back to "all statuses".
-      const filter = this.$route.query.filter
+      const filter = param(this.$route.query.filter)
       if (filter) {
         this.selectedFilter = this.filterOptions.some(opt => opt.value === filter) ? filter : ''
       }
-      if (this.$route.query.year) {
-        this.selectedYear = parseInt(this.$route.query.year)
+      const year = numberParam(this.$route.query.year)
+      if (year) {
+        this.selectedYear = year
       }
-      const editId = this.$route.query.edit
+      const editId = numberParam(this.$route.query.edit)
       if (editId) {
-        this.loadInvoiceForEdit(parseInt(editId))
+        this.loadInvoiceForEdit(editId)
       }
-      const viewId = this.$route.query.view
+      const viewId = numberParam(this.$route.query.view)
       if (viewId) {
-        this.loadInvoiceForView(parseInt(viewId))
+        this.loadInvoiceForView(viewId)
       }
     },
     tabToDocType(key) {
@@ -328,8 +337,8 @@ export default {
      * request was started is dropped, so fast typing or clicking cannot show a stale page.
      */
     async loadInvoices() {
-      const request = (this._listRequest || 0) + 1
-      this._listRequest = request
+      const request = this.listRequest + 1
+      this.listRequest = request
       try {
         const response = await invoiceAPI.getInvoicePage({
           page: this.page,
@@ -340,7 +349,7 @@ export default {
           q: this.searchQuery.trim(),
           status: this.selectedFilter
         })
-        if (request !== this._listRequest) return
+        if (request !== this.listRequest) return
         const { items, total, years } = response.data
         this.invoices = items
         this.total = total
@@ -352,7 +361,7 @@ export default {
         }
         await this.refreshSelectedInvoice(items)
       } catch (err) {
-        if (request === this._listRequest) {
+        if (request === this.listRequest) {
           this.error = 'Fehler beim Laden der Dokumente: ' + err.message
         }
       }

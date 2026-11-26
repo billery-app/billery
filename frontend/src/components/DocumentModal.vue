@@ -3,10 +3,10 @@
     <div class="modal-panel wide">
       <h2>{{ modalTitle }}</h2>
       <form
+        class="modal-form"
         @submit.prevent="submit"
         @focusin="onDocumentFieldFocus"
         @focusout="onDocumentFieldBlur"
-        class="modal-form"
       >
         <div class="scroll-container">
         <div class="form-row">
@@ -14,7 +14,7 @@
             <label>Kunde:</label>
             <div class="customer-select-row">
               <CustomerPicker v-model="form.customerId" v-model:customer="selectedCustomer" />
-              <button type="button" @click="showCreateCustomer = true" class="btn btn-small btn-success" title="Neuen Kunden anlegen">+</button>
+              <button type="button" class="btn btn-small btn-success" title="Neuen Kunden anlegen" @click="showCreateCustomer = true">+</button>
             </div>
           </div>
           <div class="form-group">
@@ -37,16 +37,16 @@
             <label>Leistungsdatum:<span v-if="isInvoiceDocument" class="required-hint"> (Pflicht zum Ausstellen)</span></label>
             <input v-model="form.workStartDate" type="date" />
           </div>
-          <div class="form-group" v-if="showWorkEndDate">
+          <div v-if="showWorkEndDate" class="form-group">
             <label>Leistungsende:</label>
             <div class="date-with-toggle">
               <input v-model="form.workEndDate" type="date" />
-              <button type="button" @click="showWorkEndDate = false" class="btn btn-small btn-danger" title="Zeitraum entfernen">&times;</button>
+              <button type="button" class="btn btn-small btn-danger" title="Zeitraum entfernen" @click="showWorkEndDate = false">&times;</button>
             </div>
           </div>
-          <div class="form-group" v-else>
+          <div v-else class="form-group">
             <label>&nbsp;</label>
-            <button type="button" @click="showWorkEndDate = true" class="btn btn-small btn-secondary">Zeitraum angeben</button>
+            <button type="button" class="btn btn-small btn-secondary" @click="showWorkEndDate = true">Zeitraum angeben</button>
           </div>
         </div>
         <div class="form-group">
@@ -144,11 +144,11 @@
                 <option value="">Artikel auswählen...</option>
                 <option v-for="a in articles" :key="a.id" :value="a.id">{{ a.name }} ({{ formatCurrency(a.salesPrice) }})</option>
               </select>
-              <button type="button" @click="showCreateArticle = true" class="btn btn-small btn-success" title="Neuen Artikel anlegen">+</button>
+              <button type="button" class="btn btn-small btn-success" title="Neuen Artikel anlegen" @click="showCreateArticle = true">+</button>
             </div>
             <div v-if="selectedArticle" class="selected-item-preview">
               <span>{{ selectedArticle.name }} - {{ selectedArticle.description }}</span>
-              <button type="button" @click="addSelectedArticle" class="btn btn-small btn-primary">Hinzufügen</button>
+              <button type="button" class="btn btn-small btn-primary" @click="addSelectedArticle">Hinzufügen</button>
             </div>
           </div>
 
@@ -158,11 +158,11 @@
                 <option value="">Leistung auswählen...</option>
                 <option v-for="s in services" :key="s.id" :value="s.id">{{ s.name }} ({{ formatCurrency(s.hourlyRate) }}/h)</option>
               </select>
-              <button type="button" @click="showCreateService = true" class="btn btn-small btn-success" title="Neue Leistung anlegen">+</button>
+              <button type="button" class="btn btn-small btn-success" title="Neue Leistung anlegen" @click="showCreateService = true">+</button>
             </div>
             <div v-if="selectedService" class="selected-item-preview">
               <span>{{ selectedService.name }} - {{ selectedService.description }}</span>
-              <button type="button" @click="addSelectedService" class="btn btn-small btn-primary">Hinzufügen</button>
+              <button type="button" class="btn btn-small btn-primary" @click="addSelectedService">Hinzufügen</button>
             </div>
           </div>
         </div>
@@ -171,7 +171,7 @@
           <InvoiceItemRow
             :item="item"
             :parent-array="form.items"
-            :index="index"
+            :index="Number(index)"
             :articles="articles"
             :services="services"
             :depth="0"
@@ -197,7 +197,7 @@
         </div>
         <div class="form-actions">
           <button type="submit" class="btn btn-primary">Speichern</button>
-          <button type="button" @click="cancel" class="btn btn-secondary">Abbrechen</button>
+          <button type="button" class="btn btn-secondary" @click="cancel">Abbrechen</button>
         </div>
       </form>
     </div>
@@ -233,7 +233,7 @@
           </div>
           <div class="form-actions">
             <button type="submit" class="btn btn-primary">Artikel anlegen</button>
-            <button type="button" @click="showCreateArticle = false" class="btn btn-secondary">Abbrechen</button>
+            <button type="button" class="btn btn-secondary" @click="showCreateArticle = false">Abbrechen</button>
           </div>
         </form>
       </div>
@@ -255,7 +255,7 @@
             <label>Stundensatz:</label>
             <input v-model="serviceForm.hourlyRate" type="number" step="0.01" required />
           </div>
-          <div class="form-group" v-if="equipmentList.length">
+          <div v-if="equipmentList.length" class="form-group">
             <label>Verknüpfte Ausstattung:</label>
             <select v-model="serviceForm.equipmentId">
               <option :value="null">Keine</option>
@@ -264,7 +264,7 @@
           </div>
           <div class="form-actions">
             <button type="submit" class="btn btn-primary">Leistung anlegen</button>
-            <button type="button" @click="showCreateService = false" class="btn btn-secondary">Abbrechen</button>
+            <button type="button" class="btn btn-secondary" @click="showCreateService = false">Abbrechen</button>
           </div>
         </form>
       </div>
@@ -333,11 +333,11 @@ const { documentFormTitle } = useDocumentType()
 const props = defineProps({
   visible: Boolean,
   articles: {
-    type: Array,
+    type: /** @type {import('vue').PropType<import('@/types.js').CatalogArticle[]>} */ (Array),
     default: () => []
   },
   services: {
-    type: Array,
+    type: /** @type {import('vue').PropType<import('@/types.js').CatalogService[]>} */ (Array),
     default: () => []
   },
   invoice: {
@@ -437,7 +437,7 @@ const numberPlaceholder = computed(() => {
 /** "Neues Angebot" when creating, "Angebot bearbeiten" when editing. */
 const modalTitle = computed(() => documentFormTitle(currentTypeId.value, isEditMode.value))
 
-const form = ref({
+const form = ref(/** @type {Record<string, any>} */ ({
   customerId: '',
   invoiceNumber: '',
   invoiceDate: new Date().toISOString().split('T')[0],
@@ -451,12 +451,12 @@ const form = ref({
   templateId: null,
   taxTreatment: 'STANDARD',
   taxExemptionReason: ''
-})
+}))
 
 const itemTypeTab = ref('articles')
-const selectedArticleId = ref('')
+const selectedArticleId = ref(/** @type {number|''} */ (''))
 const selectedArticle = ref(null)
-const selectedServiceId = ref('')
+const selectedServiceId = ref(/** @type {number|''} */ (''))
 const selectedService = ref(null)
 const showWorkEndDate = ref(false)
 
@@ -512,12 +512,12 @@ async function loadOwnerSettings() {
   try {
     const response = await ownerAPI.getPrimaryOwner()
     isKleinunternehmer.value = response.data?.smallBusiness === true
-  } catch (e) {
+  } catch {
     isKleinunternehmer.value = false
   }
 }
 
-const articleForm = ref({ name: '', description: '', unit: 'Stk', purchasePrice: 0, salesPrice: 0 })
+const articleForm = ref(/** @type {Record<string, any>} */ ({ name: '', description: '', unit: 'Stk', purchasePrice: 0, salesPrice: 0 }))
 const serviceForm = ref({ name: '', description: '', hourlyRate: 0, equipmentId: null })
 
 // Some mobile browsers leave the page magnified after a text field loses
@@ -537,11 +537,16 @@ let documentFieldKeyboardIsOpen = false
 let documentFieldKeyboardOpenViewportHeight = null
 let virtualKeyboardApi = null
 
+/** The page's viewport meta tag (index.html has one), typed for its `content`. */
+function viewportMetaTag() {
+  return /** @type {HTMLMetaElement | null} */ (document.querySelector('meta[name="viewport"]'))
+}
+
 function restoreViewportMeta() {
   recordKeyboardZoomTelemetry('viewport-meta.restore.called', {
     hadStoredMeta: Boolean(viewportMetaToRestore && originalViewportMetaContent !== null),
     timerPending: viewportRestoreTimer !== null,
-    metaBefore: document.querySelector('meta[name="viewport"]')?.content || 'not-found'
+    metaBefore: viewportMetaTag()?.content || 'not-found'
   })
   if (viewportRestoreTimer !== null) {
     window.clearTimeout(viewportRestoreTimer)
@@ -553,7 +558,7 @@ function restoreViewportMeta() {
   viewportMetaToRestore = null
   originalViewportMetaContent = null
   recordKeyboardZoomTelemetry('viewport-meta.restore.completed', {
-    metaAfter: document.querySelector('meta[name="viewport"]')?.content || 'not-found'
+    metaAfter: viewportMetaTag()?.content || 'not-found'
   })
   refreshKeyboardZoomDebug()
 }
@@ -584,13 +589,13 @@ function refreshKeyboardZoomDebug(status = null) {
     liveHeight: Math.round(viewport?.height || window.innerHeight),
     liveScale: viewport?.scale || 1,
     focusedElement: className ? `${tag}.${className.split(/\s+/)[0]}` : tag,
-    viewportMeta: document.querySelector('meta[name="viewport"]')?.content || 'not found',
+    viewportMeta: viewportMetaTag()?.content || 'not found',
     ...(status ? { status } : {})
   })
 }
 
 function restoreViewportScale(scale, reason = 'Focus left the field') {
-  const viewportMeta = document.querySelector('meta[name="viewport"]')
+  const viewportMeta = viewportMetaTag()
   if (!viewportMeta) {
     recordKeyboardZoomTelemetry('viewport-scale.reset.skipped', { reason, result: 'viewport-meta-missing' })
     return
@@ -905,7 +910,8 @@ function resetDocumentFieldZoom() {
 }
 
 onMounted(() => {
-  virtualKeyboardApi = navigator.virtualKeyboard || null
+  // VirtualKeyboard API (Chromium only) is not in the DOM types yet
+  virtualKeyboardApi = /** @type {any} */ (navigator).virtualKeyboard || null
   recordKeyboardZoomTelemetry('listeners.installed', {
     visible: props.visible,
     visualViewportSupported: Boolean(window.visualViewport),
@@ -933,7 +939,7 @@ watch(() => props.visible, async (newVal) => {
     try {
       const eqResponse = await equipmentAPI.getAll()
       equipmentList.value = eqResponse.data
-    } catch (e) {
+    } catch {
       equipmentList.value = []
     }
 

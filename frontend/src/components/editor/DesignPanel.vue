@@ -34,7 +34,7 @@
           @click="emitBlocks(applyAccentColor(blocks, color))"
         ></button>
         <label class="swatch custom" title="Eigene Farbe">
-          <input type="color" :value="design.accentColor" aria-label="Eigene Akzentfarbe" @input="emitBlocks(applyAccentColor(blocks, $event.target.value))" />
+          <input type="color" :value="design.accentColor" aria-label="Eigene Akzentfarbe" @input="emitBlocks(applyAccentColor(blocks, inputValue($event)))" />
           +
         </label>
       </div>
@@ -43,7 +43,7 @@
     <section class="design-section">
       <h3>Schrift</h3>
       <p class="section-hint">Im PDF wird die passende Standardschrift verwendet (Helvetica, Times oder Courier).</p>
-      <select class="form-select" :value="design.fontFamily" aria-label="Schriftart" @change="emitBlocks(applyFontFamily(blocks, $event.target.value))">
+      <select class="form-select" :value="design.fontFamily" aria-label="Schriftart" @change="emitBlocks(applyFontFamily(blocks, inputValue($event)))">
         <option v-for="font in fonts" :key="font" :value="font" :style="{ fontFamily: font }">{{ font }}</option>
       </select>
       <div class="segmented" role="radiogroup" aria-label="Textgröße">
@@ -82,7 +82,7 @@
     <section class="design-section">
       <h3>Inhalte</h3>
       <label v-for="part in parts" :key="part.key" class="check-row">
-        <input type="checkbox" :checked="design.parts[part.key]" @change="emitBlocks(setPartVisible(blocks, part.key, $event.target.checked))" />
+        <input type="checkbox" :checked="design.parts[part.key]" @change="emitBlocks(setPartVisible(blocks, part.key, inputChecked($event)))" />
         {{ part.label }}
       </label>
     </section>
@@ -112,7 +112,7 @@
               min="0"
               max="50"
               :value="margins[side.key]"
-              @change="setMargin(side.key, $event.target.value)"
+              @change="setMargin(side.key, inputValue($event))"
             />
           </label>
         </div>
@@ -128,6 +128,7 @@
 </template>
 
 <script>
+import { inputChecked, inputValue } from '../../utils/dom.js'
 import {
   readDesign, applyAccentColor, applyFontFamily, applyTextSize, setPartVisible, applyLogo, applyLayout,
   TEXT_SIZES, MARGIN_PRESETS, OPTIONAL_PARTS, LAYOUTS
@@ -182,6 +183,7 @@ export default {
     }
   },
   methods: {
+    inputChecked, inputValue,
     applyAccentColor,
     applyFontFamily,
     applyTextSize,

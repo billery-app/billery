@@ -8,7 +8,7 @@
         data-tour="catalog-picker"
         data-testid="mobile-catalog-section"
         :value="activeTab"
-        @change="activeTab = $event.target.value"
+        @change="activeTab = inputValue($event)"
       >
         <option value="articles">Artikel</option>
         <option value="services">Leistungen</option>
@@ -22,7 +22,7 @@
     </div>
     <div class="filters">
       <input v-model="searchQuery" type="text" placeholder="Suchen..." class="search-input" />
-      <button @click="openCreateModal" class="btn btn-primary">{{ activeTab === 'articles' ? 'Neuer Artikel' : activeTab === 'services' ? 'Neue Leistung' : 'Neue Ausstattung' }}</button>
+      <button class="btn btn-primary" @click="openCreateModal">{{ activeTab === 'articles' ? 'Neuer Artikel' : activeTab === 'services' ? 'Neue Leistung' : 'Neue Ausstattung' }}</button>
     </div>
     <div v-if="loading" class="loading">Lade...</div>
     <div v-if="error" class="error">{{ error }}</div>
@@ -208,7 +208,7 @@
           <div class="form-actions">
             <button type="submit" class="btn btn-primary">Speichern</button>
             <button v-if="equipmentForm.id" type="button" class="btn btn-danger" @click="deleteEquipment(equipmentForm.id)">Löschen</button>
-            <button type="button" @click="resetEquipmentForm" class="btn btn-secondary">Abbrechen</button>
+            <button type="button" class="btn btn-secondary" @click="resetEquipmentForm">Abbrechen</button>
           </div>
         </form>
       </div>
@@ -259,7 +259,7 @@
           Keine Einsätze gefunden. Gezählt werden nur Leistungen auf vollständig bezahlten Rechnungen.
         </div>
         <div class="form-actions">
-          <button type="button" @click="closeUsage" class="btn btn-secondary">Schließen</button>
+          <button type="button" class="btn btn-secondary" @click="closeUsage">Schließen</button>
         </div>
       </div>
     </div>
@@ -267,6 +267,8 @@
 </template>
 
 <script>
+import { numberParam, param } from '../utils/route.js'
+import { inputValue } from '../utils/dom.js'
 import articleAPI from '../services/articleService.js'
 import equipmentAPI from '../services/equipmentService.js'
 import ArticleServiceCreateModal from '../components/ArticleServiceCreateModal.vue'
@@ -298,32 +300,6 @@ export default {
       usageLoading: false,
       usageError: null,
       usageTrigger: null
-    }
-  },
-  mounted() {
-    // a changed section loads through the `activeTab` watcher
-    if (!this.applyTabQuery()) {
-      this.loadItems()
-    }
-    if (this.$route.query.create === 'true') {
-      this.openCreateModal()
-    }
-    const articleId = this.$route.query.article
-    if (articleId) {
-      this.loadArticleForEdit(parseInt(articleId))
-    }
-    const serviceId = this.$route.query.service
-    if (serviceId) {
-      this.loadServiceForEdit(parseInt(serviceId))
-    }
-  },
-  watch: {
-    activeTab() {
-      this.loadItems()
-    },
-    // `?tab=equipment` opens that section, also when the page is already open (the tour does that)
-    '$route.query.tab'() {
-      this.applyTabQuery()
     }
   },
   computed: {
@@ -364,13 +340,40 @@ export default {
       return this.usageItems.reduce((sum, usage) => sum + (Number(usage.totalPrice) || 0), 0)
     }
   },
+  watch: {
+    activeTab() {
+      this.loadItems()
+    },
+    // `?tab=equipment` opens that section, also when the page is already open (the tour does that)
+    '$route.query.tab'() {
+      this.applyTabQuery()
+    }
+  },
+  mounted() {
+    // a changed section loads through the `activeTab` watcher
+    if (!this.applyTabQuery()) {
+      this.loadItems()
+    }
+    if (this.$route.query.create === 'true') {
+      this.openCreateModal()
+    }
+    const articleId = numberParam(this.$route.query.article)
+    if (articleId) {
+      this.loadArticleForEdit(articleId)
+    }
+    const serviceId = numberParam(this.$route.query.service)
+    if (serviceId) {
+      this.loadServiceForEdit(serviceId)
+    }
+  },
   methods: {
+    inputValue,
     /**
      * Opens the section named by `?tab=` (articles, services, equipment); anything else is ignored.
      * @returns {boolean} whether the section changed
      */
     applyTabQuery() {
-      const tab = this.$route.query.tab
+      const tab = param(this.$route.query.tab)
       if (['articles', 'services', 'equipment'].includes(tab) && tab !== this.activeTab) {
         this.activeTab = tab
         return true
@@ -547,7 +550,7 @@ export default {
       this.usageLoading = true
       this.usageError = null
       this.usageItems = []
-      this.$nextTick(() => this.$refs.usageDialog?.focus())
+      this.$nextTick(() => /** @type {HTMLElement | undefined} */ (this.$refs.usageDialog)?.focus())
       try {
         const response = await equipmentAPI.getUsage(eq.id)
         this.usageItems = response.data

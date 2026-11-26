@@ -93,7 +93,7 @@ export default {
   name: 'BlockLibrary',
   props: {
     availableBlocks: {
-      type: Array,
+      type: /** @type {import('vue').PropType<import('@/types.js').BlockDefinition[]>} */ (Array),
       required: true
     },
     /** Blocks of the template, to disable types that reached their limit. */

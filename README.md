@@ -72,6 +72,7 @@ curl -fsSL https://raw.githubusercontent.com/billery-app/billery/main/deploy/sel
 # in .env: the database password and the key for stored mail passwords
 sed -i "s|^DB_PASSWORD=.*|DB_PASSWORD=$(openssl rand -base64 24)|" .env
 sed -i "s|^BILLERY_SECRETS_KEY=.*|BILLERY_SECRETS_KEY=$(openssl rand -base64 32)|" .env
+chmod 600 .env   # the secrets: readable for you only
 
 docker compose up -d
 ```
@@ -151,9 +152,9 @@ mvn verify               # everything CI runs: tests, coverage, Spotless, PMD
 npm run test:run         # single Vitest run
 npm run test:coverage    # Vitest with V8 coverage
 npm run test             # Vitest in watch mode
+npm run lint             # ESLint
+npm run typecheck        # type check (JavaScript with JSDoc, checked by TypeScript)
 ```
-
-There is no `npm run lint` or `npm run typecheck` — the frontend is plain JavaScript.
 
 **Desktop shell (Tauri 2, optional)**
 
