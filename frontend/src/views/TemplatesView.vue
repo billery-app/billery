@@ -2,7 +2,7 @@
   <div class="templates-view">
     <header class="view-header">
       <div class="view-title">
-        <router-link to="/settings" class="back-link" data-testid="settings-back">‹ Einstellungen</router-link>
+        <router-link to="/settings" class="back-link" data-testid="settings-back">{{ $t('settings.back') }}</router-link>
         <h1>Dokumentvorlagen</h1>
       </div>
       <div class="header-actions">

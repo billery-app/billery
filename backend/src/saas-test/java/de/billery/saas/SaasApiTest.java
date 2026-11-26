@@ -610,4 +610,29 @@ class SaasApiTest extends SaasApiTestBase {
                 null)
             .status());
   }
+
+  /**
+   * The interface language belongs to the person (#15): stored per user in {@code app_user},
+   * without {@code X-Tenant-Id}, never visible to another user.
+   */
+  @Test
+  void theLanguageIsStoredPerUserWithoutATenant() throws Exception {
+    String anna = token(idpA, "lang-anna", "lang-anna@example.com");
+    String ben = token(idpA, "lang-ben", "lang-ben@example.com");
+    userId(anna);
+    userId(ben);
+
+    assertTrue(get("/api/preferences", anna, null).json().get("language").isNull());
+    Reply stored = call("PUT", "/api/preferences", anna, null, "{\"language\":\"en\"}");
+    assertEquals(200, stored.status(), stored.body());
+    assertEquals("en", stored.json().get("language").asText());
+
+    assertEquals("en", get("/api/preferences", anna, null).json().get("language").asText());
+    assertTrue(
+        get("/api/preferences", ben, null).json().get("language").isNull(),
+        "another user keeps their own (no) choice");
+    assertEquals(
+        400, call("PUT", "/api/preferences", anna, null, "{\"language\":\"xx\"}").status());
+    assertEquals(401, get("/api/preferences", null, null).status());
+  }
 }

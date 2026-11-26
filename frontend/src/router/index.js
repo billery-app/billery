@@ -28,7 +28,7 @@ const routes = [
     path: '/settings',
     children: [
       { path: '', component: SettingsView },
-      ...['account', 'team', 'export', 'backup', 'mail', 'help'].map(area => ({
+      ...['account', 'team', 'export', 'backup', 'mail', 'language', 'help'].map(area => ({
         path: area,
         component: SettingsAreaView,
         meta: { area },

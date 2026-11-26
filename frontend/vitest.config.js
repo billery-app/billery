@@ -8,6 +8,8 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     include: ['src/**/*.{test,spec}.{js,jsx,ts,tsx,vue}'],
+    // vue-i18n for every mounted component (src/test/setup.js)
+    setupFiles: ['src/test/setup.js'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],

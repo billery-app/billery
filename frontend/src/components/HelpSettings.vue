@@ -1,13 +1,10 @@
 <template>
   <section class="settings-section" data-testid="help-settings">
     <div class="card help-card">
-      <h3 class="help-heading">Einführungstour</h3>
-      <p class="muted">
-        Fünf kurze Stationen: Katalog, eine Rechnung, vom Angebot zur Rechnung und die
-        Amortisation Ihrer Ausstattung. Sie können die Tour jederzeit überspringen.
-      </p>
+      <h3 class="help-heading">{{ $t('help.introHeading') }}</h3>
+      <p class="muted">{{ $t('help.introText') }}</p>
       <div>
-        <button type="button" class="btn btn-primary" data-testid="help-start-tour" @click="start">Tour starten</button>
+        <button type="button" class="btn btn-primary" data-testid="help-start-tour" @click="start">{{ $t('help.startIntro') }}</button>
       </div>
       <label v-if="canRepeat" class="checkbox-label">
         <input
@@ -17,18 +14,15 @@
           :disabled="!loaded || busy"
           @change="setEverySession(inputChecked($event))"
         />
-        Tour bei jedem Start zeigen
+        {{ $t('help.everySession') }}
       </label>
       <p v-if="error" class="notice notice-error" role="alert">{{ error }}</p>
     </div>
     <div class="card help-card">
-      <h3 class="help-heading">Vorlagen und Editor</h3>
-      <p class="muted">
-        Fünf Stationen zu Ihren Dokumentvorlagen: neue Vorlage, Standard pro Dokumenttyp, Design und
-        Blöcke, Vorschau mit Platzhaltern, PDF-Vorschau. Die Tour öffnet dafür eine Vorlage im Editor.
-      </p>
+      <h3 class="help-heading">{{ $t('help.templatesHeading') }}</h3>
+      <p class="muted">{{ $t('help.templatesText') }}</p>
       <div>
-        <button type="button" class="btn btn-secondary" data-testid="help-start-template-tour" @click="startTemplates">Vorlagen-Tour starten</button>
+        <button type="button" class="btn btn-secondary" data-testid="help-start-template-tour" @click="startTemplates">{{ $t('help.startTemplates') }}</button>
       </div>
     </div>
   </section>
@@ -67,7 +61,7 @@ export default {
       this.everySession = (await tourService.state()).everySession
       this.loaded = true
     } catch {
-      this.error = 'Die Einstellung zur Tour konnte nicht geladen werden.'
+      this.error = this.$t('help.loadFailed')
     }
   },
   methods: {
@@ -84,7 +78,7 @@ export default {
       try {
         this.everySession = (await tourService.save({ everySession: value })).everySession
       } catch {
-        this.error = 'Die Einstellung konnte nicht gespeichert werden.'
+        this.error = this.$t('help.saveFailed')
       } finally {
         this.busy = false
       }

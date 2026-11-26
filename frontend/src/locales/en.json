@@ -1,0 +1,113 @@
+{
+  "nav": {
+    "main": "Main navigation",
+    "mainMobile": "Main navigation (mobile)",
+    "homeLabel": "Billery – Dashboard",
+    "openSearch": "Open search (Ctrl+K or ⌘K)",
+    "search": "Search",
+    "dashboard": "Dashboard",
+    "start": "Home",
+    "customers": "Customers",
+    "documents": "Documents",
+    "catalog": "Catalog",
+    "settings": "Settings",
+    "settingsShort": "Settings"
+  },
+  "demo": {
+    "label": "Demo",
+    "notice": "the data are reset regularly. Please do not enter real data.",
+    "restartTour": "Restart the tour"
+  },
+  "settings": {
+    "title": "Settings",
+    "back": "‹ Settings",
+    "upcoming": "Coming soon",
+    "groups": {
+      "general": "General",
+      "data": "Data",
+      "more": "More settings"
+    },
+    "areas": {
+      "owners": { "title": "Company", "description": "Company details of the issuer of your documents" },
+      "templates": { "title": "Document templates", "description": "Templates for invoices, offers and cost estimates" },
+      "account": { "title": "Account", "description": "Signed-in account, active company and your role" },
+      "team": { "title": "Team & access", "description": "Members, invitations, roles and change log" },
+      "export": { "title": "Data & export", "description": "GoBD export for tax audits and your tax adviser" },
+      "backup": { "title": "Backup", "description": "Backups of the database and files, restore" },
+      "mail": { "title": "Mail settings", "description": "Mail accounts and templates for mail to customers" },
+      "language": { "title": "Language", "description": "Language of the user interface" },
+      "profile": { "title": "User & profile", "description": "Personal settings and profile" },
+      "help": { "title": "Help", "description": "Start and repeat the introductory tour" }
+    }
+  },
+  "language": {
+    "heading": "Language of the user interface",
+    "hint": "Applies to menus, buttons and messages. Invoices, offers and mails to your customers stay in German.",
+    "hintSaas": "Applies to your account, in every company. Invoices, offers and mails to your customers stay in German.",
+    "saveFailed": "The language could not be saved."
+  },
+  "help": {
+    "introHeading": "Introductory tour",
+    "introText": "Five short stops: the catalog, an invoice, from an offer to the invoice and the amortisation of your equipment. You can skip the tour at any time.",
+    "startIntro": "Start the tour",
+    "everySession": "Show the tour on every start",
+    "templatesHeading": "Templates and editor",
+    "templatesText": "Five stops through your document templates: a new template, the default per document type, design and blocks, the preview with placeholders, the PDF preview. The tour opens a template in the editor for this.",
+    "startTemplates": "Start the templates tour",
+    "loadFailed": "The tour setting could not be loaded.",
+    "saveFailed": "The setting could not be saved."
+  },
+  "tour": {
+    "next": "Next",
+    "previous": "Back",
+    "done": "Done",
+    "close": "Close the tour",
+    "skip": "Skip",
+    "progress": "{'{{current}}'} of {'{{total}}'}",
+    "toTemplates": "Start the templates tour",
+    "intro": {
+      "welcome": {
+        "title": "Welcome to Billery",
+        "description": "In five short stops you see how your master data become offers, invoices and PDFs. This navigation leads to customers, documents, the catalog and the settings."
+      },
+      "catalog": {
+        "title": "Master data and catalog",
+        "description": "Add your articles and services with price and tax rate here, your customers under “Customers”. When you write an invoice, you only pick them."
+      },
+      "invoice": {
+        "title": "Putting an invoice together",
+        "description": "Choose the customer, add lines from the catalog, save: the invoice is a draft. It gets its sequential number only when it is issued and cannot be changed after that (GoBD)."
+      },
+      "offer": {
+        "title": "From the offer to the invoice",
+        "description": "Open an accepted offer and take it over with “In Rechnung” (to invoice), without typing anything again. “PDF” shows every document the way your customer receives it."
+      },
+      "equipment": {
+        "title": "Equipment and amortisation",
+        "description": "Record tools and machines with their purchase price and link them to services: Billery shows how much of it paid invoices have earned back already. The templates tour shows how your documents look: right here or later under Settings → Help."
+      }
+    },
+    "templates": {
+      "list": {
+        "title": "Your document templates",
+        "description": "Templates decide how invoices, offers and cost estimates look. A new template starts from a style of the gallery or from a Word or LibreOffice file."
+      },
+      "defaults": {
+        "title": "One template per document type",
+        "description": "The default template of a document type applies to every new document of that type. “Als Standard” (make default) switches it; “DOCX” and “ODT” export the texts for editing in Word or LibreOffice."
+      },
+      "tools": {
+        "title": "Design and blocks",
+        "description": "In the tools, “Design” sets logo, colour, font and margins for the whole document. Under “Blöcke” (blocks) you arrange sender, lines, totals and footer by dragging and set up every block on its own."
+      },
+      "preview": {
+        "title": "Preview and placeholders",
+        "description": "The preview shows the template with sample data; a click on a block selects it. Texts contain placeholders such as “customer name” or “invoice number”: insert them with “+ Platzhalter” or {'@'}."
+      },
+      "actions": {
+        "title": "PDF preview and saving",
+        "description": "“PDF-Vorschau” shows the finished PDF exactly as your customer receives it. “Speichern” (save) keeps the template, “Abbrechen” (cancel) discards the changes."
+      }
+    }
+  }
+}

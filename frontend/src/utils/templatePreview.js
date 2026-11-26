@@ -1,4 +1,3 @@
-import { sanitizeHtml } from './sanitize.js'
 
 export const SAMPLE_DATA = {
   firma: 'Musterfirma GmbH',
@@ -66,25 +65,5 @@ export const SAMPLE_DATA = {
         <td>1.190,00 €</td>
       </tr>
     </table>
-  `
-}
-
-export function processTemplateContent(templateContent, customData = {}) {
-  if (!templateContent) return ''
-  
-  const data = { ...SAMPLE_DATA, ...customData }
-  
-  return templateContent.replace(/\{\{([^}]+)\}\}/g, (match, varName) => {
-    return data[varName] !== undefined ? data[varName] : match
-  })
-}
-
-export function generateSafePreviewHtml(content, cssContent = '', customData = {}) {
-  const processedContent = processTemplateContent(content, customData)
-  const sanitizedContent = sanitizeHtml(processedContent)
-  
-  return `
-    <style>${cssContent || ''}</style>
-    ${sanitizedContent}
   `
 }

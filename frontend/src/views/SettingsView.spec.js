@@ -1,4 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest'
+import { applyLanguage } from '../i18n/index.js'
 import { mount } from '@vue/test-utils'
 import { createRouter, createMemoryHistory } from 'vue-router'
 import SettingsView from './SettingsView.vue'
@@ -55,7 +56,7 @@ describe('SettingsView', () => {
       'Daten',
       'Weitere Einstellungen'
     ])
-    expect(cardIds(wrapper)).toEqual(['owners', 'templates', 'export', 'mail', 'profile', 'help'])
+    expect(cardIds(wrapper)).toEqual(['owners', 'templates', 'export', 'mail', 'language', 'profile', 'help'])
   })
 
   it('links the cards to their pages', () => {
@@ -65,6 +66,16 @@ describe('SettingsView', () => {
     expect(href('templates')).toBe('/templates')
     expect(href('export')).toBe('/settings/export')
     expect(href('mail')).toBe('/settings/mail')
+  })
+
+  it('shows the cards in the interface language (#15)', async () => {
+    applyLanguage('en')
+    const wrapper = mountWithRouter()
+    expect(wrapper.findAll('.section-title').map(el => el.text())).toEqual(['General', 'Data', 'More settings'])
+    expect(wrapper.get('[data-testid="settings-card-export"] .card-title').text()).toBe('Data & export')
+    applyLanguage('de')
+    await wrapper.vm.$nextTick()
+    expect(wrapper.get('[data-testid="settings-card-export"] .card-title').text()).toBe('Daten & Export')
   })
 
   it('keeps the names the documentation uses', () => {

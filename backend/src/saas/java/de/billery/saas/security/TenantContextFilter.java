@@ -43,6 +43,9 @@ public class TenantContextFilter extends OncePerRequestFilter {
   /** The header naming the tenant a request acts in. */
   public static final String TENANT_HEADER = "X-Tenant-Id";
 
+  private static final com.fasterxml.jackson.databind.ObjectMapper JSON =
+      new com.fasterxml.jackson.databind.ObjectMapper();
+
   private static final String ME_PATH = "/api/me";
 
   private final IdentityService identities;
@@ -81,7 +84,7 @@ public class TenantContextFilter extends OncePerRequestFilter {
     try {
       user = identities.resolve(token);
     } catch (IdentityException e) {
-      reject(response, HttpServletResponse.SC_FORBIDDEN, e.getMessage());
+      reject(response, HttpServletResponse.SC_FORBIDDEN, e.clientMessage());
       return;
     }
     String userId = user.toString();
@@ -97,7 +100,7 @@ public class TenantContextFilter extends OncePerRequestFilter {
     try {
       tenant = requestedTenant(request, user, userId);
     } catch (IllegalArgumentException e) {
-      reject(response, HttpServletResponse.SC_BAD_REQUEST, e.getMessage());
+      reject(response, HttpServletResponse.SC_BAD_REQUEST, TENANT_HEADER + " must be a tenant id");
       return;
     }
     if (tenant.isEmpty()) {
@@ -165,6 +168,7 @@ public class TenantContextFilter extends OncePerRequestFilter {
   private static boolean needsNoTenant(HttpServletRequest request) {
     String path = request.getRequestURI();
     return ME_PATH.equals(path)
+        || "/api/preferences".equals(path)
         || "/api/tenants".equals(path)
         || path.startsWith("/api/invitations/");
   }
@@ -203,6 +207,7 @@ public class TenantContextFilter extends OncePerRequestFilter {
     response.setStatus(status);
     response.setContentType(MediaType.APPLICATION_JSON_VALUE);
     response.setCharacterEncoding(StandardCharsets.UTF_8.name());
-    response.getWriter().write("{\"message\":\"" + message.replace("\"", "'") + "\"}");
+    // written by Jackson, so any character of the message stays inside the JSON string
+    JSON.writeValue(response.getWriter(), java.util.Map.of("message", message));
   }
 }

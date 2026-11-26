@@ -2,7 +2,7 @@
   <div ref="thumbnail" class="template-thumbnail" :class="scopeClass" :style="frameStyle" aria-hidden="true">
     <div class="thumb-page" :style="{ transform: `scale(${scale})` }">
       <!-- eslint-disable vue/no-v-html -- reviewed, see the nosemgrep reason below -->
-      <!-- nosemgrep: javascript.vue.security.audit.xss.templates.avoid-v-html.avoid-v-html -- scoped template CSS (scopeCss strips @import and remote url()) -->
+      <!-- nosemgrep: javascript.vue.security.audit.xss.templates.avoid-v-html.avoid-v-html -- scoped template CSS (scopeCss strips @import and remote url(); styleElement keeps it inside the style element) -->
       <div v-html="styleTag"></div>
       <!-- eslint-enable vue/no-v-html -->
       <!-- eslint-disable vue/no-v-html -- reviewed, see the nosemgrep reason below -->
@@ -17,7 +17,7 @@
 import { normalizeBlocks, composePageHtml } from '../../utils/blockModel.js'
 import { buildPreviewContext } from '../../utils/previewData.js'
 import { renderBlockPreview } from '../../utils/renderBlockPreview.js'
-import { scopeCss } from '../../utils/scopeCss.js'
+import { scopeCss, styleElement } from '../../utils/scopeCss.js'
 import { TEMPLATE_BASE_CSS } from '../../utils/templateBaseCss.js'
 
 let instanceCounter = 0
@@ -68,7 +68,7 @@ export default {
     },
     styleTag() {
       const css = scopeCss(TEMPLATE_BASE_CSS + '\n' + (this.cssContent || ''), `.${this.scopeClass} .invoice-box`)
-      return `<style>${css.replace(/<\/style/gi, '<\\/style')}</style>`
+      return styleElement(css)
     },
     bodyHtml() {
       const ctx = buildPreviewContext({ documentTypeId: this.documentTypeId })

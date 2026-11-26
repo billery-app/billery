@@ -180,6 +180,8 @@ class SaasRoleMatrixTest extends SaasApiTestBase {
           "GET /api/health",
           "GET /api/health/ready",
           "GET /api/me",
+          "GET /api/preferences",
+          "PUT /api/preferences",
           "POST /api/invitations/{id}/accept",
           "POST /api/tenants");
 

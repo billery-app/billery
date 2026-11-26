@@ -1,4 +1,5 @@
 import { activeRole, isSaas, session } from '../services/session.js'
+import { t } from '../i18n/index.js'
 
 /**
  * The areas of the settings page, in display order, grouped as on the overview.
@@ -9,33 +10,48 @@ import { activeRole, isSaas, session } from '../services/session.js'
  * overview and the router guard both ask it, so a hidden area cannot be reached by its address
  * either. Areas with `upcoming: true` are shown as disabled "Demnächst verfügbar" cards.
  *
- * The titles are the names the documentation uses ("Einstellungen → Team & Zugriff").
+ * The titles are the names the documentation uses ("Einstellungen → Team & Zugriff"); they come from
+ * the message files (`settings.areas.<id>.title`), so they follow the interface language.
  */
 export const SETTINGS_GROUPS = [
   {
     id: 'general',
-    title: 'Allgemein',
+    get title() {
+      return t('settings.groups.general')
+    },
     areas: [
       {
         id: 'owners',
         to: '/owners',
         icon: '👤',
-        title: 'Inhaber',
-        description: 'Firmendaten und Stammdaten des Rechnungsstellers'
+        get title() {
+          return t('settings.areas.owners.title')
+        },
+        get description() {
+          return t('settings.areas.owners.description')
+        }
       },
       {
         id: 'templates',
         to: '/templates',
         icon: '📄',
-        title: 'Dokumentvorlagen',
-        description: 'Vorlagen für Rechnungen, Angebote und Kalkulationen'
+        get title() {
+          return t('settings.areas.templates.title')
+        },
+        get description() {
+          return t('settings.areas.templates.description')
+        }
       },
       {
         id: 'account',
         to: '/settings/account',
         icon: '🔑',
-        title: 'Konto',
-        description: 'Angemeldetes Konto, aktives Unternehmen und Ihre Rolle',
+        get title() {
+          return t('settings.areas.account.title')
+        },
+        get description() {
+          return t('settings.areas.account.description')
+        },
         // SaaS: every role sees who is signed in where
         available: () => isSaas()
       },
@@ -43,8 +59,12 @@ export const SETTINGS_GROUPS = [
         id: 'team',
         to: '/settings/team',
         icon: '👥',
-        title: 'Team & Zugriff',
-        description: 'Mitglieder, Einladungen, Rollen und Änderungsprotokoll',
+        get title() {
+          return t('settings.areas.team.title')
+        },
+        get description() {
+          return t('settings.areas.team.description')
+        },
         // SaaS: the team is managed by the owners and admins of the company
         available: () => isSaas() && ['OWNER', 'ADMIN'].includes(activeRole())
       }
@@ -52,21 +72,31 @@ export const SETTINGS_GROUPS = [
   },
   {
     id: 'data',
-    title: 'Daten',
+    get title() {
+      return t('settings.groups.data')
+    },
     areas: [
       {
         id: 'export',
         to: '/settings/export',
         icon: '📦',
-        title: 'Daten & Export',
-        description: 'GoBD-Export für Betriebsprüfung und Steuerberatung'
+        get title() {
+          return t('settings.areas.export.title')
+        },
+        get description() {
+          return t('settings.areas.export.description')
+        }
       },
       {
         id: 'backup',
         to: '/settings/backup',
         icon: '💾',
-        title: 'Datensicherung',
-        description: 'Sicherungen der Datenbank und Dateien, Wiederherstellung',
+        get title() {
+          return t('settings.areas.backup.title')
+        },
+        get description() {
+          return t('settings.areas.backup.description')
+        },
         // the H2 file database of the desktop app; a server is backed up by its operator
         available: () => session.desktop
       }
@@ -74,30 +104,55 @@ export const SETTINGS_GROUPS = [
   },
   {
     id: 'more',
-    title: 'Weitere Einstellungen',
+    get title() {
+      return t('settings.groups.more')
+    },
     areas: [
       {
         id: 'mail',
         to: '/settings/mail',
         icon: '✉️',
-        title: 'Mail-Einstellungen',
-        description: 'Mailkonten und Vorlagen für den Versand an Kunden',
+        get title() {
+          return t('settings.areas.mail.title')
+        },
+        get description() {
+          return t('settings.areas.mail.description')
+        },
         // SaaS: the company's mail accounts are managed by its owners and admins
         available: () => !isSaas() || ['OWNER', 'ADMIN'].includes(activeRole())
+      },
+      {
+        id: 'language',
+        to: '/settings/language',
+        icon: '🌐',
+        get title() {
+          return t('settings.areas.language.title')
+        },
+        get description() {
+          return t('settings.areas.language.description')
+        }
       },
       {
         id: 'profile',
         upcoming: true,
         icon: '🪪',
-        title: 'Benutzer & Profil',
-        description: 'Persönliche Einstellungen und Profil'
+        get title() {
+          return t('settings.areas.profile.title')
+        },
+        get description() {
+          return t('settings.areas.profile.description')
+        }
       },
       {
         id: 'help',
         to: '/settings/help',
         icon: '❓',
-        title: 'Hilfe',
-        description: 'Einführungstour starten und wiederholen'
+        get title() {
+          return t('settings.areas.help.title')
+        },
+        get description() {
+          return t('settings.areas.help.description')
+        }
       }
     ]
   }

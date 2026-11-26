@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { scopeCss } from './scopeCss.js'
+import { scopeCss, styleElement } from './scopeCss.js'
 
 const S = '.ed .invoice-box'
 const squash = (css) => css.replace(/\s+/g, ' ').trim()
@@ -52,5 +52,32 @@ describe('scopeCss', () => {
   it('returns an empty string for empty input', () => {
     expect(scopeCss('', S)).toBe('')
     expect(scopeCss(null, S)).toBe('')
+  })
+})
+
+describe('styleElement: template CSS stays inside its style element', () => {
+  const ATTACKS = [
+    'h1{content:"</style><img src=x onerror=alert(1)>"}',
+    'h1{content:"</STYLE ><img src=x onerror=alert(1)>"}',
+    'h1{content:"</style/><svg onload=alert(1)>"}'
+  ]
+
+  it.each(ATTACKS)('%s', attack => {
+    const div = document.createElement('div')
+    div.innerHTML = styleElement(scopeCss(attack, '.scope'))
+    expect(div.children).toHaveLength(1)
+    expect(div.children[0].tagName).toBe('STYLE')
+    expect(div.querySelectorAll('img, svg')).toHaveLength(0)
+  })
+
+  it('without the escape the same CSS breaks out (the test guards something real)', () => {
+    const div = document.createElement('div')
+    div.innerHTML = `<style>${scopeCss(ATTACKS[0], '.scope')}</style>`
+    expect(div.querySelectorAll('img')).toHaveLength(1)
+  })
+
+  it('keeps ordinary CSS as it is', () => {
+    expect(styleElement('.scope h1 { color: red; }\n')).toBe('<style>.scope h1 { color: red; }\n</style>')
+    expect(styleElement('')).toBe('<style></style>')
   })
 })

@@ -2,7 +2,7 @@
   <div class="settings-view">
     <header class="view-header">
       <div>
-        <h1 class="nav-destination-page-title">Einstellungen</h1>
+        <h1 class="nav-destination-page-title">{{ $t('settings.title') }}</h1>
       </div>
     </header>
 
@@ -25,7 +25,7 @@
             <div class="card-body">
               <div class="card-title">
                 {{ area.title }}
-                <span class="coming-soon-badge">Demnächst verfügbar</span>
+                <span class="coming-soon-badge">{{ $t('settings.upcoming') }}</span>
               </div>
               <div class="card-description">{{ area.description }}</div>
             </div>

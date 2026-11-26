@@ -1,9 +1,9 @@
 <template>
   <div class="settings-view settings-area-view">
     <header class="view-header">
-      <router-link to="/settings" class="back-link" data-testid="settings-back">‹ Einstellungen</router-link>
+      <router-link to="/settings" class="back-link" data-testid="settings-back">{{ $t('settings.back') }}</router-link>
       <!-- visible: a sub-page is not a navigation destination of its own (unlike the overview) -->
-      <h1>{{ area ? area.title : 'Einstellungen' }}</h1>
+      <h1>{{ area ? area.title : $t('settings.title') }}</h1>
     </header>
     <component :is="areaComponent" v-if="areaComponent" />
   </div>
@@ -15,6 +15,7 @@ import AccountSettings from '../components/AccountSettings.vue'
 import BackupSettings from '../components/BackupSettings.vue'
 import GobdExportSettings from '../components/GobdExportSettings.vue'
 import HelpSettings from '../components/HelpSettings.vue'
+import LanguageSettings from '../components/LanguageSettings.vue'
 import MailSettings from '../components/MailSettings.vue'
 import TeamSettings from '../components/TeamSettings.vue'
 
@@ -25,6 +26,7 @@ const COMPONENTS = {
   export: GobdExportSettings,
   backup: BackupSettings,
   mail: MailSettings,
+  language: LanguageSettings,
   help: HelpSettings
 }
 
