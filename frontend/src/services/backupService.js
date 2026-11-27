@@ -1,15 +1,22 @@
 import { apiClient } from './baseService.js'
 import { desktopTokenOptions } from './desktopToken.js'
 
-/** Backups of the desktop app (`/api/desktop/backups`, Spring profile `desktop` only). */
+/**
+ * Backups of the desktop app (`/api/desktop/backups`, Spring profile `desktop` only).
+ * @typedef {import('@/api/types.js').BackupStatus} BackupStatus
+ */
+/**
+ * @template T
+ * @typedef {import('@/api/types.js').Response<T>} Response
+ */
 export default {
-  /** @returns {Promise<{data: Object}>} settings and backups (newest first) */
+  /** @returns {Promise<Response<BackupStatus>>} settings and backups (newest first) */
   getStatus() {
     return apiClient.get('/desktop/backups', desktopTokenOptions())
   },
 
   /**
-   * @param {{directory: string, keep: number, onExit: boolean, password: ?string}} settings -
+   * @param {import('@/api/types.js').SettingsRequest} settings - directory, keep, onExit,
    *   `password`: null keeps the current one, '' switches encryption off
    * @returns {Promise<{data: Object}>} the new status
    */

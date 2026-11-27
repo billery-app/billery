@@ -47,7 +47,8 @@ jobs:
           EVENT: ${{ github.event_name }}
           BASE_REF: ${{ github.base_ref }}
         # Three answers (Actions minutes):
-        #  relevant  - anything in the backend: build and the saas job (the whole suite on
+        #  relevant  - anything in the backend (or the generated API types of the frontend, which
+        #              build checks against it): build and the saas job (the whole suite on
         #              PostgreSQL with the SaaS profile).
         #  postgres  - the self-host schema, its migrations, demo data or the database bootstrap:
         #              the tests the saas job skips. Everything else on PostgreSQL the saas job covers.
@@ -61,7 +62,7 @@ jobs:
             # Run everything when the comparison itself fails.
             if files=$(git diff --name-only "$base...HEAD"); then
               src='backend/src/main/java/de/billery'
-              grep -qE '^(backend/|XRechnung/|scripts/fetch-kosit-validator\.sh|\.github/workflows/maven\.yml)' <<< "$files" || relevant=false
+              grep -qE '^(backend/|XRechnung/|scripts/fetch-kosit-validator\.sh|frontend/src/api/schema\.d\.ts|\.github/workflows/maven\.yml)' <<< "$files" || relevant=false
               grep -qE "^(backend/src/main/resources/(db/|dummies\.sql|scheme)|backend/src/test/resources/[^/]*\.sql|$src/data/(Database|DatabaseInitializer|DatabaseMigration|SchemaMigrator)\.java|$src/config/DbConfig\.java|backend/pom\.xml|\.github/workflows/maven\.yml)" <<< "$files" || postgres=false
               grep -qE "^(XRechnung/|scripts/fetch-kosit-validator\.sh|$src/(xmlgenerator|pdf|tax)/|$src/service/(EInvoiceService|DocumentPdfService)\.java|$src/data/(Invoice|InvoiceItem|PartySnapshot|Owner|Customer)\.java|backend/src/main/resources/fonts/|backend/src/test/java/de/billery/api/controller/(VatAndEInvoiceTest|ZugferdTest)\.java|backend/pom\.xml|\.github/workflows/maven\.yml)" <<< "$files" || xrechnung=false
             fi
@@ -106,6 +107,30 @@ jobs:
         echo "checking $jar"
         if unzip -l "$jar" | grep -E 'de/billery/saas|db/migration-saas|spring-security'; then
           echo "SaaS code or Spring Security found in the default build" >&2
+          exit 1
+        fi
+
+    # The frontend's API types (frontend/src/api/schema.d.ts, #39) are generated from this
+    # backend's OpenAPI spec: a DTO change without `npm run api:types` fails here, like the other
+    # parity checks. Runs after the JAR check, because -Pdesktop repackages the JAR; starts the
+    # app once on in-memory H2 (about a minute).
+    - name: OpenAPI spec
+      run: mvn -B -Pdesktop,openapi verify -DskipTests -Djacoco.skip=true -Dspotless.check.skip=true -Dpmd.skip=true
+
+    - name: Set up Node 24
+      uses: actions/setup-node@v7
+      with:
+        node-version: '24'
+        cache: npm
+        cache-dependency-path: frontend/package-lock.json
+
+    - name: Frontend API types match the backend
+      working-directory: frontend
+      run: |
+        npm ci --ignore-scripts
+        npm run api:types
+        if ! git diff --exit-code -- src/api/schema.d.ts; then
+          echo "::error file=frontend/src/api/schema.d.ts::The API types are stale: run 'mvn -Pdesktop,openapi verify -DskipTests' in backend/ and 'npm run api:types' in frontend/, then commit schema.d.ts"
           exit 1
         fi
 

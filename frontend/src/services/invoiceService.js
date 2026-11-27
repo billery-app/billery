@@ -2,7 +2,17 @@ import { apiClient } from './baseService.js'
 import { INVOICE } from '../data/documentTypes.js'
 
 /**
- * Invoice service for managing invoice data
+ * Documents of every type, their payments, history and e-invoice (`/api/invoices`).
+ * @typedef {import('@/api/types.js').InvoiceDto} InvoiceDto
+ * @typedef {import('@/api/types.js').InvoicePageDto} InvoicePageDto
+ * @typedef {import('@/api/types.js').InvoiceStatistics} InvoiceStatistics
+ * @typedef {import('@/api/types.js').Payment} Payment
+ * @typedef {import('@/api/types.js').PaymentRequest} PaymentRequest
+ * @typedef {import('@/api/types.js').DocumentHistoryEntry} DocumentHistoryEntry
+ */
+/**
+ * @template T
+ * @typedef {import('@/api/types.js').Response<T>} Response
  */
 export default {
   /**
@@ -18,9 +28,10 @@ export default {
    * @param {string} [query.to] - Last document date (YYYY-MM-DD)
    * @param {string} [query.q] - Text in the number or the customer's name
    * @param {string} [query.status] - Status filter key ('draft', 'overdue', 'open', …), '' for all
-   * @returns {Promise<{data: {items: Object[], page: number, size: number, total: number, years: number[]}}>}
+   * @returns {Promise<Response<InvoicePageDto>>}
    */
   getInvoicePage({ page, size, types, archived, includeArchived, year, from, to, q, status }) {
+    /** @type {Record<string, string|number|boolean>} */
     const params = { page, size, types: types.join(','), archived }
     if (includeArchived) params.includeArchived = true
     if (from) params.from = from
@@ -33,7 +44,8 @@ export default {
 
   /**
    * Gets next invoice number preview
-   * @returns {Promise<import('axios').AxiosResponse<string>>} - Next invoice number
+   * @param {number} [documentTypeId] - the type whose next number is shown
+   * @returns {Promise<Response<string>>} - Next invoice number
    */
   getNextInvoiceNumber(documentTypeId = INVOICE) {
     return apiClient.get('/invoices/next-number', { params: { documentTypeId } })
@@ -42,7 +54,7 @@ export default {
   /**
    * Gets a specific invoice by ID
    * @param {number} id - Invoice ID
-   * @returns {Promise<Object>} - Invoice object
+   * @returns {Promise<Response<InvoiceDto>>} - the document
    */
   getInvoice(id) {
     return apiClient.get(`/invoices/${id}`)
@@ -51,7 +63,7 @@ export default {
   /**
    * Gets invoices by customer
    * @param {number} customerId - Customer ID
-   * @returns {Promise<import('axios').AxiosResponse<Object[]>>} - Array of customer invoices
+   * @returns {Promise<Response<InvoiceDto[]>>} - the customer's documents
    */
   getInvoicesByCustomer(customerId) {
     return apiClient.get(`/invoices/by-customer/${customerId}`)
@@ -59,8 +71,8 @@ export default {
 
   /**
    * Creates a new invoice
-   * @param {Object} invoice - Invoice data
-   * @returns {Promise<Object>} - Created invoice
+   * @param {InvoiceDto} invoice - Invoice data
+   * @returns {Promise<Response<InvoiceDto>>} - Created invoice
    */
   createInvoice(invoice) {
     return apiClient.post('/invoices', invoice)
@@ -69,8 +81,8 @@ export default {
   /**
    * Updates an existing invoice
    * @param {number} id - Invoice ID
-   * @param {Object} invoice - Updated invoice data
-   * @returns {Promise<Object>} - Updated invoice
+   * @param {InvoiceDto} invoice - Updated invoice data
+   * @returns {Promise<Response<InvoiceDto>>} - Updated invoice
    */
   updateInvoice(id, invoice) {
     return apiClient.put(`/invoices/${id}`, invoice)
@@ -80,7 +92,7 @@ export default {
    * Clones an existing invoice as a new draft
    * @param {number} id - Source invoice ID
    * @param {Object} dates - New dates { invoiceDate, dueDate, workStartDate, workEndDate }
-   * @returns {Promise<Object>} - Cloned invoice
+   * @returns {Promise<Response<InvoiceDto>>} - Cloned invoice
    */
   cloneInvoice(id, dates) {
     return apiClient.post(`/invoices/${id}/clone`, dates)
@@ -90,7 +102,7 @@ export default {
    * Gets invoice statistics for a date range
    * @param {string} from - Start date (YYYY-MM-DD)
    * @param {string} to - End date (YYYY-MM-DD)
-   * @returns {Promise<Object>} - Statistics object
+   * @returns {Promise<Response<InvoiceStatistics>>} - Statistics object
    */
   getStatistics(from, to) {
     return apiClient.get('/invoices/statistics', { params: { from, to } })
@@ -114,7 +126,7 @@ export default {
    * @param {number} documentStatusId - New status ID
    * @param {Object} [extra] - `paymentDate` (YYYY-MM-DD, required for PAID) or
    *   `convertedToInvoiceId` (for CONVERTED)
-   * @returns {Promise<Object>} - The updated document
+   * @returns {Promise<Response<InvoiceDto>>} - The updated document
    */
   updateInvoiceStatus(id, documentStatusId, extra = {}) {
     return apiClient.patch(`/invoices/${id}/status`, { documentStatusId, ...extra })
@@ -123,7 +135,7 @@ export default {
   /**
    * Cancels an issued invoice by creating a Stornorechnung.
    * @param {number} id - Invoice ID
-   * @returns {Promise<Object>} - The credit note
+   * @returns {Promise<Response<InvoiceDto>>} - The credit note
    */
   cancelInvoice(id) {
     return apiClient.post(`/invoices/${id}/cancel`)
@@ -132,7 +144,7 @@ export default {
   /**
    * Lists the payments of an invoice, reversals included.
    * @param {number} id - Invoice ID
-   * @returns {Promise<import('axios').AxiosResponse<Object[]>>} - Payments, oldest first
+   * @returns {Promise<Response<Payment[]>>} - Payments, oldest first
    */
   getPayments(id) {
     return apiClient.get(`/invoices/${id}/payments`)
@@ -141,8 +153,8 @@ export default {
   /**
    * Records a payment for an issued, open invoice.
    * @param {number} id - Invoice ID
-   * @param {Object} payment - { paymentDate, amount, paymentMethod, reference, notes }
-   * @returns {Promise<Object>} - The saved payment
+   * @param {PaymentRequest} payment - { paymentDate, amount, paymentMethod, reference, notes }
+   * @returns {Promise<Response<Payment>>} - The saved payment
    */
   recordPayment(id, payment) {
     return apiClient.post(`/invoices/${id}/payments`, payment)
@@ -153,7 +165,7 @@ export default {
    * never deleted).
    * @param {number} id - Invoice ID
    * @param {number} paymentId - Payment to reverse
-   * @returns {Promise<Object>} - The reversal row
+   * @returns {Promise<Response<Payment>>} - The reversal row
    */
   reversePayment(id, paymentId) {
     return apiClient.post(`/invoices/${id}/payments/${paymentId}/reverse`)
@@ -163,7 +175,7 @@ export default {
    * Downloads the XRechnung (e-invoice, UBL XML) of an issued invoice or credit
    * note. Fails with a message listing missing master data when incomplete.
    * @param {number} id - Document ID
-   * @returns {Promise<import('axios').AxiosResponse<Blob>>} - The XML
+   * @returns {Promise<Response<Blob>>} - The XML
    */
   downloadXRechnung(id) {
     return apiClient.get(`/invoices/${id}/xrechnung`, { responseType: 'blob' })
@@ -172,7 +184,7 @@ export default {
   /**
    * Lists what an XRechnung of the document still lacks (works for drafts).
    * @param {number} id - Document ID
-   * @returns {Promise<import('axios').AxiosResponse<{missing: string[]}>>}
+   * @returns {Promise<Response<{missing: string[]}>>}
    */
   checkXRechnung(id) {
     return apiClient.get(`/invoices/${id}/xrechnung/check`)
@@ -181,7 +193,7 @@ export default {
   /**
    * Returns a document's audit trail.
    * @param {number} id - Document ID
-   * @returns {Promise<import('axios').AxiosResponse<Object[]>>} - History entries, oldest first
+   * @returns {Promise<Response<DocumentHistoryEntry[]>>} - History entries, oldest first
    */
   getHistory(id) {
     return apiClient.get(`/invoices/${id}/history`)
@@ -190,7 +202,7 @@ export default {
   /**
    * Downloads invoice as PDF
    * @param {number} id - Invoice ID
-   * @returns {Promise<import('axios').AxiosResponse<Blob>>} - PDF blob
+   * @returns {Promise<Response<Blob>>} - PDF blob
    */
   downloadInvoicePdf(id) {
     return apiClient.get(`/invoices/${id}/pdf`, { responseType: 'blob' })

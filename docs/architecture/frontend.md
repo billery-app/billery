@@ -309,6 +309,28 @@ Binary downloads use `responseType: 'blob'` on the shared `apiClient`
 template editor's PDF preview). Logo uploads go through
 `uploadService.uploadLogo`.
 
+### Typed API (#39, step 2)
+
+The services' parameters and answers carry the backend's own types. `src/api/schema.d.ts` is
+generated from the OpenAPI spec of the self-host build and committed; `src/api/types.js` names the
+schemas the SPA uses (`InvoiceDto`, `CustomerPageDto`, `MailDraft`, …) and `Response<T>` (an axios
+answer with a typed body). A service method says `@returns {Promise<Response<InvoiceDto>>}`, so a
+renamed, removed or retyped DTO field fails `npm run typecheck` wherever the answer is used, not a
+screen at run time. To refresh after a backend change:
+
+```bash
+cd backend && mvn -Pdesktop,openapi verify -DskipTests   # target/openapi.json (-Dopenapi.port=… if 18080 is taken)
+cd ../frontend && npm run api:types                       # openapi-typescript → src/api/schema.d.ts
+```
+
+The `build` job of `maven.yml` does the same and fails when the committed file differs (it also
+runs when only `schema.d.ts` changes). After updating `openapi-typescript` itself, regenerate the
+file in the same pull request. Limits: the SaaS endpoints (`/api/me`, team, tenants) are not in the
+self-host spec and keep hand-written JSDoc; endpoints that answer a `Map` (`/api/config`,
+`/api/preferences`, `/api/mail/settings`, the DOCX import) are untyped in the spec, and springdoc
+marks no field as required, so every field is optional (`?`). `openapi-typescript` declares a peer
+dependency on TypeScript 5; `package.json` overrides it with the project's TypeScript.
+
 ## State management
 
 There is no global store. Each view keeps its own state in `data()` and

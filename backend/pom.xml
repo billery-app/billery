@@ -505,11 +505,15 @@
         </profile>
 
         <!-- Writes target/openapi.json (used by pages.yml). Starts the app on an
-             in-memory H2 database on port 18080 (so it never collides with a
-             running dev backend) during pre-integration-test, fetches the spec,
-             stops the app. Run with: mvn -Pdesktop,openapi verify -DskipTests -->
+             in-memory H2 database on port ${openapi.port} (default 18080, so it never collides
+             with a running dev backend; -Dopenapi.port=... when that port is taken) during
+             pre-integration-test, fetches the spec, stops the app.
+             Run with: mvn -Pdesktop,openapi verify -DskipTests -->
         <profile>
             <id>openapi</id>
+            <properties>
+                <openapi.port>18080</openapi.port>
+            </properties>
             <build>
                 <plugins>
                     <plugin>
@@ -524,7 +528,7 @@
                                 <configuration>
                                     <environmentVariables>
                                         <DB_URL>jdbc:h2:mem:openapi;MODE=MariaDB;DB_CLOSE_DELAY=-1</DB_URL>
-                                        <SERVER_PORT>18080</SERVER_PORT>
+                                        <SERVER_PORT>${openapi.port}</SERVER_PORT>
                                         <SPRING_PROFILES_ACTIVE>desktop</SPRING_PROFILES_ACTIVE>
                                     </environmentVariables>
                                 </configuration>
@@ -549,7 +553,7 @@
                                     <goal>generate</goal>
                                 </goals>
                                 <configuration>
-                                    <apiDocsUrl>http://localhost:18080/v3/api-docs</apiDocsUrl>
+                                    <apiDocsUrl>http://localhost:${openapi.port}/v3/api-docs</apiDocsUrl>
                                     <outputFileName>openapi.json</outputFileName>
                                     <outputDir>${project.build.directory}</outputDir>
                                 </configuration>

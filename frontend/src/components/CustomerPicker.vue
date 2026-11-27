@@ -107,7 +107,7 @@ async function syncSelection() {
     selected.value = props.customer
   } else if (!selected.value || Number(selected.value.id) !== Number(id)) {
     try {
-      selected.value = (await customerAPI.getCustomer(id)).data
+      selected.value = (await customerAPI.getCustomer(Number(id))).data
     } catch {
       selected.value = { id, firstName: t('picker.unknown', { id }), lastName: '' }
     }

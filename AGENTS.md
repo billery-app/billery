@@ -29,7 +29,7 @@ mvn test                 # run tests
 mvn spotless:apply       # auto-format (Google Java Format, version pinned in pom.xml)
 mvn spotless:check       # bound to `verify`: CI fails on formatting
 mvn pmd:check            # bound to `verify`: CI fails on PMD violations
-mvn -Pdesktop,openapi verify -DskipTests   # writes target/openapi.json (starts the app on :18080)
+mvn -Pdesktop,openapi verify -DskipTests   # writes target/openapi.json (starts the app on :18080, -Dopenapi.port=… to move it)
 mvn -Psaas test          # the SaaS build: SaaS code + migrations, suite runs with the Spring profile saas (needs POSTGRES_TEST_URL; run `mvn clean` when switching between the default and the saas build)
 mvn spring-boot:run      # start dev server (port 8080)
 mvn clean install -DskipTests  # full build, skip tests
@@ -48,9 +48,12 @@ npm run test             # Vitest in watch mode
 npm run test:e2e         # Playwright smoke suite against E2E_BASE_URL (default :5173); see e2e/README.md
 npm run lint             # ESLint (eslint.config.js), no warnings allowed
 npm run typecheck        # vue-tsc over jsconfig.json (checkJs, source only, not yet strict)
+npm run api:types        # regenerate src/api/schema.d.ts from ../backend/target/openapi.json
 ```
 
 **Lint and type check (#39, step 1).** The code is JavaScript checked by TypeScript (`checkJs` in `jsconfig.json`, `vue-tsc`): JSDoc types count, so a wrong `@param` / `@returns` is an error. `strict` is off and the `*.spec.js` files are not type-checked yet (their errors come from `wrapper.vm` on Options API components); both come with the later steps of #39. Shared JSDoc types live in `src/types.js` (`PropType` casts for array props), `utils/dom.js` types `$event.target` for templates (`inputValue($event)`), `utils/route.js` reads `$route.query` / `params` (`param`, `numberParam`). ESLint uses the recommended rules plus `eslint-plugin-vue`'s `flat/recommended` without its layout rules (there is no formatter, no Prettier). A suppression always carries its reason (`-- …`). `frontend.yml` runs lint, type check, `npm run test:run` and `npm run build`.
+
+**Typed API (#39, step 2).** `src/api/schema.d.ts` is generated from the backend's OpenAPI spec (`mvn -Pdesktop,openapi verify -DskipTests`, then `npm run api:types`) and committed; `src/api/types.js` names the schemas, and the services type their parameters and answers with them (`Promise<Response<InvoiceDto>>`). **A DTO change in the backend needs a regenerated `schema.d.ts` in the same pull request:** the `build` job of `maven.yml` regenerates it and fails on a difference. SaaS-only endpoints are not in the spec and keep hand-written JSDoc. Details: `docs/architecture/frontend.md > Typed API`.
 
 ### Desktop shell (`app-desktop/`)
 
