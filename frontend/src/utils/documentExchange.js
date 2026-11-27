@@ -70,7 +70,8 @@ export function templateToSections(blocks) {
 /**
  * Applies imported sections to the blocks of a preset.
  * @param {Object[]} presetBlocks - the blocks the new template starts with (not changed)
- * @param {{heading: ?string, paragraphs: string[]}[]} sections - from `POST /api/documents/import`
+ * @param {import('@/api/types.js').DocumentSection[]} sections - from `POST /api/documents/import`
+ *   (heading and paragraphs may be missing)
  * @returns {{blocks: Object[], fields: number, freeText: number}} the new blocks, how many fields
  *   were filled and how many lines went into the notes as free text
  */

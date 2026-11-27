@@ -240,6 +240,7 @@ import { INVOICE, PARTED_INVOICE, FINAL_INVOICE, OFFER, COST_CALCULATION } from 
 // The dashboard never loads all documents: the figures come from GET /api/invoices/statistics,
 // the table shows the first invoices of the selected card from GET /api/invoices/page.
 const stats = ref(null)
+/** @type {import('vue').Ref<import('@/api/types.js').InvoicePageDto>} */
 const listPage = ref({ items: [], total: 0 })
 const loadError = ref(null)
 let statisticsRequest = 0

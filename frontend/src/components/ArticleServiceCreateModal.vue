@@ -65,7 +65,7 @@
           <div class="form-group">
             <label>{{ $t('itemForm.linkedArticle') }}</label>
             <select v-model="serviceForm.articleId">
-              <option value="">{{ $t('itemForm.noArticle') }}</option>
+              <option :value="null">{{ $t('itemForm.noArticle') }}</option>
               <option v-for="a in articles" :key="a.id" :value="a.id">{{ a.name }}</option>
             </select>
           </div>
@@ -141,7 +141,8 @@ const serviceForm = ref({
   description: '',
   hourlyRate: 0,
   unit: 'h',
-  articleId: '',
+  // null, not '': the API takes a number or nothing (the typed API showed the empty string)
+  articleId: null,
   equipmentId: null,
   taxRate: 19
 })
@@ -177,7 +178,7 @@ watch(() => props.visible, (newVal) => {
           description: props.item.description || '',
           hourlyRate: props.item.hourlyRate || 0,
           unit: props.item.unit || 'h',
-          articleId: props.item.articleId || '',
+          articleId: props.item.articleId || null,
           equipmentId: props.item.equipmentId || null,
           taxRate: Number(props.item.taxRate ?? 19)
         }
@@ -185,7 +186,7 @@ watch(() => props.visible, (newVal) => {
     } else {
       activeTab.value = 'article'
       articleForm.value = { name: '', description: '', unit: '', purchasePrice: 0, salesPrice: 0, taxRate: 19, note: '' }
-      serviceForm.value = { name: '', description: '', hourlyRate: 0, unit: 'h', articleId: '', equipmentId: null, taxRate: 19 }
+      serviceForm.value = { name: '', description: '', hourlyRate: 0, unit: 'h', articleId: null, equipmentId: null, taxRate: 19 }
     }
   }
 })
