@@ -4,7 +4,7 @@ import DocumentViewModal from './DocumentViewModal.vue'
 import invoiceAPI from '../services/invoiceService.js'
 import mailService from '../services/mailService.js'
 import { session } from '../services/session.js'
-import { DRAFT, SENT, ACCEPTED, REJECTED, CONVERTED, PAID, CANCELLED, PARTIALLY_PAID } from '../utils/documentStatus.js'
+import { DRAFT, SENT, ACCEPTED, REJECTED, CONVERTED, PAID, CANCELLED, PARTIALLY_PAID } from '../utils/documentStatus.ts'
 
 const INVOICE = 1
 const OFFER = 2

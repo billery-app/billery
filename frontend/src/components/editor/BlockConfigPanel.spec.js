@@ -1,8 +1,8 @@
 import { describe, it, expect, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import BlockConfigPanel from './BlockConfigPanel.vue'
-import { getBlockByType } from '../../utils/blockRegistry.js'
-import { createBlock } from '../../utils/blockModel.js'
+import { getBlockByType } from '../../utils/blockRegistry.ts'
+import { createBlock } from '../../utils/blockModel.ts'
 
 vi.mock('../../services/uploadService.js', () => ({
   uploadLogo: vi.fn(() => Promise.resolve('http://127.0.0.1:8080/uploads/logo.png'))

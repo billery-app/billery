@@ -35,8 +35,8 @@ CI behaviour is defined by `.github/workflows/*.yml`.
 | Versions (Spring Boot, Vue, JUnit, Vite, etc.) | `backend/pom.xml`, `frontend/package.json` |
 | Controllers and their paths | `backend/src/main/java/de/billery/api/controller/` |
 | Database schema | `backend/src/main/resources/db/migration/` (PostgreSQL, Flyway) + both `scheme-h2.sql` files |
-| Block types and their fields | `frontend/src/utils/blockRegistry.js` |
-| Variable registry | `frontend/src/utils/variableRegistry.js` |
+| Block types and their fields | `frontend/src/utils/blockRegistry.ts` |
+| Variable registry | `frontend/src/utils/variableRegistry.ts` |
 | Document type strategy | `backend/src/main/java/de/billery/document/` |
 | Environment variables | `backend/src/main/java/de/billery/data/Database.java`, `config/AppConfig.java`, `mail/MailSettings.java`, `backend/env.example` |
 | CI workflows | `.github/workflows/*.yml` |

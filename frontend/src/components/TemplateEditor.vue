@@ -296,19 +296,19 @@ import BlockOutline, { MOVE_TYPE } from './editor/BlockOutline.vue'
 import DesignPanel from './editor/DesignPanel.vue'
 import ownerService from '../services/ownerService.js'
 import templateAPI from '../services/templateService.js'
-import { BLOCK_TYPES, getBlockByType, blockDisplayName, documentTitle } from '../utils/blockRegistry.js'
+import { BLOCK_TYPES, getBlockByType, blockDisplayName, documentTitle } from '../utils/blockRegistry.ts'
 import { escapeHtml } from '../utils/sanitize.js'
 import {
   createBlock, createDefaultBlocks, normalizeBlocks, serializeBlocks, moveBlock, duplicateBlock, clone,
   layoutRows, composePageHtml
-} from '../utils/blockModel.js'
-import { validateBlocks, canAddBlock } from '../utils/blockValidation.js'
-import { buildPreviewContext } from '../utils/previewData.js'
+} from '../utils/blockModel.ts'
+import { validateBlocks, canAddBlock } from '../utils/blockValidation.ts'
+import { buildPreviewContext } from '../utils/previewData.ts'
 import { renderBlockPreview } from '../utils/renderBlockPreview.js'
 import { scopeCss, styleElement } from '../utils/scopeCss.js'
 import { TEMPLATE_BASE_CSS } from '../utils/templateBaseCss.js'
 import { escapeBlockData } from '../utils/sanitize.js'
-import { INVOICE, DOCUMENT_TYPES, CREDIT_NOTE } from '../data/documentTypes.js'
+import { INVOICE, DOCUMENT_TYPES, CREDIT_NOTE } from '../data/documentTypes.ts'
 import { useUnsavedChangesGuard } from '../composables/useUnsavedChangesGuard.js'
 import { useHistory } from '../composables/useHistory.js'
 
@@ -844,7 +844,7 @@ export default {
     /**
      * HTML of the template with placeholders kept, stored in the legacy column
      * `htmlContent`. Nothing reads it: the PDF renders the blocks, and the
-     * DOCX/ODT exchange (utils/documentExchange.js) works from the blocks too.
+     * DOCX/ODT exchange (utils/documentExchange.ts) works from the blocks too.
      * @returns {string}
      */
     generateRenderedHtml() {

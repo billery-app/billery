@@ -1,4 +1,4 @@
-import { isKnownVariable, canonicalVariableName } from './variableRegistry.js'
+import { isKnownVariable, canonicalVariableName } from './variableRegistry.ts'
 
 /**
  * Text with `{{variables}}`, as stored in template block fields.

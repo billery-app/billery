@@ -234,8 +234,8 @@ import CustomerCreateModal from '../components/CustomerCreateModal.vue'
 import DocumentModal from '../components/DocumentModal.vue'
 import DocumentViewModal from '../components/DocumentViewModal.vue'
 import ArticleServiceCreateModal from '../components/ArticleServiceCreateModal.vue'
-import { isInvoiceOverdue } from '../utils/documentStatus.js'
-import { INVOICE, PARTED_INVOICE, FINAL_INVOICE, OFFER, COST_CALCULATION } from '../data/documentTypes.js'
+import { isInvoiceOverdue } from '../utils/documentStatus.ts'
+import { INVOICE, PARTED_INVOICE, FINAL_INVOICE, OFFER, COST_CALCULATION } from '../data/documentTypes.ts'
 
 // The dashboard never loads all documents: the figures come from GET /api/invoices/statistics,
 // the table shows the first invoices of the selected card from GET /api/invoices/page.

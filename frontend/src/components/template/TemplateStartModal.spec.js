@@ -7,7 +7,7 @@ vi.mock('../../services/documentService.js', () => ({
 import documentAPI from '../../services/documentService.js'
 import TemplateStartModal from './TemplateStartModal.vue'
 import TemplateThumbnail from './TemplateThumbnail.vue'
-import { validateBlocks } from '../../utils/blockValidation.js'
+import { validateBlocks } from '../../utils/blockValidation.ts'
 
 describe('TemplateStartModal', () => {
   it('offers the document types (without credit notes) and one thumbnail per preset', () => {

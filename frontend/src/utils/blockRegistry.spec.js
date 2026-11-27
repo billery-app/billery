@@ -2,10 +2,10 @@ import { describe, it, expect, afterEach } from 'vitest'
 import {
   BLOCK_TYPES, getBlockByType, getFormat, safeColor, formatCurrency, numberLabel, blockDisplayName,
   blockExchangeName, REGISTRY_ORIGINALS
-} from './blockRegistry.js'
+} from './blockRegistry.ts'
 import { applyLanguage } from '../i18n/index.js'
 import de from '../locales/de.json'
-import { isKnownVariable } from './variableRegistry.js'
+import { isKnownVariable } from './variableRegistry.ts'
 import { variablesIn } from './variableText.js'
 
 const render = (type, data, config, ctx) => {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildPreviewContext, ownerVariables, formatVariables, totalsFromInvoice, SAMPLE_ITEMS } from './previewData.js'
+import { buildPreviewContext, ownerVariables, formatVariables, totalsFromInvoice, SAMPLE_ITEMS } from './previewData.ts'
 
 describe('previewData', () => {
   it('uses the sample document without owner and live data', () => {

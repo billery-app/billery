@@ -26,9 +26,19 @@ export function formatDate(dateStr, format = 'DD.MM.YYYY', locale = 'de-DE') {
   return date.toLocaleDateString(locale)
 }
 
+/**
+ * Calls `fn` only after `delay` ms without a further call, with the last arguments and the `this`
+ * of that call (a regular function on purpose: an arrow function would pass the module's
+ * `undefined`).
+ * @template {(...args: any[]) => void} F
+ * @param {F} fn
+ * @param {number} [delay]
+ * @returns {(this: unknown, ...args: Parameters<F>) => void}
+ */
 export function debounce(fn, delay = 300) {
+  /** @type {ReturnType<typeof setTimeout> | undefined} */
   let timeoutId
-  return (...args) => {
+  return function (...args) {
     clearTimeout(timeoutId)
     timeoutId = setTimeout(() => fn.apply(this, args), delay)
   }

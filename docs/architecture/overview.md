@@ -50,7 +50,7 @@ Three core user flows cover almost all day-to-day work:
 | Configuration | `java-dotenv` | Loads `.env` from the JVM working directory at startup (`backend/.env` when running from that directory; `AppConfig.java:13`). Docker uses env vars directly. |
 | PDF rendering | Flying Saucer (`xhtmlrenderer`) | HTML templates → PDF. |
 | PDF alternative | OpenPDF | Available alongside Flying Saucer. |
-| Document import/export | Apache POI 5.5.1, docx4j 11.5.14, ODF Toolkit 0.13.0 | Template exchange (DOCX/ODT ⇄ sections) via `DocumentConversionService` and `DocumentController`; the mapping to blocks is in the SPA (`utils/documentExchange.js`). |
+| Document import/export | Apache POI 5.5.1, docx4j 11.5.14, ODF Toolkit 0.13.0 | Template exchange (DOCX/ODT ⇄ sections) via `DocumentConversionService` and `DocumentController`; the mapping to blocks is in the SPA (`utils/documentExchange.ts`). |
 | XRechnung | Custom generator in `xmlgenerator/` | German e-invoice format (XRechnung 3.0, UBL), `GET /api/invoices/{id}/xrechnung`. |
 | XRechnung validator | KoSIT validationtool 1.5.0 (`scripts/fetch-kosit-validator.sh`) | Not part of the build; the `xrechnung` CI job validates generated invoices with it. |
 | Mail | Simple Java Mail | `SmtpMailProvider` sends the SaaS invitation mails. Invoices cannot be sent by mail yet. |

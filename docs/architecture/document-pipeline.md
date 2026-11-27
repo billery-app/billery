@@ -301,8 +301,8 @@ field on lines of their own; `{{variables}}` as they are. Line items and totals 
 their content comes from the document.
 
 **Who does what.** The backend only converts files and sections; the mapping between sections and
-blocks lives in the SPA, which knows the fields (`utils/documentExchange.js` with the German
-`exchangeName` / `exchangeLabel` of `blockRegistry.js`). The words stay German in every interface
+blocks lives in the SPA, which knows the fields (`utils/documentExchange.ts` with the German
+`exchangeName` / `exchangeLabel` of `blockRegistry.ts`). The words stay German in every interface
 language (#15), so a file exported in the English interface imports in the German one and back:
 
 - **Export** — Templates view, buttons "DOCX" / "ODT" on each template:
@@ -354,7 +354,7 @@ What `DocumentConversionService` reads (POI for DOCX, odfdom for ODT):
   message naming the accepted formats.
 
 The legacy column `html_content` is not part of the exchange any more (it is still written by the
-editor and read by nothing). There is one variable set, `utils/variableRegistry.js`: the former
+editor and read by nothing). There is one variable set, `utils/variableRegistry.ts`: the former
 uppercase aliases (`OWNER_COMPANY`, …) and their endpoints `/api/documents/variables/*` are gone;
 unknown variables in an imported file show up in the editor's validation.
 

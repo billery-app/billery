@@ -133,7 +133,7 @@ import {
   readDesign, applyAccentColor, applyFontFamily, applyTextSize, setPartVisible, applyLogo, applyLayout,
   TEXT_SIZES, MARGIN_PRESETS, OPTIONAL_PARTS, LAYOUTS
 } from '../../utils/designActions.js'
-import { FONT_FAMILIES } from '../../utils/blockRegistry.js'
+import { FONT_FAMILIES } from '../../utils/blockRegistry.ts'
 import { uploadLogo } from '../../services/uploadService.js'
 
 /**

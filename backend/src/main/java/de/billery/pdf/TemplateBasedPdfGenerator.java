@@ -1363,7 +1363,7 @@ public class TemplateBasedPdfGenerator {
    * Arranges rendered blocks on the page. Blocks are full width by default; two consecutive blocks
    * with {@code config.width = "half"} share one row (e.g. recipient left, document data right), a
    * half-width block without a partner takes the left half. Rows are tables because Flying Saucer
-   * has no flexbox. The editor preview groups blocks the same way ({@code blockModel.js >
+   * has no flexbox. The editor preview groups blocks the same way ({@code blockModel.ts >
    * layoutRows}).
    *
    * @param rendered HTML of each block, in order
@@ -1680,7 +1680,7 @@ public class TemplateBasedPdfGenerator {
 
   /**
    * Returns the value when it is a hex color, else the fallback. Mirrors {@code safeColor} in the
-   * editor's {@code blockRegistry.js}.
+   * editor's {@code blockRegistry.ts}.
    *
    * @param value user-entered color
    * @param fallback color used for anything else
@@ -1692,7 +1692,7 @@ public class TemplateBasedPdfGenerator {
 
   /**
    * CSS for the body text of a block from its format settings (the editor's format toolbar). The
-   * template editor preview builds the same declarations ({@code blockRegistry.js > bodyStyle}).
+   * template editor preview builds the same declarations ({@code blockRegistry.ts > bodyStyle}).
    *
    * @param config the block config with an optional {@code format} map
    * @param defaultPt font size when the block has none
@@ -1707,7 +1707,7 @@ public class TemplateBasedPdfGenerator {
    * Font size of the invoice-meta body text. The block's format size means the body text; the title
    * is derived from it. Older editors stored the title size (18pt by default) there, which rendered
    * the whole block at that size: values of 16pt and more are read as such a title size. Mirrors
-   * {@code blockModel.js > migrateBlock}.
+   * {@code blockModel.ts > migrateBlock}.
    *
    * @param stored the format font size stored in the block
    * @return the body font size in pt
@@ -1749,7 +1749,7 @@ public class TemplateBasedPdfGenerator {
   /**
    * Generic CSS family for a font name. The PDF renderer only has the standard PDF fonts and picks
    * one by the generic family, so a serif choice (Georgia, Times New Roman) prints in Times and a
-   * monospace one in Courier instead of falling back to Helvetica. Mirrors {@code blockRegistry.js
+   * monospace one in Courier instead of falling back to Helvetica. Mirrors {@code blockRegistry.ts
    * > genericFontFamily}.
    *
    * @param family the configured font name

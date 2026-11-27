@@ -111,7 +111,7 @@ external resources.
 
 `BlockConfigPanel.vue` is generated from the block type's `fields`
 (tab "Inhalt") and `settings` + font format (tab "Darstellung") in
-`utils/blockRegistry.js`. Field kinds: `text`, `multiline` (both with
+`utils/blockRegistry.ts`. Field kinds: `text`, `multiline` (both with
 variable chips), `select`, `image` (logo upload via
 `services/uploadService.js`), `columns` (line-item columns: visible,
 label, order). Setting kinds: `toggle`, `select`, `text`, `color`;
@@ -138,14 +138,14 @@ as a chip with an unambiguous German label ("Kundenname",
   issues bar. The PDF renderer removes unknown placeholders.
 
 Labels, groups and accepted English aliases come from
-`utils/variableRegistry.js` (`getPickerGroups`, `getChipLabel`,
+`utils/variableRegistry.ts` (`getPickerGroups`, `getChipLabel`,
 `isKnownVariable`); see [`variables.md`](./variables.md).
 
 ---
 
 ## Validation
 
-`utils/blockValidation.js` checks the block list on every change:
+`utils/blockValidation.ts` checks the block list on every change:
 
 - **Errors** (saving disabled, the reason is the save button's tooltip):
   a required block is missing (`invoice-meta`, `line-items`, `totals`)
@@ -162,7 +162,7 @@ Blocks with issues are marked in the preview and the outline.
 
 The page preview renders each block with
 `utils/renderBlockPreview.js` from a preview context
-(`utils/previewData.js > buildPreviewContext`): sample document →
+(`utils/previewData.ts > buildPreviewContext`): sample document →
 the company data (owner; empty owner fields stay empty, like in the
 PDF) → the real document when `liveData` is given. Amounts, dates and
 VAT groups are formatted like the PDF; line items include sub-items,
@@ -188,7 +188,7 @@ scales down to the available height as well as width. Nothing is stored.
 ## Configuration contract (the editor–registry invariant)
 
 A block type is described completely in `BLOCK_TYPES`
-(`utils/blockRegistry.js`); the config panel, validation, simple mode
+(`utils/blockRegistry.ts`); the config panel, validation, simple mode
 and library read it from there.
 
 - **When you add a data field** — add it to `defaultData` *and*
@@ -368,7 +368,7 @@ builds a `liveData` object and passes it as the `:live-data` prop:
 }
 ```
 
-`buildPreviewVariables` / `buildLineItemsData` (`utils/invoiceVariables.js`)
+`buildPreviewVariables` / `buildLineItemsData` (`utils/invoiceVariables.ts`)
 produce it from the invoice DTO (`vatGroups`, `taxTreatment`, items with
 `taxRate`) and the customer. The preview toolbar switches between
 "Dieses Dokument" and "Beispieldaten".

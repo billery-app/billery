@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import { applySections, templateToSections } from './documentExchange.js'
+import { applySections, templateToSections } from './documentExchange.ts'
 import { applyLanguage } from '../i18n/index.js'
 import { TEMPLATE_PRESETS } from './templatePresets.js'
-import { createBlock } from './blockModel.js'
+import { createBlock } from './blockModel.ts'
 
 const presetBlocks = () => TEMPLATE_PRESETS[0].build(1).blocks
 const byType = (blocks, type) => blocks.filter(b => b.type === type)

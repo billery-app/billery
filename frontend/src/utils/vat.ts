@@ -4,17 +4,44 @@
  * recomputes everything; these values are for display only.
  */
 
-/** VAT rates a line may carry under regular taxation (§12 UStG). */
 import { t } from '../i18n/index.js'
 
-export const VAT_RATES = [19, 7]
+/** VAT rates a line may carry under regular taxation (§12 UStG). */
+export const VAT_RATES: readonly number[] = [19, 7]
+
+/** How VAT applies to a document; equals `TaxTreatment` in the backend. */
+export type TaxTreatment = 'STANDARD' | 'SMALL_BUSINESS' | 'REVERSE_CHARGE' | 'TAX_EXEMPT'
+
+/** One line as the calculation reads it (a document line or a line of the editor). */
+export interface VatItem {
+  itemType?: string | null
+  quantity?: number | string | null
+  unitPrice?: number | string | null
+  taxRate?: number | string | null
+  children?: VatItem[] | null
+}
+
+/** Net and VAT of one rate. */
+export interface VatGroup {
+  rate: number
+  net: number
+  tax: number
+}
+
+/** Result of {@link calculateVat}. */
+export interface VatTotals {
+  groups: VatGroup[]
+  net: number
+  tax: number
+  gross: number
+}
 
 /**
  * How VAT applies to a whole document. Keys match `TaxTreatment` in the backend; the labels are in
  * the message files (`taxTreatments`). The legal notes below are printed on the document and stay
  * German (#15).
  */
-export const TAX_TREATMENTS = ['STANDARD', 'REVERSE_CHARGE', 'TAX_EXEMPT'].map(value => ({
+export const TAX_TREATMENTS: readonly { value: TaxTreatment, readonly label: string }[] = (['STANDARD', 'REVERSE_CHARGE', 'TAX_EXEMPT'] as const).map(value => ({
   value,
   get label() {
     return t(`taxTreatments.${value}`)
@@ -22,41 +49,40 @@ export const TAX_TREATMENTS = ['STANDARD', 'REVERSE_CHARGE', 'TAX_EXEMPT'].map(v
 }))
 
 /** Treatment of every document of a Kleinunternehmer; never chosen by hand. */
-export const SMALL_BUSINESS = 'SMALL_BUSINESS'
+export const SMALL_BUSINESS: TaxTreatment = 'SMALL_BUSINESS'
 
-const LEGAL_NOTES = {
+const LEGAL_NOTES: Readonly<Record<Exclude<TaxTreatment, 'STANDARD'>, string>> = {
   SMALL_BUSINESS: 'Gemäß § 19 UStG wird keine Umsatzsteuer berechnet (Kleinunternehmer).',
   REVERSE_CHARGE: 'Steuerschuldnerschaft des Leistungsempfängers (§ 13b UStG).',
   TAX_EXEMPT: 'Steuerfreie Leistung'
 }
 
 /** True when the treatment charges VAT (only STANDARD does). */
-export function chargesVat(treatment) {
+export function chargesVat(treatment: string | null | undefined): boolean {
   return !treatment || treatment === 'STANDARD'
 }
 
 /**
  * The note an invoice must carry for its treatment (empty for STANDARD).
- * @param {string} treatment
- * @param {string} [exemptionReason] - legal basis for TAX_EXEMPT
+ * @param exemptionReason - legal basis for TAX_EXEMPT
  */
-export function legalNote(treatment, exemptionReason) {
+export function legalNote(treatment: string | null | undefined, exemptionReason?: string | null): string {
   if (treatment === 'TAX_EXEMPT') {
     const reason = (exemptionReason || '').trim()
     return reason ? `${LEGAL_NOTES.TAX_EXEMPT} ${reason}.` : `${LEGAL_NOTES.TAX_EXEMPT}.`
   }
-  return LEGAL_NOTES[treatment] || ''
+  return (treatment && LEGAL_NOTES[treatment as keyof typeof LEGAL_NOTES]) || ''
 }
 
-function cents(value) {
+function cents(value: number): number {
   return Math.round((value + Number.EPSILON) * 100) / 100
 }
 
-function isNote(item) {
+function isNote(item: VatItem): boolean {
   return (item.itemType || '').toLowerCase() === 'custom'
 }
 
-function collect(items, treatment, netByRate) {
+function collect(items: VatItem[] | null | undefined, treatment: string | null | undefined, netByRate: Map<number, number>): void {
   if (!Array.isArray(items)) return
   for (const item of items) {
     if (!isNote(item)) {
@@ -72,12 +98,11 @@ function collect(items, treatment, netByRate) {
 /**
  * Net, VAT per rate and gross of an item tree. Tax is rounded once per rate
  * group, like the backend (EN 16931 BR-CO-17).
- * @param {Array} items - root items with optional `children`
- * @param {string} treatment - STANDARD, SMALL_BUSINESS, REVERSE_CHARGE, TAX_EXEMPT
- * @returns {{groups: Array<{rate: number, net: number, tax: number}>, net: number, tax: number, gross: number}}
+ * @param items - root items with optional `children`
+ * @param treatment - STANDARD, SMALL_BUSINESS, REVERSE_CHARGE, TAX_EXEMPT
  */
-export function calculateVat(items, treatment) {
-  const netByRate = new Map()
+export function calculateVat(items: VatItem[] | null | undefined, treatment: string | null | undefined): VatTotals {
+  const netByRate = new Map<number, number>()
   collect(items, treatment, netByRate)
   const groups = [...netByRate.entries()]
     .sort((a, b) => a[0] - b[0])
@@ -88,6 +113,6 @@ export function calculateVat(items, treatment) {
 }
 
 /** "19 %", "7 %". */
-export function formatRate(rate) {
+export function formatRate(rate: number | string): string {
   return `${String(Number(rate)).replace('.', ',')} %`
 }

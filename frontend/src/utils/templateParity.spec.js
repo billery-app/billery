@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { normalizeBlocks } from './blockModel.js'
-import { buildPreviewContext } from './previewData.js'
-import { buildPreviewVariables, buildLineItemsData } from './invoiceVariables.js'
+import { normalizeBlocks } from './blockModel.ts'
+import { buildPreviewContext } from './previewData.ts'
+import { buildPreviewVariables, buildLineItemsData } from './invoiceVariables.ts'
 import { renderBlockPreview } from './renderBlockPreview.js'
 
 /**

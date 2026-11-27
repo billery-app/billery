@@ -1,6 +1,12 @@
 import { t } from '../i18n/index.js'
 
-export const DEFAULT_VARIABLES = {
+/**
+ * The template variables (`{{firma}}`, …): their German ids, the sample values of the editor
+ * preview, the labels and picker groups in the interface language (TypeScript since #39, step 3).
+ */
+
+/** Sample values of the preview (German: documents stay German). */
+export const DEFAULT_VARIABLES: Readonly<Record<string, string | number | unknown[]>> = {
   firma: 'Musterfirma GmbH',
   adresse: 'Musterstraße 1\n12345 Musterstadt',
   telefon: '+49 123 456789',
@@ -47,173 +53,76 @@ export const VARIABLE_TYPES = {
   ARRAY: 'array',
   OBJECT: 'object',
   BOOLEAN: 'boolean'
+} as const
+
+export type VariableType = typeof VARIABLE_TYPES[keyof typeof VARIABLE_TYPES]
+
+/** Group of the variable picker; its heading is `variables.groups.<category>`. */
+export type VariableCategory = 'Company' | 'Client' | 'Invoice' | 'Totals' | 'Payment'
+
+/** One variable; `label` reads the message files, so it follows the interface language. */
+export interface VariableDefinition {
+  readonly name: string
+  readonly type: VariableType
+  readonly category: VariableCategory
+  readonly label: string
 }
 
-export const VARIABLE_REGISTRY = [
-  {
-    name: 'firma',
-    type: VARIABLE_TYPES.STRING,
-    category: 'Company'
-  },
-  {
-    name: 'adresse',
-    type: VARIABLE_TYPES.STRING,
-    category: 'Company'
-  },
-  {
-    name: 'telefon',
-    type: VARIABLE_TYPES.STRING,
-    category: 'Company'
-  },
-  {
-    name: 'email',
-    type: VARIABLE_TYPES.STRING,
-    category: 'Company'
-  },
-  {
-    name: 'website',
-    type: VARIABLE_TYPES.STRING,
-    category: 'Company'
-  },
-  {
-    name: 'ust_id',
-    type: VARIABLE_TYPES.STRING,
-    category: 'Company'
-  },
-  {
-    name: 'kunde',
-    type: VARIABLE_TYPES.STRING,
-    category: 'Client'
-  },
-  {
-    name: 'kunde_strasse',
-    type: VARIABLE_TYPES.STRING,
-    category: 'Client'
-  },
-  {
-    name: 'kunde_plz_ort',
-    type: VARIABLE_TYPES.STRING,
-    category: 'Client'
-  },
-  {
-    name: 'kunde_email',
-    type: VARIABLE_TYPES.STRING,
-    category: 'Client'
-  },
-  {
-    name: 'kunde_telefon',
-    type: VARIABLE_TYPES.STRING,
-    category: 'Client'
-  },
-  {
-    name: 'rechnungsnummer',
-    type: VARIABLE_TYPES.STRING,
-    category: 'Invoice'
-  },
-  {
-    name: 'rechnungsdatum',
-    type: VARIABLE_TYPES.DATE,
-    category: 'Invoice'
-  },
-  {
-    name: 'faelligkeitsdatum',
-    type: VARIABLE_TYPES.DATE,
-    category: 'Invoice'
-  },
-  {
-    name: 'leistungsdatum',
-    type: VARIABLE_TYPES.DATE,
-    category: 'Invoice'
-  },
-  {
-    name: 'leistungszeitraum',
-    type: VARIABLE_TYPES.STRING,
-    category: 'Invoice'
-  },
-  {
-    name: 'notizen',
-    type: VARIABLE_TYPES.STRING,
-    category: 'Invoice'
-  },
-  {
-    name: 'kleinunternehmer_hinweis',
-    type: VARIABLE_TYPES.STRING,
-    category: 'Invoice'
-  },
-  {
-    name: 'netto',
-    type: VARIABLE_TYPES.NUMBER,
-    category: 'Totals'
-  },
-  {
-    name: 'steuersatz',
-    type: VARIABLE_TYPES.NUMBER,
-    category: 'Totals'
-  },
-  {
-    name: 'steuer',
-    type: VARIABLE_TYPES.NUMBER,
-    category: 'Totals'
-  },
-  {
-    name: 'betrag',
-    type: VARIABLE_TYPES.NUMBER,
-    category: 'Totals'
-  },
-  {
-    name: 'rabatt',
-    type: VARIABLE_TYPES.NUMBER,
-    category: 'Totals'
-  },
-  {
-    name: 'waehrung',
-    type: VARIABLE_TYPES.STRING,
-    category: 'Totals'
-  },
-  {
-    name: 'bank_name',
-    type: VARIABLE_TYPES.STRING,
-    category: 'Payment'
-  },
-  {
-    name: 'iban',
-    type: VARIABLE_TYPES.STRING,
-    category: 'Payment'
-  },
-  {
-    name: 'bic',
-    type: VARIABLE_TYPES.STRING,
-    category: 'Payment'
-  },
-  {
-    name: 'verwendungszweck',
-    type: VARIABLE_TYPES.STRING,
-    category: 'Payment'
+function variable(name: string, type: VariableType, category: VariableCategory): VariableDefinition {
+  return {
+    name,
+    type,
+    category,
+    get label() {
+      return getVariableLabel(name)
+    }
   }
-]
-
-// `label` of every entry reads the message files, so it follows the interface language.
-for (const variable of VARIABLE_REGISTRY) {
-  Object.defineProperty(variable, 'label', { get: () => getVariableLabel(variable.name), enumerable: true })
 }
+
+export const VARIABLE_REGISTRY: readonly VariableDefinition[] = [
+  variable('firma', VARIABLE_TYPES.STRING, 'Company'),
+  variable('adresse', VARIABLE_TYPES.STRING, 'Company'),
+  variable('telefon', VARIABLE_TYPES.STRING, 'Company'),
+  variable('email', VARIABLE_TYPES.STRING, 'Company'),
+  variable('website', VARIABLE_TYPES.STRING, 'Company'),
+  variable('ust_id', VARIABLE_TYPES.STRING, 'Company'),
+  variable('kunde', VARIABLE_TYPES.STRING, 'Client'),
+  variable('kunde_strasse', VARIABLE_TYPES.STRING, 'Client'),
+  variable('kunde_plz_ort', VARIABLE_TYPES.STRING, 'Client'),
+  variable('kunde_email', VARIABLE_TYPES.STRING, 'Client'),
+  variable('kunde_telefon', VARIABLE_TYPES.STRING, 'Client'),
+  variable('rechnungsnummer', VARIABLE_TYPES.STRING, 'Invoice'),
+  variable('rechnungsdatum', VARIABLE_TYPES.DATE, 'Invoice'),
+  variable('faelligkeitsdatum', VARIABLE_TYPES.DATE, 'Invoice'),
+  variable('leistungsdatum', VARIABLE_TYPES.DATE, 'Invoice'),
+  variable('leistungszeitraum', VARIABLE_TYPES.STRING, 'Invoice'),
+  variable('notizen', VARIABLE_TYPES.STRING, 'Invoice'),
+  variable('kleinunternehmer_hinweis', VARIABLE_TYPES.STRING, 'Invoice'),
+  variable('netto', VARIABLE_TYPES.NUMBER, 'Totals'),
+  variable('steuersatz', VARIABLE_TYPES.NUMBER, 'Totals'),
+  variable('steuer', VARIABLE_TYPES.NUMBER, 'Totals'),
+  variable('betrag', VARIABLE_TYPES.NUMBER, 'Totals'),
+  variable('rabatt', VARIABLE_TYPES.NUMBER, 'Totals'),
+  variable('waehrung', VARIABLE_TYPES.STRING, 'Totals'),
+  variable('bank_name', VARIABLE_TYPES.STRING, 'Payment'),
+  variable('iban', VARIABLE_TYPES.STRING, 'Payment'),
+  variable('bic', VARIABLE_TYPES.STRING, 'Payment'),
+  variable('verwendungszweck', VARIABLE_TYPES.STRING, 'Payment')
+]
 
 /**
  * Label of a variable in the interface language (`variables.labels.<name>`); the variable names
  * themselves stay German ids in every language (#15).
- * @param {string} name
- * @returns {string} the label, or the name for an unknown variable
+ * @returns the label, or the name for an unknown variable
  */
-export function getVariableLabel(name) {
+export function getVariableLabel(name: string): string {
   return VARIABLE_REGISTRY.some(v => v.name === name) ? t(`variables.labels.${name}`) : name
 }
 
-export function getVariablesByCategory() {
-  const categories = {}
+export function getVariablesByCategory(): Partial<Record<VariableCategory, VariableDefinition[]>> {
+  const categories: Partial<Record<VariableCategory, VariableDefinition[]>> = {}
   for (const variable of VARIABLE_REGISTRY) {
-    if (!categories[variable.category]) {
-      categories[variable.category] = []
-    }
-    categories[variable.category].push(variable)
+    (categories[variable.category] ??= []).push(variable)
   }
   return categories
 }
@@ -224,7 +133,7 @@ export function getVariablesByCategory() {
  * text fields show it instead of the bare label, so "E-Mail" of the company and of the customer
  * cannot be confused.
  */
-const CHIP_LABELS = new Set([
+const CHIP_LABELS: ReadonlySet<string> = new Set([
   'firma', 'adresse', 'telefon', 'email', 'website', 'ust_id',
   'kunde', 'kunde_strasse', 'kunde_plz_ort', 'kunde_email', 'kunde_telefon'
 ])
@@ -234,13 +143,13 @@ const CHIP_LABELS = new Set([
  * has no bank name or BIC). They stay valid in old templates but are not
  * offered in the picker.
  */
-const HIDDEN_VARIABLES = new Set(['bank_name', 'bic'])
+const HIDDEN_VARIABLES: ReadonlySet<string> = new Set(['bank_name', 'bic'])
 
 /**
  * English aliases the PDF renderer also resolves
  * (`TemplateBasedPdfGenerator.replaceVariables`); valid in stored templates.
  */
-const ALIASES = {
+const ALIASES: Readonly<Record<string, string>> = {
   company_name: 'firma',
   company_address: 'adresse',
   company_phone: 'telefon',
@@ -265,40 +174,40 @@ const ALIASES = {
 
 /**
  * Canonical name of a variable (aliases map to their German name).
- * @param {string} name
- * @returns {string}
  */
-export function canonicalVariableName(name) {
+export function canonicalVariableName(name: string): string {
   return ALIASES[name] || name
 }
 
 /**
  * Whether the PDF renderer knows the variable (German name or alias).
- * @param {string} name
- * @returns {boolean}
  */
-export function isKnownVariable(name) {
+export function isKnownVariable(name: string): boolean {
   const canonical = canonicalVariableName(name)
   return VARIABLE_REGISTRY.some(v => v.name === canonical)
 }
 
 /**
  * Label shown on a variable chip; unknown names are shown as they are.
- * @param {string} name
- * @returns {string}
  */
-export function getChipLabel(name) {
+export function getChipLabel(name: string): string {
   const canonical = canonicalVariableName(name)
   return CHIP_LABELS.has(canonical) ? t(`variables.chips.${canonical}`) : getVariableLabel(canonical)
+}
+
+/** One group of the variable picker: its heading and the chip labels of its variables. */
+export interface PickerGroup {
+  key: VariableCategory
+  label: string
+  variables: { name: string, label: string }[]
 }
 
 /**
  * Variables offered in the picker, grouped under translated headings, in
  * registry order.
- * @returns {{key: string, label: string, variables: {name: string, label: string}[]}[]}
  */
-export function getPickerGroups() {
-  const groups = []
+export function getPickerGroups(): PickerGroup[] {
+  const groups: PickerGroup[] = []
   for (const variable of VARIABLE_REGISTRY) {
     if (HIDDEN_VARIABLES.has(variable.name)) continue
     let group = groups.find(g => g.key === variable.category)

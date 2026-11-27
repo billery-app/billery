@@ -258,8 +258,8 @@ import CustomerCreateModal from '../components/CustomerCreateModal.vue'
 import DocumentViewModal from '../components/DocumentViewModal.vue'
 import ConvertModal from '../components/ConvertModal.vue'
 import { useDocumentType } from '../composables/useDocumentType.js'
-import { isAccepted as _isAccepted, isPaid, isOpenInvoice } from '../utils/documentStatus.js'
-import { isInvoice, isOffer, isCostCalc } from '../data/documentTypes.js'
+import { isAccepted as _isAccepted, isPaid, isOpenInvoice } from '../utils/documentStatus.ts'
+import { isInvoice, isOffer, isCostCalc } from '../data/documentTypes.ts'
 import { convertDocument } from '../utils/documentConversion.js'
 
 export default {

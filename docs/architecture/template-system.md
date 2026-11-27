@@ -15,7 +15,7 @@
 
 A template is its **blocks** (`invoice_template.blocks`, JSON): the editor (`TemplateEditor.vue`),
 the preview and the PDF (`TemplateBasedPdfGenerator`) all work from them, with the lowercase
-German variables of `utils/variableRegistry.js`. **The PDF renderer does not fall back to HTML**:
+German variables of `utils/variableRegistry.ts`. **The PDF renderer does not fall back to HTML**:
 `TemplateBasedPdfGenerator.getTemplateForDocumentType` looks for a template with valid blocks and
 throws `IllegalStateException` if there is none; a template row without blocks (stored by the
 former DOCX/ODT import) gets the default layout from `TemplateBlocksBackfill` at the next startup.
@@ -74,18 +74,18 @@ from the blocks (placeholders kept) but read by nothing.
 
 ### Block model and registry (frontend)
 
-- `utils/blockModel.js` — array order is the block order while
+- `utils/blockModel.ts` — array order is the block order while
   editing; `normalizeBlocks` (load: sort by stored `order`, migrate
   legacy data) / `serializeBlocks` (save: `order` = index),
   `createBlock` (registry defaults + role presets), `layoutRows`
   (half-width pairing).
-- `utils/blockRegistry.js` — `BLOCK_TYPES`, one complete description
+- `utils/blockRegistry.ts` — `BLOCK_TYPES`, one complete description
   per block:
 
 | Field | Purpose |
 |-------|---------|
 | `type`, `name`, `description`, `icon` | Key and German display texts. |
-| `limits` | `{ max, required }`, enforced by `blockValidation.js`. |
+| `limits` | `{ max, required }`, enforced by `blockValidation.ts`. |
 | `defaultData` / `rolePresets` | Initial `data`; text fields hold `{{variables}}`, never sample literals. |
 | `defaultConfig` | Initial `config` incl. `format`. |
 | `formatDefaults` | Font defaults when `config.format` lacks a key (same as Java). |
@@ -97,7 +97,7 @@ The per-block reference (fields, settings, defaults) is
 
 ### Variables
 
-`utils/variableRegistry.js` lists the lowercase German variables, their
+`utils/variableRegistry.ts` lists the lowercase German variables, their
 German chip labels, groups and accepted English aliases
 ([`../reference/variables.md`](../reference/variables.md)). In the
 editor a variable is a chip (`VariableTextInput`); the field value is a
@@ -125,7 +125,7 @@ the document.
 same steps with a built-in sample document or a given invoice (the
 editor's "PDF-Vorschau").
 
-The Java renderer and `blockRegistry.js`'s `render` are separate
+The Java renderer and `blockRegistry.ts`'s `render` are separate
 implementations of the same markup. They are kept in sync by the
 renderer parity test: `backend/src/test/resources/template-parity/cases.json`
 is rendered by `TemplateParityTest` (Java) and
@@ -177,9 +177,9 @@ The editor's sample data (`SAMPLE_DATA`) only feeds the preview.
 
 | Concern | Frontend | Backend |
 |---------|----------|---------|
-| Block types | `blockRegistry.js` (`BLOCK_TYPES`, preview `render`) | `TemplateBasedPdfGenerator.render*` |
+| Block types | `blockRegistry.ts` (`BLOCK_TYPES`, preview `render`) | `TemplateBasedPdfGenerator.render*` |
 | Layout | `blockModel.layoutRows` / `composePageHtml` | `TemplateBasedPdfGenerator.layoutBlocks` |
-| Variables | `variableRegistry.js`, `renderBlockPreview.js` | `TemplateBasedPdfGenerator.replaceVariables` |
+| Variables | `variableRegistry.ts`, `renderBlockPreview.js` | `TemplateBasedPdfGenerator.replaceVariables` |
 | Config UI | `BlockConfigPanel.vue` (generated from `fields` / `settings`) | n/a — the backend trusts the JSON it receives, but escapes and validates what it prints |
 | Template CSS | `scopeCss.js` (preview only) | `cssForStyleElement` + `RestrictedUserAgent` |
 | Parity | `templateParity.spec.js` | `TemplateParityTest` (shared `template-parity/cases.json`) |

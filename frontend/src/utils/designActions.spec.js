@@ -3,9 +3,9 @@ import {
   readLayout, applyLayout,
   readDesign, applyAccentColor, applyFontFamily, applyTextSize, setPartVisible, applyLogo
 } from './designActions.js'
-import { createDefaultBlocks } from './blockModel.js'
+import { createDefaultBlocks } from './blockModel.ts'
 import { TEMPLATE_PRESETS, getPreset } from './templatePresets.js'
-import { validateBlocks } from './blockValidation.js'
+import { validateBlocks } from './blockValidation.ts'
 
 describe('designActions', () => {
   it('reads the design of the default template', () => {

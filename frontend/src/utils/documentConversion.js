@@ -1,5 +1,5 @@
 import invoiceAPI from '../services/invoiceService.js'
-import { CONVERTED, DRAFT } from './documentStatus.js'
+import { CONVERTED, DRAFT } from './documentStatus.ts'
 
 /**
  * Converts an accepted offer into an invoice draft, or an accepted cost

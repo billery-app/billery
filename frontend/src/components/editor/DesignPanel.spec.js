@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import DesignPanel from './DesignPanel.vue'
-import { createDefaultBlocks } from '../../utils/blockModel.js'
+import { createDefaultBlocks } from '../../utils/blockModel.ts'
 
 vi.mock('../../services/uploadService.js', () => ({
   uploadLogo: vi.fn(() => Promise.reject(new Error('Logo-Upload fehlgeschlagen: zu groß')))

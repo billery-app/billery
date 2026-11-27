@@ -7,7 +7,7 @@
 > [`variables.md`](./variables.md). For the editor UI itself see
 > [`editor.md`](./editor.md).
 
-Source of truth: `frontend/src/utils/blockRegistry.js` (`BLOCK_TYPES`:
+Source of truth: `frontend/src/utils/blockRegistry.ts` (`BLOCK_TYPES`:
 defaults, `fields`, `settings`, `limits`, `formatDefaults`, preview
 `render`) and the matching `render*` methods of
 `backend/src/main/java/de/billery/pdf/TemplateBasedPdfGenerator.java`.
@@ -29,7 +29,7 @@ alike.
 | Fußzeile | `footer` | max 1 | Footer text, website, registration / tax numbers |
 
 The editor refuses to save a template that breaks a limit
-(`blockValidation.js`); the library disables types that reached theirs.
+(`blockValidation.ts`); the library disables types that reached theirs.
 
 ### Common to every block
 

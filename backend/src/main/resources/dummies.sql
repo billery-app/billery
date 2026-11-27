@@ -273,7 +273,7 @@ ON CONFLICT (tenant_id, document_type_id, doc_year) DO NOTHING;
 -- are now stored as SENT (id=2). The UI still surfaces them as overdue
 -- because due_date is in the past and paid_date is NULL; the "overdue" state
 -- is now a derived property of (SENT, past due_date, no paid_date) rather than
--- a stored flag. See utils/documentStatus.js#isInvoiceOverdue.
+-- a stored flag. See utils/documentStatus.ts#isInvoiceOverdue.
 --
 -- document_number pattern: PREFIX-YYYY-NNN (RE, AN, KV, TR).
 --

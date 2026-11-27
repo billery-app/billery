@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import BlockLibrary from './BlockLibrary.vue'
-import { BLOCK_TYPES } from '../../utils/blockRegistry.js'
+import { BLOCK_TYPES } from '../../utils/blockRegistry.ts'
 
 describe('BlockLibrary - Real Rendering Tests', () => {
   const availableBlocks = BLOCK_TYPES.map(bt => ({ type: bt.type, name: bt.name, icon: bt.icon }))

@@ -134,8 +134,8 @@ import DocumentModal from '../components/DocumentModal.vue'
 import DocumentViewModal from '../components/DocumentViewModal.vue'
 import ConvertModal from '../components/ConvertModal.vue'
 import { useDocumentType } from '../composables/useDocumentType.js'
-import { isSent as _isSent, isAccepted as _isAccepted, isDraft as _isDraft, isConverted as _isConverted, isInvoiceOverdue as _isInvoiceOverdue, SENT, PAID, CANCELLED, CONVERTED, ACCEPTED } from '../utils/documentStatus.js'
-import { INVOICE as _INVOICE, OFFER as _OFFER, COST_CALCULATION as _COST_CALCULATION, isBookkeepingRecord } from '../data/documentTypes.js'
+import { isSent as _isSent, isAccepted as _isAccepted, isDraft as _isDraft, isConverted as _isConverted, isInvoiceOverdue as _isInvoiceOverdue, SENT, PAID, CANCELLED, CONVERTED, ACCEPTED } from '../utils/documentStatus.ts'
+import { INVOICE as _INVOICE, OFFER as _OFFER, COST_CALCULATION as _COST_CALCULATION, isBookkeepingRecord } from '../data/documentTypes.ts'
 import { convertDocument } from '../utils/documentConversion.js'
 
 export default {

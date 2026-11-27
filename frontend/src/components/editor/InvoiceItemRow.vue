@@ -144,7 +144,7 @@
 <script setup>
 import { useI18n } from 'vue-i18n'
 import { ref, computed } from 'vue'
-import { VAT_RATES } from '../../utils/vat.js'
+import { VAT_RATES } from '../../utils/vat.ts'
 
 const { t } = useI18n()
 
@@ -156,7 +156,7 @@ const props = defineProps({
   services: { type: /** @type {import('vue').PropType<import('@/types.js').CatalogService[]>} */ (Array), default: () => [] },
   depth: { type: Number, default: 0 },
   maxDepth: { type: Number, default: 2 },
-  // Only regularly taxed documents have a VAT rate per line (see utils/vat.js).
+  // Only regularly taxed documents have a VAT rate per line (see utils/vat.ts).
   showTaxRate: { type: Boolean, default: true }
 })
 

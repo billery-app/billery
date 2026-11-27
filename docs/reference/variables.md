@@ -8,7 +8,7 @@
 > [`../architecture/template-system.md`](../architecture/template-system.md).
 
 Source of truth for the block path:
-`frontend/src/utils/variableRegistry.js`
+`frontend/src/utils/variableRegistry.ts`
 (`VARIABLE_REGISTRY`, `CATEGORY_LABELS`, chip labels, aliases,
 `getPickerGroups`, `isKnownVariable`) and, for what the PDF prints,
 `TemplateBasedPdfGenerator.replaceVariables`.
@@ -23,7 +23,7 @@ Source of truth for the block path:
 
 ---
 
-## Block-based variables (`variableRegistry.js`)
+## Block-based variables (`variableRegistry.ts`)
 
 These are the variables the editor's picker offers (`getPickerGroups`).
 **Every variable works in every block** — the PDF renderer resolves
@@ -90,7 +90,7 @@ empty.
 
 The renderer also resolves English aliases (`company_name`,
 `client_name`, `invoice_number`, `net_amount`, `notes`, …; full list in
-`variableRegistry.js > ALIASES`). The editor treats them as known
+`variableRegistry.ts > ALIASES`). The editor treats them as known
 variables and shows the German chip label.
 
 ---
@@ -98,7 +98,7 @@ variables and shows the German chip label.
 ## Preview values
 
 The editor preview resolves variables from a preview context
-(`utils/previewData.js`): the sample document (`SAMPLE_DATA` in
+(`utils/previewData.ts`): the sample document (`SAMPLE_DATA` in
 `utils/templatePreview.js`, e.g. `Musterfirma GmbH`, `RE-2025-001`),
 overridden by the company data when it is configured (empty company
 fields stay empty, like in the PDF), overridden by the real document in
@@ -113,7 +113,7 @@ dates, `1.234,56 €`). The picker shows each variable's preview value.
   `{{firma}}` (both renderers).
 - **Unknown variables** — the editor keeps them visible in the
   preview, shows them as red chips and lists a warning
-  (`blockValidation.js`); the PDF renderer **removes** them, so a typo
+  (`blockValidation.ts`); the PDF renderer **removes** them, so a typo
   never reaches a customer.
 - **Escaping** — the resolved text is HTML-escaped before it is put
   into the block markup (`escapeBlockData` in the editor,

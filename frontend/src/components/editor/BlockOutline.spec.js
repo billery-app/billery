@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import BlockOutline, { MOVE_TYPE } from './BlockOutline.vue'
-import { createDefaultBlocks } from '../../utils/blockModel.js'
+import { createDefaultBlocks } from '../../utils/blockModel.ts'
 
 function dataTransfer(data = {}) {
   return {

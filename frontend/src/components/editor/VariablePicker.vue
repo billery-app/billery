@@ -31,7 +31,7 @@
 </template>
 
 <script>
-import { getPickerGroups } from '../../utils/variableRegistry.js'
+import { getPickerGroups } from '../../utils/variableRegistry.ts'
 
 /**
  * Searchable list of the variables a template text can contain, grouped by

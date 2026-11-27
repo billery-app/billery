@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { calculateVat, legalNote, chargesVat, formatRate } from './vat.js'
+import { calculateVat, legalNote, chargesVat, formatRate } from './vat.ts'
 
 const line = (quantity, unitPrice, taxRate, children = []) =>
   ({ itemType: 'article', quantity, unitPrice, taxRate, children })

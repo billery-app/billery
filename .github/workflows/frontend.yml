@@ -73,7 +73,7 @@ jobs:
         if: steps.diff.outputs.relevant == 'true'
         run: npm ci
 
-      # ESLint (eslint.config.js) and the type check of the source (vue-tsc on jsconfig.json, #39);
+      # ESLint (eslint.config.js) and the type check of the source (vue-tsc on tsconfig.json, #39);
       # both take seconds, so they share this job instead of starting their own runner.
       - name: Lint
         if: steps.diff.outputs.relevant == 'true'

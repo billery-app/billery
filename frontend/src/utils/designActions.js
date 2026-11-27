@@ -1,5 +1,5 @@
-import { getBlockByType, getFormat } from './blockRegistry.js'
-import { clone, createBlock } from './blockModel.js'
+import { getBlockByType, getFormat } from './blockRegistry.ts'
+import { clone, createBlock } from './blockModel.ts'
 import { t } from '../i18n/index.js'
 
 /**

@@ -135,7 +135,7 @@ Note: id=7 was formerly `OVERDUE`. It has been removed; an invoice is now
 considered overdue purely as a derived property of
 `(SENT or PARTIALLY_PAID) + past due_date + no paid_date`. PARTIALLY_PAID uses
 id 9, not 7, because `migrateDropOverdueStatus` still repoints rows with 7. The helper that
-computes it lives in `frontend/src/utils/documentStatus.js#isInvoiceOverdue`.
+computes it lives in `frontend/src/utils/documentStatus.ts#isInvoiceOverdue`.
 ```
 
 The `DocumentStrategyRegistry` in [`backend.md`](./backend.md) maps

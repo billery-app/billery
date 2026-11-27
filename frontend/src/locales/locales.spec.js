@@ -11,7 +11,7 @@ function keys(tree, prefix = '') {
 }
 
 // every source file of the app, as text (the spec files are left out)
-const sources = import.meta.glob(['../**/*.{js,vue}', '!../**/*.spec.js', '!../test/**'], {
+const sources = import.meta.glob(['../**/*.{js,ts,vue}', '!../**/*.spec.{js,ts}', '!../**/*.d.ts', '!../test/**'], {
   query: '?raw',
   import: 'default',
   eager: true

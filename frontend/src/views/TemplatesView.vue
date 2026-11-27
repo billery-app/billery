@@ -126,7 +126,7 @@
 <script>
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { getDocumentTypeById } from '../data/documentTypes.js'
+import { getDocumentTypeById } from '../data/documentTypes.ts'
 import { useRouter } from 'vue-router'
 import { runTemplateTour } from '../utils/tour.js'
 import TemplateEditor from '../components/TemplateEditor.vue'
@@ -134,8 +134,8 @@ import TemplateStartModal from '../components/template/TemplateStartModal.vue'
 import TemplateThumbnail from '../components/template/TemplateThumbnail.vue'
 import templateAPI from '../services/templateService.js'
 import documentAPI from '../services/documentService.js'
-import { normalizeBlocks } from '../utils/blockModel.js'
-import { templateToSections } from '../utils/documentExchange.js'
+import { normalizeBlocks } from '../utils/blockModel.ts'
+import { templateToSections } from '../utils/documentExchange.ts'
 import { downloadBlob } from '../utils/fileValidation.js'
 
 export default {
@@ -264,7 +264,7 @@ export default {
 
     /**
      * Downloads a template as DOCX or ODT: one section per block with its texts
-     * (utils/documentExchange.js), which the start dialog can read back.
+     * (utils/documentExchange.ts), which the start dialog can read back.
      */
     const exportTemplate = async (template, format) => {
       const sections = templateToSections(normalizeBlocks(template.blocks))
