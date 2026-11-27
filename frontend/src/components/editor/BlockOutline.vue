@@ -1,8 +1,8 @@
 <template>
   <div class="block-outline">
-    <h3 class="outline-title">Aufbau</h3>
-    <p class="outline-hint">Reihenfolge per Ziehen oder mit den Pfeilen ändern.</p>
-    <ol class="outline-list" role="listbox" aria-label="Blöcke des Dokuments">
+    <h3 class="outline-title">{{ $t('outline.title') }}</h3>
+    <p class="outline-hint">{{ $t('outline.hint') }}</p>
+    <ol class="outline-list" role="listbox" :aria-label="$t('outline.list')">
       <li
         v-for="(block, index) in blocks"
         :key="block.id"
@@ -27,8 +27,8 @@
         <span class="item-name">{{ displayName(block) }}</span>
         <span v-if="issueCount(block)" class="issue-badge" :title="issueTitle(block)">!</span>
         <span class="item-actions">
-          <button type="button" :disabled="index === 0" title="Nach oben" aria-label="Nach oben" @click.stop="$emit('move', index, index - 1)">↑</button>
-          <button type="button" :disabled="index === blocks.length - 1" title="Nach unten" aria-label="Nach unten" @click.stop="$emit('move', index, index + 1)">↓</button>
+          <button type="button" :disabled="index === 0" :title="$t('editor.up')" :aria-label="$t('editor.up')" @click.stop="$emit('move', index, index - 1)">↑</button>
+          <button type="button" :disabled="index === blocks.length - 1" :title="$t('editor.down')" :aria-label="$t('editor.down')" @click.stop="$emit('move', index, index + 1)">↓</button>
         </span>
       </li>
       <li

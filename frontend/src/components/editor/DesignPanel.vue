@@ -1,26 +1,26 @@
 <template>
   <div class="design-panel">
     <section class="design-section">
-      <h3>Logo</h3>
+      <h3>{{ $t('design.logo') }}</h3>
       <div class="logo-row">
         <div class="logo-box" :class="{ empty: !design.logoUrl }">
           <img v-if="design.logoUrl" :src="design.logoUrl" alt="Logo" />
-          <span v-else>Kein Logo</span>
+          <span v-else>{{ $t('design.noLogo') }}</span>
         </div>
         <div class="logo-actions">
           <label class="btn-secondary-sm">
             <input type="file" accept="image/png,image/jpeg,image/gif" :disabled="uploading" @change="onLogoFile" />
-            {{ uploading ? 'Wird hochgeladen …' : (design.logoUrl ? 'Ändern' : 'Hochladen') }}
+            {{ uploading ? $t('design.uploading') : (design.logoUrl ? $t('design.change') : $t('design.upload')) }}
           </label>
-          <button v-if="design.logoUrl" type="button" class="btn-link" @click="emitBlocks(applyLogo(blocks, ''))">Entfernen</button>
+          <button v-if="design.logoUrl" type="button" class="btn-link" @click="emitBlocks(applyLogo(blocks, ''))">{{ $t('editor.remove') }}</button>
         </div>
       </div>
     </section>
 
     <section class="design-section">
-      <h3>Akzentfarbe</h3>
-      <p class="section-hint">Für Firmenname und Gesamtbetrag.</p>
-      <div class="swatches" role="radiogroup" aria-label="Akzentfarbe">
+      <h3>{{ $t('design.accent') }}</h3>
+      <p class="section-hint">{{ $t('design.accentHint') }}</p>
+      <div class="swatches" role="radiogroup" :aria-label="$t('design.accent')">
         <button
           v-for="color in accentColors"
           :key="color"
@@ -33,20 +33,20 @@
           :style="{ background: color }"
           @click="emitBlocks(applyAccentColor(blocks, color))"
         ></button>
-        <label class="swatch custom" title="Eigene Farbe">
-          <input type="color" :value="design.accentColor" aria-label="Eigene Akzentfarbe" @input="emitBlocks(applyAccentColor(blocks, inputValue($event)))" />
+        <label class="swatch custom" :title="$t('design.ownColor')">
+          <input type="color" :value="design.accentColor" :aria-label="$t('design.ownAccent')" @input="emitBlocks(applyAccentColor(blocks, inputValue($event)))" />
           +
         </label>
       </div>
     </section>
 
     <section class="design-section">
-      <h3>Schrift</h3>
-      <p class="section-hint">Im PDF wird die passende Standardschrift verwendet (Helvetica, Times oder Courier).</p>
-      <select class="form-select" :value="design.fontFamily" aria-label="Schriftart" @change="emitBlocks(applyFontFamily(blocks, inputValue($event)))">
+      <h3>{{ $t('design.font') }}</h3>
+      <p class="section-hint">{{ $t('design.fontHint') }}</p>
+      <select class="form-select" :value="design.fontFamily" :aria-label="$t('design.fontFamily')" @change="emitBlocks(applyFontFamily(blocks, inputValue($event)))">
         <option v-for="font in fonts" :key="font" :value="font" :style="{ fontFamily: font }">{{ font }}</option>
       </select>
-      <div class="segmented" role="radiogroup" aria-label="Textgröße">
+      <div class="segmented" role="radiogroup" :aria-label="$t('design.textSize')">
         <button
           v-for="size in textSizes"
           :key="size.key"
@@ -62,9 +62,9 @@
     </section>
 
     <section class="design-section">
-      <h3>Anordnung</h3>
-      <p class="section-hint">Empfänger und Dokumentdaten (Nummer, Datum).</p>
-      <div class="segmented" role="radiogroup" aria-label="Anordnung von Empfänger und Dokumentdaten">
+      <h3>{{ $t('design.arrangement') }}</h3>
+      <p class="section-hint">{{ $t('design.arrangementHint') }}</p>
+      <div class="segmented" role="radiogroup" :aria-label="$t('design.arrangementLabel')">
         <button
           v-for="layout in layouts"
           :key="layout.key"
@@ -80,7 +80,7 @@
     </section>
 
     <section class="design-section">
-      <h3>Inhalte</h3>
+      <h3>{{ $t('design.contents') }}</h3>
       <label v-for="part in parts" :key="part.key" class="check-row">
         <input type="checkbox" :checked="design.parts[part.key]" @change="emitBlocks(setPartVisible(blocks, part.key, inputChecked($event)))" />
         {{ part.label }}
@@ -88,8 +88,8 @@
     </section>
 
     <section class="design-section">
-      <h3>Seitenränder</h3>
-      <div class="segmented" role="radiogroup" aria-label="Seitenränder">
+      <h3>{{ $t('design.pageMargins') }}</h3>
+      <div class="segmented" role="radiogroup" :aria-label="$t('design.pageMargins')">
         <button
           v-for="preset in marginPresets"
           :key="preset.key"
@@ -103,10 +103,10 @@
         </button>
       </div>
       <details class="custom-margins" :open="marginPreset === 'custom'">
-        <summary>Eigene Ränder (mm)</summary>
+        <summary>{{ $t('design.ownMargins') }}</summary>
         <div class="margin-grid">
           <label v-for="side in marginSides" :key="side.key">
-            {{ side.label }}
+            {{ $t(side.labelKey) }}
             <input
               type="number"
               min="0"
@@ -119,11 +119,11 @@
       </details>
     </section>
 
-    <p class="design-footnote">
-      Firmenname, Adresse und IBAN kommen aus den
-      <router-link v-if="hasRouter" to="/owners">Firmendaten</router-link><span v-else>Firmendaten</span>.
-      Für einzelne Texte und Bezeichnungen wechseln Sie oben auf „Blöcke“.
-    </p>
+    <i18n-t keypath="design.footnote" tag="p" class="design-footnote" scope="global">
+      <template #link>
+        <router-link v-if="hasRouter" to="/owners">{{ $t('design.companyData') }}</router-link><span v-else>{{ $t('design.companyData') }}</span>
+      </template>
+    </i18n-t>
   </div>
 </template>
 
@@ -162,10 +162,10 @@ export default {
       layouts: LAYOUTS,
       accentColors: ['#2563eb', '#0f766e', '#7c3aed', '#be123c', '#c2410c', '#374151', '#111827'],
       marginSides: [
-        { key: 'marginTopMm', label: 'Oben' },
-        { key: 'marginRightMm', label: 'Rechts' },
-        { key: 'marginBottomMm', label: 'Unten' },
-        { key: 'marginLeftMm', label: 'Links' }
+        { key: 'marginTopMm', labelKey: 'design.sides.top' },
+        { key: 'marginRightMm', labelKey: 'design.sides.right' },
+        { key: 'marginBottomMm', labelKey: 'design.sides.bottom' },
+        { key: 'marginLeftMm', labelKey: 'design.sides.left' }
       ]
     }
   },

@@ -876,5 +876,474 @@
     "confirmLoseOwn": "Sie sind dabei, die individuelle Vorlage für dieses Dokument zu entfernen. Sind Sie sicher?",
     "confirmCancel": "Möchten Sie dieses Dokument wirklich stornieren?",
     "issuedFrozen": "Ausgestellte Rechnungen können nicht mehr geändert werden. Bitte stornieren und eine korrigierte Rechnung erstellen."
+  },
+  "blocks": {
+    "header": {
+      "name": "Kopfzeile",
+      "description": "Firmenname, Slogan und Logo",
+      "fields": {
+        "companyName": {
+          "label": "Firmenname"
+        },
+        "companySlogan": {
+          "label": "Slogan",
+          "placeholder": "z. B. Ihr Partner für ..."
+        },
+        "logoUrl": {
+          "label": "Logo"
+        },
+        "showSlogan": {
+          "label": "Slogan anzeigen"
+        },
+        "logoAlignment": {
+          "label": "Logo-Position",
+          "options": {
+            "left": "Links neben dem Namen",
+            "right": "Rechts",
+            "top": "Oberhalb, zentriert"
+          }
+        }
+      }
+    },
+    "common": {
+      "width": {
+        "label": "Breite",
+        "options": {
+          "full": "Ganze Breite",
+          "half": "Halbe Breite (neben dem nächsten halben Block)"
+        }
+      },
+      "autoHint": "Leer lassen: wird automatisch aus dem Dokument übernommen.",
+      "alignment": {
+        "left": "Links",
+        "center": "Mitte",
+        "right": "Rechts"
+      }
+    },
+    "address": {
+      "name": "Adresse",
+      "description": "Absender oder Empfänger",
+      "fields": {
+        "role": {
+          "label": "Art",
+          "options": {
+            "sender": "Absender (Ihre Firma)",
+            "receiver": "Empfänger (Kunde)"
+          }
+        },
+        "name": {
+          "label": "Name"
+        },
+        "address": {
+          "label": "Adresse"
+        },
+        "email": {
+          "label": "E-Mail"
+        },
+        "phone": {
+          "label": "Telefon"
+        },
+        "vatId": {
+          "label": "USt-IdNr."
+        },
+        "showLabels": {
+          "label": "Überschrift anzeigen"
+        },
+        "label": {
+          "label": "Überschrift"
+        }
+      },
+      "roles": {
+        "sender": "Absender",
+        "receiver": "Empfänger"
+      }
+    },
+    "invoice-meta": {
+      "name": "Dokumentdaten",
+      "description": "Titel, Nummer, Datum, Fälligkeit",
+      "fields": {
+        "invoiceTitle": {
+          "label": "Titel",
+          "placeholder": "z. B. Rechnung",
+          "help": "Leer lassen: kein Titel."
+        },
+        "invoiceId": {
+          "label": "Dokumentnummer"
+        },
+        "invoiceDate": {
+          "label": "Datum"
+        },
+        "dueDate": {
+          "label": "Fällig am"
+        },
+        "orderNumber": {
+          "label": "Bestellnummer"
+        },
+        "leistungsdatum": {
+          "label": "Leistungsdatum"
+        },
+        "leistungszeitraum": {
+          "label": "Leistungszeitraum"
+        },
+        "showOrderNumber": {
+          "label": "Bestellnummer anzeigen"
+        },
+        "alignment": {
+          "label": "Ausrichtung"
+        }
+      }
+    },
+    "line-items": {
+      "name": "Positionen",
+      "description": "Tabelle der Artikel und Leistungen",
+      "fields": {
+        "columns": {
+          "label": "Spalten",
+          "help": "Bei gemischten Steuersätzen wird automatisch eine USt.-Spalte ergänzt."
+        }
+      }
+    },
+    "totals": {
+      "name": "Summen",
+      "description": "Netto, Steuer je Satz, Gesamtbetrag",
+      "fields": {
+        "showTax": {
+          "label": "Steuer anzeigen",
+          "help": "Bei Kleinunternehmern oder Reverse Charge wird keine Steuer ausgewiesen, sondern der gesetzliche Hinweis gedruckt."
+        },
+        "labelSubtotal": {
+          "label": "Bezeichnung Netto"
+        },
+        "labelTax": {
+          "label": "Bezeichnung Steuer"
+        },
+        "labelTotal": {
+          "label": "Bezeichnung Gesamt"
+        },
+        "alignment": {
+          "label": "Ausrichtung"
+        }
+      }
+    },
+    "payment": {
+      "name": "Zahlungsdaten",
+      "description": "Bankverbindung und Verwendungszweck",
+      "fields": {
+        "paymentMethod": {
+          "label": "Zahlungsart"
+        },
+        "bankName": {
+          "label": "Bank",
+          "placeholder": "z. B. Sparkasse ..."
+        },
+        "iban": {
+          "label": "IBAN"
+        },
+        "bic": {
+          "label": "BIC"
+        },
+        "reference": {
+          "label": "Verwendungszweck"
+        },
+        "showBic": {
+          "label": "BIC anzeigen"
+        }
+      }
+    },
+    "notes": {
+      "name": "Hinweise",
+      "description": "Freitext, z. B. Notizen oder Zahlungsbedingungen",
+      "fields": {
+        "content": {
+          "label": "Text",
+          "help": "Ist der Text leer, wird der Block nicht gedruckt."
+        },
+        "showTitle": {
+          "label": "Überschrift anzeigen"
+        },
+        "title": {
+          "label": "Überschrift"
+        },
+        "showBox": {
+          "label": "Farbige Box"
+        },
+        "backgroundColor": {
+          "label": "Hintergrundfarbe"
+        },
+        "borderColor": {
+          "label": "Randfarbe"
+        }
+      }
+    },
+    "footer": {
+      "name": "Fußzeile",
+      "description": "Dank, Website, Register- und Steuernummer",
+      "fields": {
+        "text": {
+          "label": "Text"
+        },
+        "website": {
+          "label": "Website"
+        },
+        "registrationNumber": {
+          "label": "Registernummer",
+          "placeholder": "z. B. HRB 12345"
+        },
+        "taxNumber": {
+          "label": "Steuernummer"
+        },
+        "layout": {
+          "label": "Ausrichtung",
+          "options": {
+            "left": "Links",
+            "centered": "Zentriert"
+          }
+        }
+      }
+    }
+  },
+  "variables": {
+    "labels": {
+      "firma": "Firma",
+      "adresse": "Adresse",
+      "telefon": "Telefon",
+      "email": "E-Mail",
+      "website": "Website",
+      "ust_id": "UST-ID",
+      "kunde": "Kunde",
+      "kunde_strasse": "Straße",
+      "kunde_plz_ort": "PLZ/Ort",
+      "kunde_email": "E-Mail",
+      "kunde_telefon": "Telefon",
+      "rechnungsnummer": "Rechnungsnummer",
+      "rechnungsdatum": "Rechnungsdatum",
+      "faelligkeitsdatum": "Fälligkeitsdatum",
+      "leistungsdatum": "Leistungsdatum",
+      "leistungszeitraum": "Leistungszeitraum",
+      "notizen": "Notizen",
+      "kleinunternehmer_hinweis": "Kleinunternehmer-Hinweis",
+      "netto": "Netto",
+      "steuersatz": "MwSt.-Satz",
+      "steuer": "MwSt.-Betrag",
+      "betrag": "Gesamtbetrag",
+      "rabatt": "Rabatt",
+      "waehrung": "Währung",
+      "bank_name": "Bank",
+      "iban": "IBAN",
+      "bic": "BIC",
+      "verwendungszweck": "Verwendungszweck"
+    },
+    "chips": {
+      "firma": "Firmenname",
+      "adresse": "Firmenadresse",
+      "telefon": "Firmentelefon",
+      "email": "Firmen-E-Mail",
+      "website": "Website",
+      "ust_id": "USt-IdNr.",
+      "kunde": "Kundenname",
+      "kunde_strasse": "Kunde: Straße",
+      "kunde_plz_ort": "Kunde: PLZ/Ort",
+      "kunde_email": "Kunde: E-Mail",
+      "kunde_telefon": "Kunde: Telefon"
+    },
+    "groups": {
+      "Company": "Ihre Firma",
+      "Client": "Kunde",
+      "Invoice": "Dokument",
+      "Totals": "Beträge",
+      "Payment": "Zahlung"
+    },
+    "insert": "Platzhalter einfügen",
+    "searchPlaceholder": "Suchen, z. B. Kunde, Datum …",
+    "search": "Platzhalter suchen",
+    "none": "Kein Platzhalter gefunden.",
+    "insertHint": "Platzhalter einfügen (oder {'@'} tippen)",
+    "add": "+ Platzhalter",
+    "chipKnown": "Wird beim Erstellen des Dokuments ersetzt",
+    "chipUnknown": "Unbekannter Platzhalter „{name}“: wird nicht gedruckt"
+  },
+  "editor": {
+    "issues": {
+      "required": "Der Block „{name}“ fehlt. Jedes Dokument braucht ihn.",
+      "once": "„{name}“ darf nur einmal vorkommen.",
+      "max": "„{name}“ darf nur {max}-mal vorkommen.",
+      "noReceiver": "Es gibt keine Empfänger-Adresse: der Kunde erscheint nicht auf dem Dokument.",
+      "sameRole": "Zwei Adressblöcke haben dieselbe Art (Absender/Empfänger).",
+      "unknownBlock": "Unbekannter Block „{type}“ wird nicht gedruckt.",
+      "unknownVariable": "{block} › {field}: Platzhalter „{name}“ ist unbekannt und wird nicht gedruckt."
+    },
+    "name": "Name der Vorlage",
+    "documentType": "Dokumenttyp",
+    "defaultFor": "Standard für {type}",
+    "onlyOneHint": "Diese Vorlage gilt nur für ein Dokument",
+    "onlyOne": "Nur für dieses Dokument",
+    "undoHint": "Rückgängig (Strg+Z)",
+    "undo": "Rückgängig",
+    "redoHint": "Wiederholen (Strg+Y)",
+    "redo": "Wiederholen",
+    "pdfHint": "So sieht das fertige PDF aus",
+    "pdfCreating": "PDF wird erstellt …",
+    "pdfPreview": "PDF-Vorschau",
+    "workspace": "Editorbereich",
+    "preview": "Vorschau",
+    "tools": "Werkzeuge",
+    "block": "Block",
+    "design": "Design",
+    "blocks": "Blöcke",
+    "cssTitle": "Für Fortgeschrittene: eigenes CSS",
+    "cssHint": "Gilt für das gedruckte Dokument. Externe Dateien ({'@'}import, url(...)) werden nicht geladen.",
+    "css": "Eigenes CSS",
+    "closeTools": "Werkzeuge schließen",
+    "previewData": "Vorschaudaten",
+    "thisDocument": "Dieses Dokument",
+    "sampleData": "Beispieldaten",
+    "previewWithOwner": "Vorschau mit Ihren Firmendaten und Beispieldaten",
+    "previewWithSample": "Vorschau mit Beispieldaten",
+    "zoomOut": "Verkleinern",
+    "zoomIn": "Vergrößern",
+    "fitHint": "Seite an die Breite des Fensters anpassen",
+    "fit": "Seitenbreite",
+    "upHint": "Nach oben (Alt+↑)",
+    "up": "Nach oben",
+    "downHint": "Nach unten (Alt+↓)",
+    "down": "Nach unten",
+    "duplicateHint": "Duplizieren (Strg+D)",
+    "duplicate": "Duplizieren",
+    "removeHint": "Entfernen (Entf)",
+    "remove": "Entfernen",
+    "empty": "Die Vorlage ist leer. Fügen Sie unter „Werkzeuge“ bei „Blöcke“ Inhalte hinzu.",
+    "pdfTitleSample": "PDF-Vorschau (Beispieldaten) – noch nicht gespeichert",
+    "pdfTitleLive": "PDF-Vorschau (dieses Dokument) – noch nicht gespeichert",
+    "pdfFile": "vorschau.pdf",
+    "download": "Herunterladen",
+    "unsavedTitle": "Ungespeicherte Änderungen",
+    "unsavedText": "Sie haben ungespeicherte Änderungen an dieser Vorlage. Möchten Sie diese vor dem Schließen speichern?",
+    "discard": "Verwerfen",
+    "nameMissing": "Bitte geben Sie der Vorlage einen Namen.",
+    "saveHint": "Vorlage speichern",
+    "emptyBlock": "{name}: wird nur gedruckt, wenn Text vorhanden ist",
+    "alreadyThere": "„{name}“ ist bereits vorhanden.",
+    "removed": "„{name}“ entfernt – Strg+Z macht es rückgängig.",
+    "pdfFailed": "PDF-Vorschau fehlgeschlagen: {reason}"
+  },
+  "design": {
+    "sizes": {
+      "small": "Klein",
+      "normal": "Normal",
+      "large": "Groß"
+    },
+    "margins": {
+      "narrow": "Schmal",
+      "normal": "Normal",
+      "wide": "Breit"
+    },
+    "layouts": {
+      "stacked": "Untereinander",
+      "compact": "Nebeneinander"
+    },
+    "parts": {
+      "sender": "Absenderadresse",
+      "notes": "Hinweise (Notizen des Dokuments)",
+      "payment": "Bankverbindung",
+      "footer": "Fußzeile"
+    },
+    "logo": "Logo",
+    "noLogo": "Kein Logo",
+    "uploading": "Wird hochgeladen …",
+    "change": "Ändern",
+    "upload": "Hochladen",
+    "accent": "Akzentfarbe",
+    "accentHint": "Für Firmenname und Gesamtbetrag.",
+    "ownColor": "Eigene Farbe",
+    "ownAccent": "Eigene Akzentfarbe",
+    "font": "Schrift",
+    "fontHint": "Im PDF wird die passende Standardschrift verwendet (Helvetica, Times oder Courier).",
+    "fontFamily": "Schriftart",
+    "textSize": "Textgröße",
+    "arrangement": "Anordnung",
+    "arrangementHint": "Empfänger und Dokumentdaten (Nummer, Datum).",
+    "arrangementLabel": "Anordnung von Empfänger und Dokumentdaten",
+    "contents": "Inhalte",
+    "pageMargins": "Seitenränder",
+    "ownMargins": "Eigene Ränder (mm)",
+    "sides": {
+      "top": "Oben",
+      "right": "Rechts",
+      "bottom": "Unten",
+      "left": "Links"
+    },
+    "footnote": "Firmenname, Adresse und IBAN kommen aus den {link}. Für einzelne Texte und Bezeichnungen wechseln Sie oben auf „Blöcke“.",
+    "companyData": "Firmendaten"
+  },
+  "presets": {
+    "modern": {
+      "name": "Modern",
+      "description": "Klare Schrift, blaue Akzentfarbe, Hinweise in farbiger Box."
+    },
+    "classic": {
+      "name": "Klassisch",
+      "description": "Serifenschrift, dezentes Schwarz, Empfänger und Dokumentdaten nebeneinander."
+    },
+    "minimal": {
+      "name": "Minimal",
+      "description": "Nur das Nötigste: ohne Absenderblock, Hinweise und Fußzeile."
+    },
+    "empty": {
+      "name": "Leer",
+      "description": "Nur die Pflichtbestandteile – für eigene Gestaltung."
+    }
+  },
+  "fileValidation": {
+    "none": "Bitte eine Datei auswählen.",
+    "type": "Bitte eine DOCX- oder ODT-Datei wählen.",
+    "size": "Die Datei ist zu groß (höchstens {max})."
+  },
+  "startError": {
+    "title": "Anmeldung nicht möglich",
+    "text": "Bitte später erneut versuchen. Besteht das Problem weiter, wenden Sie sich an den Betreiber.",
+    "retry": "Erneut versuchen"
+  },
+  "blockPanel": {
+    "title": "Block bearbeiten",
+    "closeHint": "Schließen (Esc)",
+    "automatic": "Dieser Block zeigt automatisch die Daten des Dokuments. Bezeichnungen und Darstellung finden Sie unter „Darstellung“.",
+    "removeLogo": "Logo entfernen",
+    "otherLogo": "Anderes Logo wählen",
+    "uploadLogo": "Logo hochladen",
+    "dropHint": "oder Bild hierher ziehen (PNG, JPG, GIF)",
+    "showColumn": "Spalte {name} anzeigen",
+    "columnHeading": "Überschrift der Spalte {name}",
+    "left": "Nach links",
+    "right": "Nach rechts",
+    "size": "Größe",
+    "smaller": "Kleiner",
+    "larger": "Größer",
+    "color": "Farbe",
+    "bold": "Fett",
+    "duplicateHint": "Block duplizieren",
+    "removeHint": "Block entfernen (Entf)",
+    "content": "Inhalt",
+    "style": "Darstellung"
+  },
+  "outline": {
+    "title": "Aufbau",
+    "hint": "Reihenfolge per Ziehen oder mit den Pfeilen ändern.",
+    "list": "Blöcke des Dokuments"
+  },
+  "library": {
+    "title": "Block hinzufügen",
+    "hint": "Klicken oder in die Vorschau ziehen",
+    "present": "{name} ist bereits vorhanden"
+  },
+  "templateStart": {
+    "title": "Neue Vorlage",
+    "intro": "Wählen Sie, wofür die Vorlage ist, und einen Stil als Ausgangspunkt. Alles lässt sich danach anpassen.",
+    "style": "Stil",
+    "importHint": "Oder die Texte einer Word- oder ODT-Datei in den gewählten Stil übernehmen. Abschnitte wie „Kopfzeile“ oder „Fußzeile“ mit Zeilen wie „Text: …“ (so sieht ein Export aus) landen in ihren Blöcken, übriger Text unter „Hinweise“.",
+    "file": "Word- oder ODT-Datei für die Vorlage",
+    "reading": "Datei wird gelesen …",
+    "fromFile": "Aus Datei übernehmen …",
+    "next": "Weiter",
+    "importFailed": "Die Datei konnte nicht übernommen werden."
   }
 }

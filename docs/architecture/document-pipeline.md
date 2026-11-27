@@ -295,14 +295,15 @@ Fußzeile
 Text: Vielen Dank für Ihr Vertrauen!
 ```
 
-One section per block with text (its display name, "Adresse – Absender", a second block of the
+One section per block with text (its German name, "Adresse – Absender", a second block of the
 same kind "Hinweise (2)"); one line "Label: Wert" per text field, further lines of a multi-line
 field on lines of their own; `{{variables}}` as they are. Line items and totals have no section:
 their content comes from the document.
 
 **Who does what.** The backend only converts files and sections; the mapping between sections and
-blocks lives in the SPA, which knows the fields (`utils/documentExchange.js` with the labels of
-`blockRegistry.js`):
+blocks lives in the SPA, which knows the fields (`utils/documentExchange.js` with the German
+`exchangeName` / `exchangeLabel` of `blockRegistry.js`). The words stay German in every interface
+language (#15), so a file exported in the English interface imports in the German one and back:
 
 - **Export** — Templates view, buttons "DOCX" / "ODT" on each template:
   `templateToSections(blocks)` → `POST /api/documents/export` `{name, format, sections}` →

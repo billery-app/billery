@@ -1,12 +1,12 @@
 <template>
-  <div class="variable-picker" role="dialog" aria-label="Platzhalter einfügen" @keydown="onKeydown" @focusout="onFocusOut">
+  <div class="variable-picker" role="dialog" :aria-label="$t('variables.insert')" @keydown="onKeydown" @focusout="onFocusOut">
     <input
       ref="search"
       v-model="query"
       class="picker-search"
       type="text"
-      placeholder="Suchen, z. B. Kunde, Datum …"
-      aria-label="Platzhalter suchen"
+      :placeholder="$t('variables.searchPlaceholder')"
+      :aria-label="$t('variables.search')"
     />
     <div class="picker-list" role="listbox">
       <template v-for="group in filteredGroups" :key="group.key">
@@ -25,7 +25,7 @@
           <span v-if="sampleValue(variable.name)" class="picker-sample">{{ sampleValue(variable.name) }}</span>
         </button>
       </template>
-      <p v-if="flat.length === 0" class="picker-empty">Kein Platzhalter gefunden.</p>
+      <p v-if="flat.length === 0" class="picker-empty">{{ $t('variables.none') }}</p>
     </div>
   </div>
 </template>

@@ -2,7 +2,8 @@
  * The template exchange format with word processors (DOCX / ODT, `POST /api/documents/export` and
  * `/import`). The backend only converts between the files and a list of sections
  * (`{ heading, paragraphs }`); which block and field a line belongs to is decided here, because the
- * block registry knows the fields and their German labels.
+ * block registry knows the fields and their German labels (`exchangeName` / `exchangeLabel`: the
+ * exchange stays German in every interface language, so a file always imports).
  *
  * A section is one block: the heading is its display name ("Kopfzeile", "Adresse – Absender",
  * "Hinweise" …; a second block of the same kind gets " (2)"), each line below is "Label: Wert" for
@@ -14,7 +15,7 @@
  * every section whose heading is no block (an ordinary letter from Word), becomes free text, which
  * goes into the notes block ("Hinweise") before its `{{notizen}}`.
  */
-import { BLOCK_TYPES, blockDisplayName, getBlockByType } from './blockRegistry.js'
+import { BLOCK_TYPES, blockExchangeName, getBlockByType } from './blockRegistry.js'
 import { clone, createBlock } from './blockModel.js'
 
 /** Field kinds that hold text the exchange carries; images, selects and columns stay in Billery. */
@@ -35,7 +36,7 @@ function normalize(text) {
 function headingsOf(blocks) {
   const seen = new Map()
   return blocks.map(block => {
-    const name = blockDisplayName(block)
+    const name = blockExchangeName(block)
     const count = (seen.get(name) || 0) + 1
     seen.set(name, count)
     return count === 1 ? name : `${name} (${count})`
@@ -56,7 +57,7 @@ export function templateToSections(blocks) {
       const value = String(block.data?.[field.key] ?? '')
       if (!value.trim()) continue
       const lines = value.split(/\r?\n/)
-      paragraphs.push(`${field.label}: ${lines[0]}`.trimEnd())
+      paragraphs.push(`${field.exchangeLabel}: ${lines[0]}`.trimEnd())
       for (const line of lines.slice(1)) {
         if (line.trim()) paragraphs.push(line)
       }
@@ -117,7 +118,7 @@ function findBlock(blocks, heading) {
   const occurrence = Number(match[2] || 1)
   let count = 0
   for (const block of blocks) {
-    if (normalize(blockDisplayName(block)) === name || normalize(getBlockByType(block.type)?.name) === name) {
+    if (normalize(blockExchangeName(block)) === name || normalize(getBlockByType(block.type)?.exchangeName) === name) {
       count += 1
       if (count === occurrence) return block
     }
@@ -131,9 +132,9 @@ function createMissingBlock(blocks, name) {
     if (type.type === 'address') {
       for (const role of ['sender', 'receiver']) {
         const block = createBlock('address', { role })
-        if (normalize(blockDisplayName(block)) === name) return insertBeforeFooter(blocks, block)
+        if (normalize(blockExchangeName(block)) === name) return insertBeforeFooter(blocks, block)
       }
-    } else if (normalize(type.name) === name && textFields(type.type).length) {
+    } else if (normalize(type.exchangeName) === name && textFields(type.type).length) {
       return insertBeforeFooter(blocks, createBlock(type.type))
     }
   }
@@ -151,7 +152,7 @@ function matchField(fields, line) {
   const colon = line.indexOf(':')
   if (colon <= 0) return null
   const label = normalize(line.slice(0, colon))
-  const field = fields.find(f => normalize(f.label) === label)
+  const field = fields.find(f => normalize(f.exchangeLabel) === label)
   return field ? { field, value: line.slice(colon + 1).trim() } : null
 }
 

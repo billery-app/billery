@@ -7,39 +7,39 @@
           v-model="form.name"
           class="name-input"
           type="text"
-          placeholder="Name der Vorlage"
-          aria-label="Name der Vorlage"
+          :placeholder="$t('editor.name')"
+          :aria-label="$t('editor.name')"
           maxlength="120"
         />
         <select
           v-if="!isDocumentContext"
           class="type-select"
           :value="form.documentTypeId"
-          aria-label="Dokumenttyp"
+          :aria-label="$t('editor.documentType')"
           @change="changeDocumentType(Number(inputValue($event)))"
         >
           <option v-for="dt in documentTypeOptions" :key="dt.id" :value="dt.id">{{ dt.label }}</option>
         </select>
         <label v-if="!isDocumentContext" class="default-check">
           <input v-model="form.isDefault" type="checkbox" />
-          Standard für {{ documentTypeLabel }}
+          {{ $t('editor.defaultFor', { type: documentTypeLabel }) }}
         </label>
-        <span v-else class="doc-specific-badge" title="Diese Vorlage gilt nur für ein Dokument">Nur für dieses Dokument</span>
+        <span v-else class="doc-specific-badge" :title="$t('editor.onlyOneHint')">{{ $t('editor.onlyOne') }}</span>
       </div>
 
       <div class="header-actions" data-tour="editor-actions">
-        <button type="button" class="btn-icon" :disabled="!history.canUndo.value" title="Rückgängig (Strg+Z)" aria-label="Rückgängig" @click="undo">↶</button>
-        <button type="button" class="btn-icon" :disabled="!history.canRedo.value" title="Wiederholen (Strg+Y)" aria-label="Wiederholen" @click="redo">↷</button>
+        <button type="button" class="btn-icon" :disabled="!history.canUndo.value" :title="$t('editor.undoHint')" :aria-label="$t('editor.undo')" @click="undo">↶</button>
+        <button type="button" class="btn-icon" :disabled="!history.canRedo.value" :title="$t('editor.redoHint')" :aria-label="$t('editor.redo')" @click="redo">↷</button>
         <span class="header-divider"></span>
-        <button type="button" class="btn btn-outline" :disabled="pdfLoading || validation.errors.length > 0" title="So sieht das fertige PDF aus" @click="openPdfPreview">
-          {{ pdfLoading ? 'PDF wird erstellt …' : 'PDF-Vorschau' }}
+        <button type="button" class="btn btn-outline" :disabled="pdfLoading || validation.errors.length > 0" :title="$t('editor.pdfHint')" @click="openPdfPreview">
+          {{ pdfLoading ? $t('editor.pdfCreating') : $t('editor.pdfPreview') }}
         </button>
-        <button type="button" class="btn btn-secondary" data-tour="editor-cancel" @click="handleCancelRequest">Abbrechen</button>
-        <button type="button" class="btn btn-primary" :disabled="!canSave" :title="saveHint" @click="saveTemplate">Speichern</button>
+        <button type="button" class="btn btn-secondary" data-tour="editor-cancel" @click="handleCancelRequest">{{ $t('common.cancel') }}</button>
+        <button type="button" class="btn btn-primary" :disabled="!canSave" :title="saveHint" @click="saveTemplate">{{ $t('common.save') }}</button>
       </div>
     </header>
 
-    <div class="mobile-workspace-tabs" data-tour="editor-workspace-tabs" role="tablist" aria-label="Editorbereich">
+    <div class="mobile-workspace-tabs" data-tour="editor-workspace-tabs" role="tablist" :aria-label="$t('editor.workspace')">
       <button
         type="button"
         role="tab"
@@ -47,7 +47,7 @@
         :aria-selected="mobileWorkspace === 'preview'"
         :class="{ active: mobileWorkspace === 'preview' }"
         @click="setMobileWorkspace('preview')"
-      >Vorschau</button>
+      >{{ $t('editor.preview') }}</button>
       <button
         type="button"
         role="tab"
@@ -55,7 +55,7 @@
         :aria-selected="mobileWorkspace === 'design'"
         :class="{ active: mobileWorkspace === 'design' }"
         @click="setMobileWorkspace('design')"
-      >Werkzeuge</button>
+      >{{ $t('editor.tools') }}</button>
       <button
         type="button"
         role="tab"
@@ -64,7 +64,7 @@
         :class="{ active: mobileWorkspace === 'settings' }"
         :disabled="!selectedBlock"
         @click="setMobileWorkspace('settings')"
-      >Block</button>
+      >{{ $t('editor.block') }}</button>
     </div>
 
     <div
@@ -77,7 +77,7 @@
       }"
     >
       <!-- Left: simple design controls or the block structure -->
-      <aside id="template-editor-tools" class="editor-sidebar" data-tour="editor-tools" role="tabpanel" aria-label="Werkzeuge" tabindex="-1">
+      <aside id="template-editor-tools" class="editor-sidebar" data-tour="editor-tools" role="tabpanel" :aria-label="$t('editor.tools')" tabindex="-1">
         <div class="sidebar-tabs" role="tablist">
           <button
             type="button"
@@ -86,7 +86,7 @@
             :class="{ active: sidebarTab === 'design' }"
             :aria-selected="sidebarTab === 'design'"
             @click="sidebarTab = 'design'"
-          >Design</button>
+          >{{ $t('editor.design') }}</button>
           <button
             type="button"
             role="tab"
@@ -94,7 +94,7 @@
             :class="{ active: sidebarTab === 'blocks' }"
             :aria-selected="sidebarTab === 'blocks'"
             @click="sidebarTab = 'blocks'"
-          >Blöcke</button>
+          >{{ $t('editor.blocks') }}</button>
         </div>
         <div class="sidebar-content">
           <template v-if="sidebarTab === 'design'">
@@ -106,9 +106,9 @@
               @notify="notify"
             />
             <details class="css-section">
-              <summary>Für Fortgeschrittene: eigenes CSS</summary>
-              <p class="css-hint">Gilt für das gedruckte Dokument. Externe Dateien (@import, url(...)) werden nicht geladen.</p>
-              <textarea v-model="form.globalCss" class="css-input" rows="6" spellcheck="false" aria-label="Eigenes CSS"></textarea>
+              <summary>{{ $t('editor.cssTitle') }}</summary>
+              <p class="css-hint">{{ $t('editor.cssHint') }}</p>
+              <textarea v-model="form.globalCss" class="css-input" rows="6" spellcheck="false" :aria-label="$t('editor.css')"></textarea>
             </details>
           </template>
           <template v-else>
@@ -127,7 +127,7 @@
       </aside>
 
       <!-- Center: the page -->
-      <main id="template-editor-preview" class="preview-pane" data-tour="editor-preview" role="tabpanel" aria-label="Vorschau" tabindex="-1">
+      <main id="template-editor-preview" class="preview-pane" data-tour="editor-preview" role="tabpanel" :aria-label="$t('editor.preview')" tabindex="-1">
         <div class="preview-toolbar">
           <div class="preview-context">
             <button
@@ -137,18 +137,18 @@
               :aria-expanded="toolsOpen"
               aria-controls="template-editor-tools"
               @click="toolsOpen = !toolsOpen"
-            >{{ toolsOpen ? 'Werkzeuge schließen' : 'Werkzeuge' }}</button>
-            <div v-if="liveData" class="segmented" role="radiogroup" aria-label="Vorschaudaten">
-              <button type="button" role="radio" :aria-checked="previewMode === 'live'" :class="{ active: previewMode === 'live' }" @click="previewMode = 'live'">Dieses Dokument</button>
-              <button type="button" role="radio" :aria-checked="previewMode === 'sample'" :class="{ active: previewMode === 'sample' }" @click="previewMode = 'sample'">Beispieldaten</button>
+            >{{ toolsOpen ? $t('editor.closeTools') : $t('editor.tools') }}</button>
+            <div v-if="liveData" class="segmented" role="radiogroup" :aria-label="$t('editor.previewData')">
+              <button type="button" role="radio" :aria-checked="previewMode === 'live'" :class="{ active: previewMode === 'live' }" @click="previewMode = 'live'">{{ $t('editor.thisDocument') }}</button>
+              <button type="button" role="radio" :aria-checked="previewMode === 'sample'" :class="{ active: previewMode === 'sample' }" @click="previewMode = 'sample'">{{ $t('editor.sampleData') }}</button>
             </div>
-            <span v-else class="preview-label">Vorschau mit {{ owner ? 'Ihren Firmendaten und ' : '' }}Beispieldaten</span>
+            <span v-else class="preview-label">{{ owner ? $t('editor.previewWithOwner') : $t('editor.previewWithSample') }}</span>
           </div>
           <div class="zoom-controls">
-            <button type="button" class="btn-icon" title="Verkleinern" aria-label="Verkleinern" @click="zoomBy(-0.1)">−</button>
+            <button type="button" class="btn-icon" :title="$t('editor.zoomOut')" :aria-label="$t('editor.zoomOut')" @click="zoomBy(-0.1)">−</button>
             <span class="zoom-level">{{ Math.round(zoom * 100) }}%</span>
-            <button type="button" class="btn-icon" title="Vergrößern" aria-label="Vergrößern" @click="zoomBy(0.1)">+</button>
-            <button type="button" class="btn-text" title="Seite an die Breite des Fensters anpassen" @click="fitZoom">Seitenbreite</button>
+            <button type="button" class="btn-icon" :title="$t('editor.zoomIn')" :aria-label="$t('editor.zoomIn')" @click="zoomBy(0.1)">+</button>
+            <button type="button" class="btn-text" :title="$t('editor.fitHint')" @click="fitZoom">{{ $t('editor.fit') }}</button>
           </div>
         </div>
 
@@ -193,10 +193,10 @@
                 >
                   <div class="block-label">{{ item.name }}</div>
                   <div v-if="selectedBlockId === item.block.id" class="block-actions" @click.stop>
-                    <button type="button" :disabled="index === 0" title="Nach oben (Alt+↑)" aria-label="Nach oben" @click="moveBlockTo(index, index - 1)">↑</button>
-                    <button type="button" :disabled="index === renderedBlocks.length - 1" title="Nach unten (Alt+↓)" aria-label="Nach unten" @click="moveBlockTo(index, index + 1)">↓</button>
-                    <button type="button" title="Duplizieren (Strg+D)" aria-label="Duplizieren" @click="duplicateSelected">⧉</button>
-                    <button type="button" title="Entfernen (Entf)" aria-label="Entfernen" @click="removeBlock(item.block.id)">✕</button>
+                    <button type="button" :disabled="index === 0" :title="$t('editor.upHint')" :aria-label="$t('editor.up')" @click="moveBlockTo(index, index - 1)">↑</button>
+                    <button type="button" :disabled="index === renderedBlocks.length - 1" :title="$t('editor.downHint')" :aria-label="$t('editor.down')" @click="moveBlockTo(index, index + 1)">↓</button>
+                    <button type="button" :title="$t('editor.duplicateHint')" :aria-label="$t('editor.duplicate')" @click="duplicateSelected">⧉</button>
+                    <button type="button" :title="$t('editor.removeHint')" :aria-label="$t('editor.remove')" @click="removeBlock(item.block.id)">✕</button>
                   </div>
                   <!-- eslint-disable vue/no-v-html -- reviewed, see the nosemgrep reason below -->
                   <!-- nosemgrep: javascript.vue.security.audit.xss.templates.avoid-v-html.avoid-v-html -- block HTML built from escapeBlockData() output; ctx values are escaped in render() -->
@@ -207,7 +207,7 @@
                 </div>
 
                 <div v-if="form.blocks.length === 0" class="empty-preview">
-                  <p>Die Vorlage ist leer. Fügen Sie unter „Werkzeuge“ bei „Blöcke“ Inhalte hinzu.</p>
+                  <p>{{ $t('editor.empty') }}</p>
                 </div>
               </div>
             </div>
@@ -247,17 +247,17 @@
     </div>
 
     <!-- Exact PDF preview -->
-    <div v-if="pdfUrl" class="pdf-preview-modal" role="dialog" aria-modal="true" aria-label="PDF-Vorschau" @click.self="closePdfPreview">
+    <div v-if="pdfUrl" class="pdf-preview-modal" role="dialog" aria-modal="true" :aria-label="$t('editor.pdfPreview')" @click.self="closePdfPreview">
       <div class="pdf-preview-content">
         <div class="pdf-preview-header">
-          <span class="pdf-preview-title">PDF-Vorschau {{ pdfIsSample ? '(Beispieldaten)' : '(dieses Dokument)' }} – noch nicht gespeichert</span>
+          <span class="pdf-preview-title">{{ pdfIsSample ? $t('editor.pdfTitleSample') : $t('editor.pdfTitleLive') }}</span>
           <span class="pdf-actions">
             <!-- Fallback for webviews without a built-in PDF viewer -->
-            <a class="btn btn-outline" :href="pdfUrl" download="vorschau.pdf">Herunterladen</a>
-            <button type="button" class="btn btn-secondary" @click="closePdfPreview">Schließen</button>
+            <a class="btn btn-outline" :href="pdfUrl" :download="$t('editor.pdfFile')">{{ $t('editor.download') }}</a>
+            <button type="button" class="btn btn-secondary" @click="closePdfPreview">{{ $t('common.close') }}</button>
           </span>
         </div>
-        <iframe :src="pdfFrameSrc" title="PDF-Vorschau" class="pdf-frame"></iframe>
+        <iframe :src="pdfFrameSrc" :title="$t('editor.pdfPreview')" class="pdf-frame"></iframe>
       </div>
     </div>
 
@@ -275,12 +275,12 @@
       @keydown.esc.stop="guard.resolve('cancel')"
     >
       <div class="dialog-content" role="dialog" aria-modal="true" aria-labelledby="unsaved-changes-title">
-        <h3 id="unsaved-changes-title">Ungespeicherte Änderungen</h3>
-        <p>Sie haben ungespeicherte Änderungen an dieser Vorlage. Möchten Sie diese vor dem Schließen speichern?</p>
+        <h3 id="unsaved-changes-title">{{ $t('editor.unsavedTitle') }}</h3>
+        <p>{{ $t('editor.unsavedText') }}</p>
         <div class="dialog-actions">
-          <button type="button" class="btn btn-secondary" @click="guard.resolve('cancel')">Abbrechen</button>
-          <button type="button" class="btn btn-danger" @click="guard.resolve('discard')">Verwerfen</button>
-          <button type="button" class="btn btn-primary" :disabled="!canSave" @click="guard.resolve('save')">Speichern</button>
+          <button type="button" class="btn btn-secondary" @click="guard.resolve('cancel')">{{ $t('common.cancel') }}</button>
+          <button type="button" class="btn btn-danger" @click="guard.resolve('discard')">{{ $t('editor.discard') }}</button>
+          <button type="button" class="btn btn-primary" :disabled="!canSave" @click="guard.resolve('save')">{{ $t('common.save') }}</button>
         </div>
       </div>
     </div>
@@ -297,6 +297,7 @@ import DesignPanel from './editor/DesignPanel.vue'
 import ownerService from '../services/ownerService.js'
 import templateAPI from '../services/templateService.js'
 import { BLOCK_TYPES, getBlockByType, blockDisplayName, documentTitle } from '../utils/blockRegistry.js'
+import { escapeHtml } from '../utils/sanitize.js'
 import {
   createBlock, createDefaultBlocks, normalizeBlocks, serializeBlocks, moveBlock, duplicateBlock, clone,
   layoutRows, composePageHtml
@@ -404,7 +405,9 @@ export default {
       return DOCUMENT_TYPES.filter(dt => dt.id !== CREDIT_NOTE)
     },
     documentTypeLabel() {
-      return documentTitle(this.form.documentTypeId)
+      // the interface name; the printed title (`documentTitle`) stays German
+      const type = DOCUMENT_TYPES.find(dt => dt.id === this.form.documentTypeId)
+      return type ? type.label : ''
     },
     margins() {
       const { marginTopMm, marginRightMm, marginBottomMm, marginLeftMm } = this.form
@@ -432,9 +435,9 @@ export default {
       return !!this.form.name.trim() && this.form.blocks.length > 0 && this.validation.errors.length === 0
     },
     saveHint() {
-      if (!this.form.name.trim()) return 'Bitte geben Sie der Vorlage einen Namen.'
+      if (!this.form.name.trim()) return this.$t('editor.nameMissing')
       if (this.validation.errors.length) return this.validation.errors[0].message
-      return 'Vorlage speichern'
+      return this.$t('editor.saveHint')
     },
     previewContext() {
       return buildPreviewContext({
@@ -565,7 +568,7 @@ export default {
 
     /** Placeholder for blocks that render nothing (e.g. notes without text). */
     emptyBlockHtml(block) {
-      return `<div class="empty-block-hint">${blockDisplayName(block)}: wird nur gedruckt, wenn Text vorhanden ist</div>`
+      return `<div class="empty-block-hint">${escapeHtml(this.$t('editor.emptyBlock', { name: blockDisplayName(block) }))}</div>`
     },
 
     // --- block operations -------------------------------------------------
@@ -612,7 +615,7 @@ export default {
 
     addBlockAt(type, index) {
       if (!canAddBlock(this.form.blocks, type)) {
-        this.notify({ type: 'warning', message: `„${getBlockByType(type)?.name || type}“ ist bereits vorhanden.` })
+        this.notify({ type: 'warning', message: this.$t('editor.alreadyThere', { name: getBlockByType(type)?.name || type }) })
         return
       }
       const block = createBlock(type)
@@ -638,14 +641,14 @@ export default {
         this.selectedBlockId = null
         if (this.mobileWorkspace === 'settings') this.mobileWorkspace = 'preview'
       }
-      this.notify({ type: 'info', message: `„${blockDisplayName(removed)}“ entfernt – Strg+Z macht es rückgängig.` })
+      this.notify({ type: 'info', message: this.$t('editor.removed', { name: blockDisplayName(removed) }) })
     },
 
     duplicateSelected() {
       const block = this.selectedBlock
       if (!block) return
       if (!canAddBlock(this.form.blocks, block.type)) {
-        this.notify({ type: 'warning', message: `„${blockDisplayName(block)}“ darf nur einmal vorkommen.` })
+        this.notify({ type: 'warning', message: this.$t('editor.issues.once', { name: blockDisplayName(block) }) })
         return
       }
       const copy = duplicateBlock(block)
@@ -825,7 +828,7 @@ export default {
         } else if (data && data.message) {
           message = data.message
         }
-        this.notify({ type: 'error', message: 'PDF-Vorschau fehlgeschlagen: ' + message })
+        this.notify({ type: 'error', message: this.$t('editor.pdfFailed', { reason: message }) })
       } finally {
         this.pdfLoading = false
       }

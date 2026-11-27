@@ -1,11 +1,11 @@
 <template>
-  <aside class="block-config-panel" aria-label="Block bearbeiten">
+  <aside class="block-config-panel" :aria-label="$t('blockPanel.title')">
     <div class="panel-header">
       <div>
         <h3>{{ title }}</h3>
         <p v-if="blockType && blockType.description" class="panel-subtitle">{{ blockType.description }}</p>
       </div>
-      <button class="btn-close" type="button" title="Schließen (Esc)" aria-label="Schließen" @click="$emit('close')">
+      <button class="btn-close" type="button" :title="$t('blockPanel.closeHint')" :aria-label="$t('common.close')" @click="$emit('close')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
         </svg>
@@ -35,7 +35,7 @@
       <!-- Inhalt -->
       <template v-if="activeTab === 'content'">
         <p v-if="!fields.length" class="hint">
-          Dieser Block zeigt automatisch die Daten des Dokuments. Bezeichnungen und Darstellung finden Sie unter „Darstellung“.
+          {{ $t('blockPanel.automatic') }}
         </p>
         <div v-for="field in fields" :key="field.key" class="form-group">
           <label :for="fieldId(field)">{{ field.label }}</label>
@@ -64,7 +64,7 @@
           <div v-else-if="field.kind === 'image'" class="logo-upload">
             <div v-if="block.data.logoUrl" class="logo-preview">
               <img :src="block.data.logoUrl" alt="Logo" />
-              <button type="button" class="btn-remove-logo" title="Logo entfernen" @click="setData('logoUrl', '')">
+              <button type="button" class="btn-remove-logo" :title="$t('blockPanel.removeLogo')" @click="setData('logoUrl', '')">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
                 </svg>
@@ -85,9 +85,9 @@
                   :disabled="logoUploading"
                   @change="handleLogoUpload"
                 />
-                <span>{{ logoUploading ? 'Wird hochgeladen …' : (block.data.logoUrl ? 'Anderes Logo wählen' : 'Logo hochladen') }}</span>
+                <span>{{ logoUploading ? $t('design.uploading') : (block.data.logoUrl ? $t('blockPanel.otherLogo') : $t('blockPanel.uploadLogo')) }}</span>
               </label>
-              <p class="drop-hint">oder Bild hierher ziehen (PNG, JPG, GIF)</p>
+              <p class="drop-hint">{{ $t('blockPanel.dropHint') }}</p>
             </div>
           </div>
 
@@ -96,18 +96,18 @@
               <input
                 type="checkbox"
                 :checked="col.show !== false"
-                :aria-label="`Spalte ${col.label} anzeigen`"
+                :aria-label="$t('blockPanel.showColumn', { name: col.label })"
                 @change="setColumn(index, { show: inputChecked($event) })"
               />
               <input
                 type="text"
                 class="form-input"
                 :value="col.label"
-                :aria-label="`Überschrift der Spalte ${col.key}`"
+                :aria-label="$t('blockPanel.columnHeading', { name: col.key })"
                 @input="setColumn(index, { label: inputValue($event) })"
               />
-              <button type="button" class="btn-mini" :disabled="index === 0" title="Nach links" @click="moveColumn(index, -1)">↑</button>
-              <button type="button" class="btn-mini" :disabled="index === columns.length - 1" title="Nach rechts" @click="moveColumn(index, 1)">↓</button>
+              <button type="button" class="btn-mini" :disabled="index === 0" :title="$t('blockPanel.left')" @click="moveColumn(index, -1)">↑</button>
+              <button type="button" class="btn-mini" :disabled="index === columns.length - 1" :title="$t('blockPanel.right')" @click="moveColumn(index, 1)">↓</button>
             </div>
           </div>
 
@@ -161,17 +161,17 @@
         </div>
 
         <fieldset class="format-section">
-          <legend>Schrift</legend>
+          <legend>{{ $t('design.font') }}</legend>
           <div class="format-row">
-            <label for="fmt-family">Schriftart</label>
+            <label for="fmt-family">{{ $t('design.fontFamily') }}</label>
             <select id="fmt-family" class="form-select" :value="format.fontFamily" @change="setFormat({ fontFamily: inputValue($event) })">
               <option v-for="font in fontFamilies" :key="font" :value="font">{{ font }}</option>
             </select>
           </div>
           <div class="format-row">
-            <label for="fmt-size">Größe</label>
+            <label for="fmt-size">{{ $t('blockPanel.size') }}</label>
             <div class="size-control">
-              <button type="button" class="btn-mini" aria-label="Kleiner" @click="changeSize(-0.5)">−</button>
+              <button type="button" class="btn-mini" :aria-label="$t('blockPanel.smaller')" @click="changeSize(-0.5)">−</button>
               <input
                 id="fmt-size"
                 type="number"
@@ -182,11 +182,11 @@
                 :value="format.fontSize"
                 @change="setSize(inputValue($event))"
               />
-              <button type="button" class="btn-mini" aria-label="Größer" @click="changeSize(0.5)">+</button>
+              <button type="button" class="btn-mini" :aria-label="$t('blockPanel.larger')" @click="changeSize(0.5)">+</button>
             </div>
           </div>
           <div class="format-row">
-            <label for="fmt-color">Farbe</label>
+            <label for="fmt-color">{{ $t('blockPanel.color') }}</label>
             <div class="color-wrap">
               <input id="fmt-color" type="color" :value="format.fontColor" @input="setFormat({ fontColor: inputValue($event) })" />
               <span class="color-value">{{ format.fontColor }}</span>
@@ -195,15 +195,15 @@
           <label class="toggle-label">
             <input type="checkbox" :checked="format.fontWeight === 'bold'" @change="setFormat({ fontWeight: inputChecked($event) ? 'bold' : 'normal' })" />
             <span class="toggle-switch"></span>
-            Fett
+            {{ $t('blockPanel.bold') }}
           </label>
         </fieldset>
       </template>
     </div>
 
     <div class="panel-footer">
-      <button type="button" class="btn-footer" title="Block duplizieren" @click="$emit('duplicate')">Duplizieren</button>
-      <button type="button" class="btn-footer danger" title="Block entfernen (Entf)" @click="$emit('remove')">Entfernen</button>
+      <button type="button" class="btn-footer" :title="$t('blockPanel.duplicateHint')" @click="$emit('duplicate')">{{ $t('editor.duplicate') }}</button>
+      <button type="button" class="btn-footer danger" :title="$t('blockPanel.removeHint')" @click="$emit('remove')">{{ $t('editor.remove') }}</button>
     </div>
   </aside>
 </template>
@@ -252,8 +252,8 @@ export default {
     },
     tabs() {
       return [
-        { key: 'content', label: 'Inhalt' },
-        { key: 'style', label: 'Darstellung' }
+        { key: 'content', label: this.$t('blockPanel.content') },
+        { key: 'style', label: this.$t('blockPanel.style') }
       ]
     },
     fields() {

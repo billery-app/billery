@@ -1,7 +1,10 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, afterEach } from 'vitest'
 import {
-  BLOCK_TYPES, getBlockByType, getFormat, safeColor, formatCurrency, numberLabel, blockDisplayName
+  BLOCK_TYPES, getBlockByType, getFormat, safeColor, formatCurrency, numberLabel, blockDisplayName,
+  blockExchangeName, REGISTRY_ORIGINALS
 } from './blockRegistry.js'
+import { applyLanguage } from '../i18n/index.js'
+import de from '../locales/de.json'
 import { isKnownVariable } from './variableRegistry.js'
 import { variablesIn } from './variableText.js'
 
@@ -10,7 +13,34 @@ const render = (type, data, config, ctx) => {
   return blockType.render({ ...blockType.defaultData, ...data }, { ...blockType.defaultConfig, ...config }, ctx)
 }
 
+/** The message at a dotted path, or undefined. */
+const messageAt = (messages, key) => key.split('.').reduce((node, part) => node?.[part], messages)
+
 describe('blockRegistry', () => {
+  describe('languages', () => {
+    afterEach(() => applyLanguage('de'))
+
+    it('keeps de.json equal to the German texts written in the registry', () => {
+      expect(REGISTRY_ORIGINALS.size).toBeGreaterThan(50)
+      for (const [key, original] of REGISTRY_ORIGINALS) {
+        expect(messageAt(de, key), key).toBe(original)
+      }
+    })
+
+    it('shows the editor texts in English but keeps the German exchange names', () => {
+      applyLanguage('en')
+      const header = getBlockByType('header')
+      expect(header.name).toBe('Header')
+      expect(header.exchangeName).toBe('Kopfzeile')
+      expect(header.fields[0].label).toBe('Company name')
+      expect(header.fields[0].exchangeLabel).toBe('Firmenname')
+      expect(getBlockByType('invoice-meta').settings[1].options.map(o => o.label)).toEqual(['Left', 'Centre', 'Right'])
+      const receiver = { type: 'address', data: { role: 'receiver' } }
+      expect(blockDisplayName(receiver)).toBe('Address – recipient')
+      expect(blockExchangeName(receiver)).toBe('Adresse – Empfänger')
+    })
+  })
+
   describe('schema', () => {
     it('contains the eight block types the PDF renderer knows', () => {
       expect(BLOCK_TYPES.map(b => b.type).sort()).toEqual(

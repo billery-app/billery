@@ -6,7 +6,7 @@ import App from './App.vue'
 import { createAppRouter } from './router'
 import { initAuth } from './services/authService.js'
 import { captureDesktopToken } from './services/desktopToken.js'
-import { i18n } from './i18n/index.js'
+import { i18n, t } from './i18n/index.js'
 import { loadLanguage } from './services/preferencesService.js'
 
 // Self-hosted installs mount at once. In SaaS mode the app first completes or starts the sign-in
@@ -38,13 +38,13 @@ function showStartError() {
   card.className = 'card start-error'
   card.setAttribute('role', 'alert')
   const title = document.createElement('h1')
-  title.textContent = 'Anmeldung nicht möglich'
+  title.textContent = t('startError.title')
   const text = document.createElement('p')
-  text.textContent = 'Bitte später erneut versuchen. Besteht das Problem weiter, wenden Sie sich an den Betreiber.'
+  text.textContent = t('startError.text')
   const retry = document.createElement('button')
   retry.type = 'button'
   retry.className = 'btn btn-primary'
-  retry.textContent = 'Erneut versuchen'
+  retry.textContent = t('startError.retry')
   retry.addEventListener('click', () => window.location.assign('/'))
   card.append(title, text, retry)
   document.getElementById('app').replaceChildren(card)

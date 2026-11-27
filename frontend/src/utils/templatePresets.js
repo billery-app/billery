@@ -1,6 +1,7 @@
 import { createDefaultBlocks, createBlock } from './blockModel.js'
 import { documentTitle } from './blockRegistry.js'
 import { applyAccentColor, applyFontFamily, applyLayout, setPartVisible } from './designActions.js'
+import { t } from '../i18n/index.js'
 
 /**
  * Starting points offered when a new template is created ("Vorlage
@@ -9,7 +10,8 @@ import { applyAccentColor, applyFontFamily, applyLayout, setPartVisible } from '
  * finished document instead of an empty page.
  *
  * `build(documentTypeId)` returns `{ blocks, margins }`; the invoice-meta
- * title is set to the document type name ("Rechnung", "Angebot", ...).
+ * title is set to the document type name ("Rechnung", "Angebot", ...; German, it is printed).
+ * Name and description are getters over the message files (`presets.<key>`, #15).
  */
 
 /**
@@ -27,16 +29,16 @@ function withTitle(blocks, documentTypeId) {
 export const TEMPLATE_PRESETS = [
   {
     key: 'modern',
-    name: 'Modern',
-    description: 'Klare Schrift, blaue Akzentfarbe, Hinweise in farbiger Box.',
+    get name() { return t('presets.modern.name') },
+    get description() { return t('presets.modern.description') },
     build(documentTypeId) {
       return { blocks: withTitle(createDefaultBlocks(), documentTypeId), margins: 15 }
     }
   },
   {
     key: 'classic',
-    name: 'Klassisch',
-    description: 'Serifenschrift, dezentes Schwarz, Empfänger und Dokumentdaten nebeneinander.',
+    get name() { return t('presets.classic.name') },
+    get description() { return t('presets.classic.description') },
     build(documentTypeId) {
       let blocks = applyFontFamily(createDefaultBlocks(), 'Georgia')
       blocks = applyAccentColor(blocks, '#111827')
@@ -50,8 +52,8 @@ export const TEMPLATE_PRESETS = [
   },
   {
     key: 'minimal',
-    name: 'Minimal',
-    description: 'Nur das Nötigste: ohne Absenderblock, Hinweise und Fußzeile.',
+    get name() { return t('presets.minimal.name') },
+    get description() { return t('presets.minimal.description') },
     build(documentTypeId) {
       let blocks = applyFontFamily(createDefaultBlocks(), 'Helvetica')
       blocks = applyAccentColor(blocks, '#374151')
@@ -66,8 +68,8 @@ export const TEMPLATE_PRESETS = [
   },
   {
     key: 'empty',
-    name: 'Leer',
-    description: 'Nur die Pflichtbestandteile – für eigene Gestaltung.',
+    get name() { return t('presets.empty.name') },
+    get description() { return t('presets.empty.description') },
     build(documentTypeId) {
       const blocks = [
         createBlock('address', { role: 'receiver' }),

@@ -1,3 +1,5 @@
+import { t } from '../i18n/index.js'
+
 /**
  * Checks for the template import (DOCX / ODT) and the download of exported files.
  */
@@ -24,13 +26,13 @@ export function getFileExtension(filename) {
  * @returns {{isValid: boolean, errors: string[]}}
  */
 export function validateImportFile(file) {
-  if (!file) return { isValid: false, errors: ['Bitte eine Datei auswählen.'] }
+  if (!file) return { isValid: false, errors: [t('fileValidation.none')] }
   const errors = []
   if (!IMPORT_EXTENSIONS.includes(getFileExtension(file.name))) {
-    errors.push('Bitte eine DOCX- oder ODT-Datei wählen.')
+    errors.push(t('fileValidation.type'))
   }
   if (file.size > MAX_IMPORT_BYTES) {
-    errors.push(`Die Datei ist zu groß (höchstens ${formatFileSize(MAX_IMPORT_BYTES)}).`)
+    errors.push(t('fileValidation.size', { max: formatFileSize(MAX_IMPORT_BYTES) }))
   }
   return { isValid: errors.length === 0, errors }
 }

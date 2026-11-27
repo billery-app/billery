@@ -1,5 +1,6 @@
 import { BLOCK_TYPES, getBlockByType, blockDisplayName } from './blockRegistry.js'
 import { unknownVariablesIn } from './variableText.js'
+import { t } from '../i18n/index.js'
 
 /**
  * Checks a template's block list before it is saved.
@@ -26,11 +27,11 @@ export function validateBlocks(blocks) {
     const instances = list.filter(b => b.type === type.type)
     const { max = Infinity, required = false } = type.limits || {}
     if (required && instances.length === 0) {
-      errors.push({ message: `Der Block „${type.name}“ fehlt. Jedes Dokument braucht ihn.`, blockId: null })
+      errors.push({ message: t('editor.issues.required', { name: type.name }), blockId: null })
     }
     if (instances.length > max) {
       errors.push({
-        message: `„${type.name}“ darf nur ${max === 1 ? 'einmal' : `${max}-mal`} vorkommen.`,
+        message: max === 1 ? t('editor.issues.once', { name: type.name }) : t('editor.issues.max', { name: type.name, max }),
         blockId: instances[max].id
       })
     }
@@ -39,16 +40,16 @@ export function validateBlocks(blocks) {
   const addresses = list.filter(b => b.type === 'address')
   const roles = addresses.map(b => (b.data && b.data.role) || 'sender')
   if (!roles.includes('receiver')) {
-    warnings.push({ message: 'Es gibt keine Empfänger-Adresse: der Kunde erscheint nicht auf dem Dokument.', blockId: null })
+    warnings.push({ message: t('editor.issues.noReceiver'), blockId: null })
   }
   if (roles.filter(r => r === 'receiver').length > 1 || roles.filter(r => r === 'sender').length > 1) {
-    warnings.push({ message: 'Zwei Adressblöcke haben dieselbe Art (Absender/Empfänger).', blockId: addresses[1] && addresses[1].id })
+    warnings.push({ message: t('editor.issues.sameRole'), blockId: addresses[1] && addresses[1].id })
   }
 
   for (const block of list) {
     const type = getBlockByType(block.type)
     if (!type) {
-      warnings.push({ message: `Unbekannter Block „${block.type}“ wird nicht gedruckt.`, blockId: block.id })
+      warnings.push({ message: t('editor.issues.unknownBlock', { type: block.type }), blockId: block.id })
       continue
     }
     for (const field of type.fields || []) {
@@ -56,7 +57,7 @@ export function validateBlocks(blocks) {
       if (typeof value !== 'string') continue
       for (const name of unknownVariablesIn(value)) {
         warnings.push({
-          message: `${blockDisplayName(block)} › ${field.label}: Platzhalter „${name}“ ist unbekannt und wird nicht gedruckt.`,
+          message: t('editor.issues.unknownVariable', { block: blockDisplayName(block), field: field.label, name }),
           blockId: block.id
         })
       }
