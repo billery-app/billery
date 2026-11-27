@@ -41,7 +41,7 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const LOCALES = join(ROOT, 'frontend', 'src', 'locales')
+const LOCALES = resolve(ROOT, 'frontend', 'src', 'locales')
 const GLOSSARIES = join(ROOT, 'scripts', 'i18n-glossary')
 /** Texts per request (DeepL accepts up to 50). */
 const BATCH = 50
@@ -68,7 +68,9 @@ function parseArgs(argv) {
     else if (!arg.startsWith('--') && !options.target) options.target = arg
     else throw new Error(`Unknown argument: ${arg}`)
   }
-  if (!/^[a-z]{2}(-[a-z]{2})?$/i.test(options.target)) {
+  // only language codes: they become file names in frontend/src/locales, and what the source
+  // file holds is sent to DeepL (a path such as ../../private.json must never be read)
+  if (!/^[a-z]{2}(-[a-z]{2})?$/i.test(options.target) || !/^[a-z]{2}(-[a-z]{2})?$/i.test(options.source)) {
     throw new Error('Usage: node scripts/translate-locale.mjs <target> [--all] [--out file] [--source de] [--formality f] [--dry-run]')
   }
   return options
@@ -128,16 +130,18 @@ const SYNTAX = /\{'[^']*'\}|\{[^{}]*\}| \| /g
  */
 export function protect(text, keep = []) {
   const tokens = []
-  const escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-  const kept = keep.length
-    ? `(?<=„)(?:${keep.map(word => word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})(?![\\p{L}])[^“]*(?=“)|`
-    : ''
-  const pattern = new RegExp(kept + SYNTAX.source, 'gu')
-  const xml = escaped.replace(pattern, (match) => {
+  const token = (match) => {
     tokens.push(match)
     return `<x i="${tokens.length - 1}"/>`
+  }
+  const escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  // a quotation „…“ whose first word is a keep word stays as it is (fixed pattern, no RegExp
+  // built from the word list)
+  const kept = escaped.replace(/„([^“]*)“/g, (quote, inner) => {
+    const first = /^\p{L}+/u.exec(inner)
+    return first && keep.includes(first[0]) ? `„${token(inner)}“` : quote
   })
-  return { xml, tokens }
+  return { xml: kept.replace(SYNTAX, token), tokens }
 }
 
 /**
@@ -302,7 +306,9 @@ async function createGlossary(base, key, source, target) {
 
 async function main() {
   const options = parseArgs(process.argv.slice(2))
-  const sourcePairs = flatten(JSON.parse(readFileSync(join(LOCALES, `${options.source}.json`), 'utf8')))
+  const sourceFile = resolve(LOCALES, `${options.source}.json`)
+  if (dirname(sourceFile) !== LOCALES) throw new Error(`The source must be a message file in ${LOCALES}`)
+  const sourcePairs = flatten(JSON.parse(readFileSync(sourceFile, 'utf8')))
   const outFile = resolve(options.out || join(LOCALES, `${options.target}.json`))
   const existing = !options.all && existsSync(outFile)
     ? new Map(flatten(JSON.parse(readFileSync(outFile, 'utf8'))))
