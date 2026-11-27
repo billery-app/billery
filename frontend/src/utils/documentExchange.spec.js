@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { applySections, templateToSections } from './documentExchange.js'
+import { applyLanguage } from '../i18n/index.js'
 import { TEMPLATE_PRESETS } from './templatePresets.js'
 import { createBlock } from './blockModel.js'
 
@@ -18,6 +19,19 @@ describe('templateToSections', () => {
       { heading: 'Kopfzeile', paragraphs: ['Firmenname: {{firma}}'] },
       { heading: 'Hinweise', paragraphs: ['Text: Zahlbar in 14 Tagen.', 'Danke!'] }
     ])
+  })
+
+  it('writes the German exchange words in every interface language', () => {
+    applyLanguage('en')
+    try {
+      const blocks = [createBlock('header', { companyName: '{{firma}}' }), createBlock('address', { role: 'receiver' })]
+      const sections = templateToSections(blocks)
+      expect(sections.map(s => s.heading)).toEqual(['Kopfzeile', 'Adresse – Empfänger'])
+      expect(sections[0].paragraphs).toEqual(['Firmenname: {{firma}}'])
+      expect(applySections(presetBlocks(), sections).fields).toBeGreaterThan(0)
+    } finally {
+      applyLanguage('de')
+    }
   })
 
   it('numbers a second block of the same kind', () => {

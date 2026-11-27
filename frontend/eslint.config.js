@@ -9,41 +9,10 @@ import vueI18n from '@intlify/eslint-plugin-vue-i18n'
  * frontend-test job (#39).
  *
  * Internationalisation (#15): every `$t('…')` / `t('…')` key must exist in the message files
- * (`no-missing-keys`), and the files already moved to the message files may not gain a hard-coded
- * text again (`no-raw-text`). A file joins I18N_DONE when its texts have moved.
+ * (`no-missing-keys`), and no component template may hold a hard-coded text (`no-raw-text`;
+ * attributes such as `title` / `aria-label` and texts in scripts are not seen by it, they follow
+ * the same rule by review).
  */
-const I18N_DONE = [
-  'src/App.vue',
-  'src/views/SettingsView.vue',
-  'src/views/SettingsAreaView.vue',
-  'src/components/HelpSettings.vue',
-  'src/components/LanguageSettings.vue',
-  'src/views/DashboardView.vue',
-  'src/views/CustomersView.vue',
-  'src/views/CustomerDetailView.vue',
-  'src/views/OwnersView.vue',
-  'src/views/InvoicesView.vue',
-  'src/views/TemplatesView.vue',
-  'src/views/ArticlesServicesView.vue',
-  'src/views/SearchView.vue',
-  'src/components/AccountSettings.vue',
-  'src/components/AccountMenu.vue',
-  'src/components/NoTenantNotice.vue',
-  'src/components/GobdExportSettings.vue',
-  'src/components/TeamSettings.vue',
-  'src/components/BackupSettings.vue',
-  'src/components/MailSettings.vue',
-  'src/components/CustomerCreateModal.vue',
-  'src/components/OwnerModal.vue',
-  'src/components/ArticleServiceCreateModal.vue',
-  'src/components/SpotlightSearch.vue',
-  'src/components/DocumentModal.vue',
-  'src/components/DocumentViewModal.vue',
-  'src/components/SendMailModal.vue',
-  'src/components/ConvertModal.vue',
-  'src/components/CustomerPicker.vue',
-  'src/components/editor/InvoiceItemRow.vue'
-]
 export default [
   { ignores: ['dist/**', 'coverage/**', 'test-results/**', 'playwright-report/**'] },
   js.configs.recommended,
@@ -82,7 +51,7 @@ export default [
     }
   },
   {
-    files: I18N_DONE,
+    files: ['src/**/*.vue'],
     plugins: { '@intlify/vue-i18n': vueI18n },
     settings: {
       'vue-i18n': { localeDir: './src/locales/*.json', messageSyntaxVersion: '^11.0.0' }

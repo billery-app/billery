@@ -1,5 +1,6 @@
 import { getBlockByType, getFormat } from './blockRegistry.js'
 import { clone, createBlock } from './blockModel.js'
+import { t } from '../i18n/index.js'
 
 /**
  * Template-wide design operations behind the editor's simple mode ("Design").
@@ -9,6 +10,8 @@ import { clone, createBlock } from './blockModel.js'
  * editing blocks one by one. Every operation is a pure function from a block
  * list to a new block list that writes the same per-block settings the
  * advanced editor and the PDF renderer use, so both modes stay one model.
+ *
+ * The labels of the presets below are getters over the message files (`design.*`, #15).
  */
 
 /** Blocks whose font color follows the accent color. */
@@ -16,16 +19,16 @@ const ACCENT_BLOCKS = ['header', 'totals']
 
 /** Text size presets: factor applied to each block type's default font size. */
 export const TEXT_SIZES = [
-  { key: 'small', label: 'Klein', factor: 0.9 },
-  { key: 'normal', label: 'Normal', factor: 1 },
-  { key: 'large', label: 'Groß', factor: 1.15 }
+  { key: 'small', get label() { return t('design.sizes.small') }, factor: 0.9 },
+  { key: 'normal', get label() { return t('design.sizes.normal') }, factor: 1 },
+  { key: 'large', get label() { return t('design.sizes.large') }, factor: 1.15 }
 ]
 
 /** Margin presets in mm (top, right, bottom, left). */
 export const MARGIN_PRESETS = [
-  { key: 'narrow', label: 'Schmal', value: 10 },
-  { key: 'normal', label: 'Normal', value: 20 },
-  { key: 'wide', label: 'Breit', value: 25 }
+  { key: 'narrow', get label() { return t('design.margins.narrow') }, value: 10 },
+  { key: 'normal', get label() { return t('design.margins.normal') }, value: 20 },
+  { key: 'wide', get label() { return t('design.margins.wide') }, value: 25 }
 ]
 
 /**
@@ -33,8 +36,8 @@ export const MARGIN_PRESETS = [
  * @type {{key: 'stacked'|'compact', label: string}[]}
  */
 export const LAYOUTS = [
-  { key: 'stacked', label: 'Untereinander' },
-  { key: 'compact', label: 'Nebeneinander' }
+  { key: 'stacked', get label() { return t('design.layouts.stacked') } },
+  { key: 'compact', get label() { return t('design.layouts.compact') } }
 ]
 
 /**
@@ -45,28 +48,28 @@ export const LAYOUTS = [
 export const OPTIONAL_PARTS = [
   {
     key: 'sender',
-    label: 'Absenderadresse',
+    get label() { return t('design.parts.sender') },
     match: (b) => b.type === 'address' && (b.data.role || 'sender') === 'sender',
     create: () => createBlock('address', { role: 'sender' }),
     after: ['header']
   },
   {
     key: 'notes',
-    label: 'Hinweise (Notizen des Dokuments)',
+    get label() { return t('design.parts.notes') },
     match: (b) => b.type === 'notes',
     create: () => createBlock('notes'),
     after: ['totals', 'line-items']
   },
   {
     key: 'payment',
-    label: 'Bankverbindung',
+    get label() { return t('design.parts.payment') },
     match: (b) => b.type === 'payment',
     create: () => createBlock('payment'),
     after: ['notes', 'totals']
   },
   {
     key: 'footer',
-    label: 'Fußzeile',
+    get label() { return t('design.parts.footer') },
     match: (b) => b.type === 'footer',
     create: () => createBlock('footer'),
     after: []

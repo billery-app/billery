@@ -876,5 +876,474 @@
     "confirmLoseOwn": "You are about to remove the template of its own for this document. Are you sure?",
     "confirmCancel": "Do you really want to cancel this document?",
     "issuedFrozen": "Issued invoices cannot be changed any more. Please cancel and create a corrected invoice."
+  },
+  "blocks": {
+    "header": {
+      "name": "Header",
+      "description": "Company name, slogan and logo",
+      "fields": {
+        "companyName": {
+          "label": "Company name"
+        },
+        "companySlogan": {
+          "label": "Slogan",
+          "placeholder": "e.g. Your partner for ..."
+        },
+        "logoUrl": {
+          "label": "Logo"
+        },
+        "showSlogan": {
+          "label": "Show the slogan"
+        },
+        "logoAlignment": {
+          "label": "Logo position",
+          "options": {
+            "left": "Left of the name",
+            "right": "Right",
+            "top": "Above, centred"
+          }
+        }
+      }
+    },
+    "common": {
+      "width": {
+        "label": "Width",
+        "options": {
+          "full": "Full width",
+          "half": "Half width (next to the following half block)"
+        }
+      },
+      "autoHint": "Leave empty: taken from the document automatically.",
+      "alignment": {
+        "left": "Left",
+        "center": "Centre",
+        "right": "Right"
+      }
+    },
+    "address": {
+      "name": "Address",
+      "description": "Sender or recipient",
+      "fields": {
+        "role": {
+          "label": "Kind",
+          "options": {
+            "sender": "Sender (your company)",
+            "receiver": "Recipient (customer)"
+          }
+        },
+        "name": {
+          "label": "Name"
+        },
+        "address": {
+          "label": "Address"
+        },
+        "email": {
+          "label": "Email"
+        },
+        "phone": {
+          "label": "Phone"
+        },
+        "vatId": {
+          "label": "VAT ID"
+        },
+        "showLabels": {
+          "label": "Show the heading"
+        },
+        "label": {
+          "label": "Heading"
+        }
+      },
+      "roles": {
+        "sender": "sender",
+        "receiver": "recipient"
+      }
+    },
+    "invoice-meta": {
+      "name": "Document details",
+      "description": "Title, number, date, due date",
+      "fields": {
+        "invoiceTitle": {
+          "label": "Title",
+          "placeholder": "e.g. Rechnung",
+          "help": "Leave empty: no title."
+        },
+        "invoiceId": {
+          "label": "Document number"
+        },
+        "invoiceDate": {
+          "label": "Date"
+        },
+        "dueDate": {
+          "label": "Due on"
+        },
+        "orderNumber": {
+          "label": "Order number"
+        },
+        "leistungsdatum": {
+          "label": "Service date"
+        },
+        "leistungszeitraum": {
+          "label": "Service period"
+        },
+        "showOrderNumber": {
+          "label": "Show the order number"
+        },
+        "alignment": {
+          "label": "Alignment"
+        }
+      }
+    },
+    "line-items": {
+      "name": "Line items",
+      "description": "Table of the articles and services",
+      "fields": {
+        "columns": {
+          "label": "Columns",
+          "help": "With mixed VAT rates a VAT column is added automatically."
+        }
+      }
+    },
+    "totals": {
+      "name": "Totals",
+      "description": "Net, tax per rate, total amount",
+      "fields": {
+        "showTax": {
+          "label": "Show the tax",
+          "help": "For small businesses or reverse charge no tax is shown; the legal note is printed instead."
+        },
+        "labelSubtotal": {
+          "label": "Label for net"
+        },
+        "labelTax": {
+          "label": "Label for tax"
+        },
+        "labelTotal": {
+          "label": "Label for total"
+        },
+        "alignment": {
+          "label": "Alignment"
+        }
+      }
+    },
+    "payment": {
+      "name": "Payment details",
+      "description": "Bank details and payment reference",
+      "fields": {
+        "paymentMethod": {
+          "label": "Payment method"
+        },
+        "bankName": {
+          "label": "Bank",
+          "placeholder": "e.g. Sparkasse ..."
+        },
+        "iban": {
+          "label": "IBAN"
+        },
+        "bic": {
+          "label": "BIC"
+        },
+        "reference": {
+          "label": "Payment reference"
+        },
+        "showBic": {
+          "label": "Show the BIC"
+        }
+      }
+    },
+    "notes": {
+      "name": "Notes",
+      "description": "Free text, e.g. notes or terms of payment",
+      "fields": {
+        "content": {
+          "label": "Text",
+          "help": "If the text is empty, the block is not printed."
+        },
+        "showTitle": {
+          "label": "Show the heading"
+        },
+        "title": {
+          "label": "Heading"
+        },
+        "showBox": {
+          "label": "Coloured box"
+        },
+        "backgroundColor": {
+          "label": "Background colour"
+        },
+        "borderColor": {
+          "label": "Border colour"
+        }
+      }
+    },
+    "footer": {
+      "name": "Footer",
+      "description": "Thanks, website, register and tax number",
+      "fields": {
+        "text": {
+          "label": "Text"
+        },
+        "website": {
+          "label": "Website"
+        },
+        "registrationNumber": {
+          "label": "Register number",
+          "placeholder": "e.g. HRB 12345"
+        },
+        "taxNumber": {
+          "label": "Tax number"
+        },
+        "layout": {
+          "label": "Alignment",
+          "options": {
+            "left": "Left",
+            "centered": "Centred"
+          }
+        }
+      }
+    }
+  },
+  "variables": {
+    "labels": {
+      "firma": "Company",
+      "adresse": "Address",
+      "telefon": "Phone",
+      "email": "Email",
+      "website": "Website",
+      "ust_id": "VAT ID",
+      "kunde": "Customer",
+      "kunde_strasse": "Street",
+      "kunde_plz_ort": "Postcode/town",
+      "kunde_email": "Email",
+      "kunde_telefon": "Phone",
+      "rechnungsnummer": "Invoice number",
+      "rechnungsdatum": "Invoice date",
+      "faelligkeitsdatum": "Due date",
+      "leistungsdatum": "Service date",
+      "leistungszeitraum": "Service period",
+      "notizen": "Notes",
+      "kleinunternehmer_hinweis": "Small business note",
+      "netto": "Net",
+      "steuersatz": "VAT rate",
+      "steuer": "VAT amount",
+      "betrag": "Total amount",
+      "rabatt": "Discount",
+      "waehrung": "Currency",
+      "bank_name": "Bank",
+      "iban": "IBAN",
+      "bic": "BIC",
+      "verwendungszweck": "Payment reference"
+    },
+    "chips": {
+      "firma": "Company name",
+      "adresse": "Company address",
+      "telefon": "Company phone",
+      "email": "Company email",
+      "website": "Website",
+      "ust_id": "VAT ID",
+      "kunde": "Customer name",
+      "kunde_strasse": "Customer: street",
+      "kunde_plz_ort": "Customer: postcode/town",
+      "kunde_email": "Customer: email",
+      "kunde_telefon": "Customer: phone"
+    },
+    "groups": {
+      "Company": "Your company",
+      "Client": "Customer",
+      "Invoice": "Document",
+      "Totals": "Amounts",
+      "Payment": "Payment"
+    },
+    "insert": "Insert a placeholder",
+    "searchPlaceholder": "Search, e.g. customer, date …",
+    "search": "Search placeholders",
+    "none": "No placeholder found.",
+    "insertHint": "Insert a placeholder (or type {'@'})",
+    "add": "+ Placeholder",
+    "chipKnown": "Replaced when the document is created",
+    "chipUnknown": "Unknown placeholder “{name}”: not printed"
+  },
+  "editor": {
+    "issues": {
+      "required": "The block “{name}” is missing. Every document needs it.",
+      "once": "“{name}” may occur only once.",
+      "max": "“{name}” may occur only {max} times.",
+      "noReceiver": "There is no recipient address: the customer does not appear on the document.",
+      "sameRole": "Two address blocks have the same kind (sender/recipient).",
+      "unknownBlock": "Unknown block “{type}” is not printed.",
+      "unknownVariable": "{block} › {field}: placeholder “{name}” is unknown and is not printed."
+    },
+    "name": "Template name",
+    "documentType": "Document type",
+    "defaultFor": "Default for {type}",
+    "onlyOneHint": "This template applies to one document only",
+    "onlyOne": "Only for this document",
+    "undoHint": "Undo (Ctrl+Z)",
+    "undo": "Undo",
+    "redoHint": "Redo (Ctrl+Y)",
+    "redo": "Redo",
+    "pdfHint": "This is what the finished PDF looks like",
+    "pdfCreating": "Creating the PDF …",
+    "pdfPreview": "PDF preview",
+    "workspace": "Editor area",
+    "preview": "Preview",
+    "tools": "Tools",
+    "block": "Block",
+    "design": "Design",
+    "blocks": "Blocks",
+    "cssTitle": "Advanced: your own CSS",
+    "cssHint": "Applies to the printed document. External files ({'@'}import, url(...)) are not loaded.",
+    "css": "Your own CSS",
+    "closeTools": "Close the tools",
+    "previewData": "Preview data",
+    "thisDocument": "This document",
+    "sampleData": "Sample data",
+    "previewWithOwner": "Preview with your company details and sample data",
+    "previewWithSample": "Preview with sample data",
+    "zoomOut": "Zoom out",
+    "zoomIn": "Zoom in",
+    "fitHint": "Fit the page to the width of the window",
+    "fit": "Page width",
+    "upHint": "Up (Alt+↑)",
+    "up": "Up",
+    "downHint": "Down (Alt+↓)",
+    "down": "Down",
+    "duplicateHint": "Duplicate (Ctrl+D)",
+    "duplicate": "Duplicate",
+    "removeHint": "Remove (Del)",
+    "remove": "Remove",
+    "empty": "The template is empty. Add content under “Tools” in “Blocks”.",
+    "pdfTitleSample": "PDF preview (sample data) – not saved yet",
+    "pdfTitleLive": "PDF preview (this document) – not saved yet",
+    "pdfFile": "preview.pdf",
+    "download": "Download",
+    "unsavedTitle": "Unsaved changes",
+    "unsavedText": "This template has unsaved changes. Do you want to save them before closing?",
+    "discard": "Discard",
+    "nameMissing": "Please give the template a name.",
+    "saveHint": "Save the template",
+    "emptyBlock": "{name}: printed only when there is text",
+    "alreadyThere": "“{name}” is already there.",
+    "removed": "“{name}” removed – Ctrl+Z undoes it.",
+    "pdfFailed": "PDF preview failed: {reason}"
+  },
+  "design": {
+    "sizes": {
+      "small": "Small",
+      "normal": "Normal",
+      "large": "Large"
+    },
+    "margins": {
+      "narrow": "Narrow",
+      "normal": "Normal",
+      "wide": "Wide"
+    },
+    "layouts": {
+      "stacked": "One below the other",
+      "compact": "Side by side"
+    },
+    "parts": {
+      "sender": "Sender address",
+      "notes": "Notes (the document notes)",
+      "payment": "Bank details",
+      "footer": "Footer"
+    },
+    "logo": "Logo",
+    "noLogo": "No logo",
+    "uploading": "Uploading …",
+    "change": "Change",
+    "upload": "Upload",
+    "accent": "Accent colour",
+    "accentHint": "For the company name and the total amount.",
+    "ownColor": "Your own colour",
+    "ownAccent": "Your own accent colour",
+    "font": "Font",
+    "fontHint": "The PDF uses the matching standard font (Helvetica, Times or Courier).",
+    "fontFamily": "Typeface",
+    "textSize": "Text size",
+    "arrangement": "Arrangement",
+    "arrangementHint": "Recipient and document details (number, date).",
+    "arrangementLabel": "Arrangement of recipient and document details",
+    "contents": "Contents",
+    "pageMargins": "Page margins",
+    "ownMargins": "Your own margins (mm)",
+    "sides": {
+      "top": "Top",
+      "right": "Right",
+      "bottom": "Bottom",
+      "left": "Left"
+    },
+    "footnote": "Company name, address and IBAN come from the {link}. For single texts and labels switch to “Blocks” at the top.",
+    "companyData": "company details"
+  },
+  "presets": {
+    "modern": {
+      "name": "Modern",
+      "description": "Clear type, blue accent colour, notes in a coloured box."
+    },
+    "classic": {
+      "name": "Classic",
+      "description": "Serif type, discreet black, recipient and document details side by side."
+    },
+    "minimal": {
+      "name": "Minimal",
+      "description": "Only the essentials: no sender block, notes or footer."
+    },
+    "empty": {
+      "name": "Empty",
+      "description": "Only the required parts – for your own design."
+    }
+  },
+  "fileValidation": {
+    "none": "Please choose a file.",
+    "type": "Please choose a DOCX or ODT file.",
+    "size": "The file is too large (at most {max})."
+  },
+  "startError": {
+    "title": "Sign-in not possible",
+    "text": "Please try again later. If the problem persists, contact the operator.",
+    "retry": "Try again"
+  },
+  "blockPanel": {
+    "title": "Edit the block",
+    "closeHint": "Close (Esc)",
+    "automatic": "This block shows the data of the document automatically. Labels and appearance are under “Appearance”.",
+    "removeLogo": "Remove the logo",
+    "otherLogo": "Choose another logo",
+    "uploadLogo": "Upload a logo",
+    "dropHint": "or drag an image here (PNG, JPG, GIF)",
+    "showColumn": "Show the column {name}",
+    "columnHeading": "Heading of the column {name}",
+    "left": "To the left",
+    "right": "To the right",
+    "size": "Size",
+    "smaller": "Smaller",
+    "larger": "Larger",
+    "color": "Colour",
+    "bold": "Bold",
+    "duplicateHint": "Duplicate the block",
+    "removeHint": "Remove the block (Del)",
+    "content": "Content",
+    "style": "Appearance"
+  },
+  "outline": {
+    "title": "Structure",
+    "hint": "Change the order by dragging or with the arrows.",
+    "list": "Blocks of the document"
+  },
+  "library": {
+    "title": "Add a block",
+    "hint": "Click or drag into the preview",
+    "present": "{name} is already there"
+  },
+  "templateStart": {
+    "title": "New template",
+    "intro": "Choose what the template is for and a style to start from. Everything can be adjusted afterwards.",
+    "style": "Style",
+    "importHint": "Or take the texts of a Word or ODT file into the chosen style. Sections such as “Kopfzeile” or “Fußzeile” with lines such as “Text: …” (this is what an export looks like) go into their blocks, other text under “Hinweise” (notes). The file format uses the German names in every language.",
+    "file": "Word or ODT file for the template",
+    "reading": "Reading the file …",
+    "fromFile": "Take from a file …",
+    "next": "Next",
+    "importFailed": "The file could not be taken over."
   }
 }

@@ -1,5 +1,6 @@
 import { escapeHtml } from './sanitize.js'
 import { DOCUMENT_TYPES, CREDIT_NOTE } from '../data/documentTypes.js'
+import { t } from '../i18n/index.js'
 
 /**
  * Block types of the template editor.
@@ -19,6 +20,15 @@ import { DOCUMENT_TYPES, CREDIT_NOTE } from '../data/documentTypes.js'
  *   not stored in the block (line items, VAT totals, number label, resolved
  *   variables) and must be escaped here. The markup mirrors the Java renderer
  *   (tables instead of flexbox, same sizes) so the preview matches the PDF.
+ *
+ * Languages (#15): the editor texts written here (`name`, `description`, the `label` / `help` /
+ * `placeholder` of fields, settings and options) are the German originals. They stay fixed as
+ * `exchangeName` / `exchangeLabel`, the words of the DOCX / ODT exchange (`documentExchange.js`),
+ * while `localizeRegistry` below turns the displayed properties into getters over the message
+ * files (`blocks.<type>.name` / `.description`, `blocks.<type>.fields.<key>.…` for fields and
+ * settings, shared ones under `blocks.common.…`). `de.json` must hold the same
+ * German text (`blockRegistry.spec.js` compares them). What the renderers print (`defaultData`,
+ * `defaultConfig`, the column titles and the words in `render`) stays German: documents are German.
  */
 
 /** Fonts the PDF renderer can use. */
@@ -144,7 +154,7 @@ export function documentTitle(documentTypeId) {
   return type ? type.title : 'Rechnung'
 }
 
-/** Help text for invoice-meta fields that the document fills in when left empty. */
+/** Help text for invoice-meta fields that the document fills in when left empty (translated as `blocks.common.autoHint`). */
 const AUTO_HINT = 'Leer lassen: wird automatisch aus dem Dokument übernommen.'
 
 /**
@@ -626,7 +636,7 @@ export function getBlockByType(type) {
 }
 
 /**
- * Human-readable name of a block instance (`Adresse – Empfänger`).
+ * Name of a block instance in the editor's language (`Adresse – Empfänger`, `Address – recipient`).
  * @param {Object} block
  * @returns {string}
  */
@@ -634,10 +644,89 @@ export function blockDisplayName(block) {
   const type = getBlockByType(block.type)
   if (!type) return block.type
   if (block.type === 'address') {
-    return `${type.name} – ${block.data && block.data.role === 'receiver' ? 'Empfänger' : 'Absender'}`
+    const role = block.data && block.data.role === 'receiver' ? 'receiver' : 'sender'
+    return `${type.name} – ${t(`blocks.address.roles.${role}`)}`
   }
   return type.name
 }
+
+/**
+ * Name of a block instance in the DOCX / ODT exchange: always German (`Adresse – Empfänger`),
+ * whatever the interface language, so a file exported in English imports anywhere.
+ * @param {Object} block
+ * @returns {string}
+ */
+export function blockExchangeName(block) {
+  const type = getBlockByType(block.type)
+  if (!type) return block.type
+  if (block.type === 'address') {
+    return `${type.exchangeName} – ${block.data && block.data.role === 'receiver' ? 'Empfänger' : 'Absender'}`
+  }
+  return type.exchangeName
+}
+
+/**
+ * Shared settings and texts, translated once under `blocks.common`.
+ * @type {Map<Object, string>}
+ */
+const SHARED_KEYS = new Map(/** @type {[Object, string][]} */ ([
+  [WIDTH_SETTING, 'blocks.common.width'],
+  [ALIGNMENT_OPTIONS, 'blocks.common.alignment']
+]))
+
+/**
+ * Every German original the registry replaced by a translated getter, keyed by its message key;
+ * `blockRegistry.spec.js` checks `de.json` against it.
+ * @type {Map<string, string>}
+ */
+export const REGISTRY_ORIGINALS = new Map()
+
+/**
+ * Replaces a text property by a getter over the message files and remembers the original.
+ * @param {Object} target
+ * @param {string} prop
+ * @param {string} key
+ */
+function translated(target, prop, key) {
+  if (typeof target[prop] !== 'string' || !target[prop]) return
+  REGISTRY_ORIGINALS.set(key, target[prop])
+  Object.defineProperty(target, prop, { get: () => t(key), enumerable: true, configurable: true })
+}
+
+/**
+ * Options of a select: a shared list once under its common key, otherwise under the setting's key.
+ * @param {Object[]} options
+ * @param {string} prefix
+ * @param {Set<Object>} done
+ */
+function localizeOptions(options, prefix, done) {
+  if (!Array.isArray(options) || done.has(options)) return
+  done.add(options)
+  const base = SHARED_KEYS.get(options) || `${prefix}.options`
+  for (const option of options) translated(option, 'label', `${base}.${option.value}`)
+}
+
+/** Turns the editor texts of every block type into translated getters (see the file comment). */
+function localizeRegistry() {
+  const done = new Set()
+  for (const type of BLOCK_TYPES) {
+    type.exchangeName = type.name
+    translated(type, 'name', `blocks.${type.type}.name`)
+    translated(type, 'description', `blocks.${type.type}.description`)
+    for (const entry of [...(type.fields || []), ...(type.settings || [])]) {
+      if (done.has(entry)) continue
+      done.add(entry)
+      const prefix = SHARED_KEYS.get(entry) || `blocks.${type.type}.fields.${entry.key}`
+      entry.exchangeLabel = entry.label
+      translated(entry, 'label', `${prefix}.label`)
+      translated(entry, 'placeholder', `${prefix}.placeholder`)
+      translated(entry, 'help', entry.help === AUTO_HINT ? 'blocks.common.autoHint' : `${prefix}.help`)
+      localizeOptions(entry.options, prefix, done)
+    }
+  }
+}
+
+localizeRegistry()
 
 /** Documented for tests and the title placeholder. */
 export { documentTitle as defaultDocumentTitle }

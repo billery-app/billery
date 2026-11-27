@@ -1,7 +1,7 @@
 <template>
   <div class="block-library">
-    <h3 class="library-title">Block hinzufügen</h3>
-    <p class="library-hint">Klicken oder in die Vorschau ziehen</p>
+    <h3 class="library-title">{{ $t('library.title') }}</h3>
+    <p class="library-hint">{{ $t('library.hint') }}</p>
     <div class="block-list">
       <div
         v-for="block in availableBlocks"
@@ -12,7 +12,7 @@
         role="button"
         :tabindex="isAddable(block) ? 0 : -1"
         :aria-disabled="!isAddable(block)"
-        :title="isAddable(block) ? block.description : `${block.name} ist bereits vorhanden`"
+        :title="isAddable(block) ? block.description : $t('library.present', { name: block.name })"
         @dragstart="onDragStart($event, block)"
         @dragend="onDragEnd"
         @click="add(block)"

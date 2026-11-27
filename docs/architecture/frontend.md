@@ -55,16 +55,19 @@ messages that do not compile; `@`, `{`, `}` and `|` are message syntax and are w
 installation in self-host and desktop, per user in SaaS. Texts read outside a template at run
 time (the settings area titles in `settingsAreas.js`, the tour stations in `utils/tour.js`) are
 getters over `t()`, so they follow a switch without a reload. ESLint checks every `$t` / `t` key
-(`@intlify/vue-i18n/no-missing-keys`) and keeps the files already moved free of hard-coded text
-(`no-raw-text`, list `I18N_DONE` in `eslint.config.js`). Moved so far: the app shell, every view
-(dashboard, customers and customer detail, document list, catalog, search, company details,
-template list), the settings overview and all its areas, the customer / company / catalog
-dialogs, the quick search and both tours, the document dialogs (form, view, conversion, sending,
-customer picker, line rows) and the document type, status and taxation names. `data/documentTypes.js`
-gives each type getters (`label`, `plural`, `newLabel`, `listTitle`, …) over `t()`; only its
-`title` stays a fixed German word, because the PDF prints it (`blockRegistry.documentTitle`).
-Stored or printed data stays German too: default units (`Stk`, `Std`), payment methods, legal
-notes of the taxation. Still German: the template editor and the messages of the backend.
+(`@intlify/vue-i18n/no-missing-keys`) and keeps every template free of hard-coded text
+(`no-raw-text`, every `.vue` file). The whole interface is in the message files: app shell,
+views, settings, dialogs, both tours and the template editor. `data/documentTypes.js` gives each
+type getters (`label`, `plural`, `newLabel`, `listTitle`, …) over `t()`; only its `title` stays a
+fixed German word, because the PDF prints it (`blockRegistry.documentTitle`). The block registry
+(`utils/blockRegistry.js`) keeps its German editor texts in the source: they are the words of the
+DOCX / ODT exchange (`exchangeName` / `exchangeLabel`, read by `utils/documentExchange.js`, so a
+file exported in English imports anywhere), and `localizeRegistry` turns the displayed `name`,
+`description`, `label`, `help` and `placeholder` into getters over `blocks.*`; `de.json` must hold
+the same German text (`blockRegistry.spec.js`). Variable labels, chip labels and picker groups are
+`variables.*` (the variable names stay German ids). Stored or printed data stays German: what the
+renderers print, default units (`Stk`, `Std`), payment methods, legal notes, sample data of the
+preview. Still German: the messages of the backend (their error codes come next).
 Amounts and dates keep the German format in both languages (the business runs in Germany).
 
 ## Application bootstrap

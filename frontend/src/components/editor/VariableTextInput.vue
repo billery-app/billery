@@ -23,11 +23,11 @@
       <button
         type="button"
         class="btn-insert"
-        title="Platzhalter einfügen (oder @ tippen)"
-        aria-label="Platzhalter einfügen"
+        :title="$t('variables.insertHint')"
+        :aria-label="$t('variables.insert')"
         @mousedown.prevent="openPicker"
       >
-        + Platzhalter
+        {{ $t('variables.add') }}
       </button>
     </div>
     <VariablePicker
@@ -116,8 +116,8 @@ export default {
       chip.dataset.var = name
       chip.textContent = getChipLabel(name)
       chip.title = isKnownVariable(name)
-        ? 'Wird beim Erstellen des Dokuments ersetzt'
-        : `Unbekannter Platzhalter „${name}“: wird nicht gedruckt`
+        ? this.$t('variables.chipKnown')
+        : this.$t('variables.chipUnknown', { name })
       return chip
     },
 

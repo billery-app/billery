@@ -1,10 +1,10 @@
 <template>
   <div class="start-modal" role="dialog" aria-modal="true" aria-labelledby="start-title" @click.self="$emit('cancel')" @keydown.esc="$emit('cancel')">
     <div class="start-content">
-      <h2 id="start-title">Neue Vorlage</h2>
-      <p class="start-intro">Wählen Sie, wofür die Vorlage ist, und einen Stil als Ausgangspunkt. Alles lässt sich danach anpassen.</p>
+      <h2 id="start-title">{{ $t('templateStart.title') }}</h2>
+      <p class="start-intro">{{ $t('templateStart.intro') }}</p>
 
-      <div class="type-row" role="radiogroup" aria-label="Dokumenttyp">
+      <div class="type-row" role="radiogroup" :aria-label="$t('editor.documentType')">
         <button
           v-for="dt in documentTypeOptions"
           :key="dt.id"
@@ -19,7 +19,7 @@
         </button>
       </div>
 
-      <div class="preset-grid" role="radiogroup" aria-label="Stil">
+      <div class="preset-grid" role="radiogroup" :aria-label="$t('templateStart.style')">
         <button
           v-for="preset in presets"
           :key="preset.key"
@@ -44,28 +44,26 @@
 
       <div class="import-row">
         <p class="import-hint">
-          Oder die Texte einer Word- oder ODT-Datei in den gewählten Stil übernehmen. Abschnitte
-          wie „Kopfzeile“ oder „Fußzeile“ mit Zeilen wie „Text: …“ (so sieht ein Export aus) landen
-          in ihren Blöcken, übriger Text unter „Hinweise“.
+          {{ $t('templateStart.importHint') }}
         </p>
         <input
           ref="file"
           type="file"
           class="file-input"
           accept=".docx,.odt,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.oasis.opendocument.text"
-          aria-label="Word- oder ODT-Datei für die Vorlage"
+          :aria-label="$t('templateStart.file')"
           data-testid="template-import-file"
           @change="onFile"
         />
         <button type="button" class="btn btn-outline" :disabled="importing" @click="openFilePicker">
-          {{ importing ? 'Datei wird gelesen …' : 'Aus Datei übernehmen …' }}
+          {{ importing ? $t('templateStart.reading') : $t('templateStart.fromFile') }}
         </button>
         <p v-if="importError" class="import-error" role="alert">{{ importError }}</p>
       </div>
 
       <div class="start-actions">
-        <button type="button" class="btn btn-secondary" @click="$emit('cancel')">Abbrechen</button>
-        <button ref="confirm" type="button" class="btn btn-primary" @click="choose(presetKey)">Weiter</button>
+        <button type="button" class="btn btn-secondary" @click="$emit('cancel')">{{ $t('common.cancel') }}</button>
+        <button ref="confirm" type="button" class="btn btn-primary" @click="choose(presetKey)">{{ $t('templateStart.next') }}</button>
       </div>
     </div>
   </div>
@@ -135,7 +133,7 @@ export default {
         const { blocks } = applySections(getPreset(this.presetKey).build(this.documentTypeId).blocks, data.sections)
         this.choose(this.presetKey, { name: data.name || file.name, blocks })
       } catch (error) {
-        this.importError = error.response?.data?.message || 'Die Datei konnte nicht übernommen werden.'
+        this.importError = error.response?.data?.message || this.$t('templateStart.importFailed')
       } finally {
         this.importing = false
       }
