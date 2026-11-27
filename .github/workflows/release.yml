@@ -102,9 +102,6 @@ jobs:
       - name: Scan the self-host image (blocks the release)
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          # Trivy itself, pinned: the action's default (v0.70.0) is no longer published upstream
-          # (every scan failed installing it on 2026-11-27). Raise together with the action.
-          version: 'v0.76.2'
           scan-type: image
           image-ref: billery:${{ github.ref_name }}
           scanners: vuln
@@ -117,9 +114,6 @@ jobs:
       - name: Scan the SaaS image (blocks the release)
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          # Trivy itself, pinned: the action's default (v0.70.0) is no longer published upstream
-          # (every scan failed installing it on 2026-11-27). Raise together with the action.
-          version: 'v0.76.2'
           # the first Trivy step of this job restores and saves the database cache; a second save
           # of the same key only fails ("Unable to reserve cache")
           cache: 'false'
@@ -136,9 +130,6 @@ jobs:
         if: always()
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          # Trivy itself, pinned: the action's default (v0.70.0) is no longer published upstream
-          # (every scan failed installing it on 2026-11-27). Raise together with the action.
-          version: 'v0.76.2'
           # the first Trivy step of this job restores and saves the database cache; a second save
           # of the same key only fails ("Unable to reserve cache")
           cache: 'false'
@@ -155,9 +146,6 @@ jobs:
         if: always()
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          # Trivy itself, pinned: the action's default (v0.70.0) is no longer published upstream
-          # (every scan failed installing it on 2026-11-27). Raise together with the action.
-          version: 'v0.76.2'
           # the first Trivy step of this job restores and saves the database cache; a second save
           # of the same key only fails ("Unable to reserve cache")
           cache: 'false'
@@ -173,9 +161,6 @@ jobs:
       - name: SBOM of the self-host image
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          # Trivy itself, pinned: the action's default (v0.70.0) is no longer published upstream
-          # (every scan failed installing it on 2026-11-27). Raise together with the action.
-          version: 'v0.76.2'
           # the first Trivy step of this job restores and saves the database cache; a second save
           # of the same key only fails ("Unable to reserve cache")
           cache: 'false'
@@ -187,9 +172,6 @@ jobs:
       - name: SBOM of the SaaS image
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          # Trivy itself, pinned: the action's default (v0.70.0) is no longer published upstream
-          # (every scan failed installing it on 2026-11-27). Raise together with the action.
-          version: 'v0.76.2'
           # the first Trivy step of this job restores and saves the database cache; a second save
           # of the same key only fails ("Unable to reserve cache")
           cache: 'false'
@@ -203,9 +185,6 @@ jobs:
       - name: SBOM of the source tree
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          # Trivy itself, pinned: the action's default (v0.70.0) is no longer published upstream
-          # (every scan failed installing it on 2026-11-27). Raise together with the action.
-          version: 'v0.76.2'
           # the first Trivy step of this job restores and saves the database cache; a second save
           # of the same key only fails ("Unable to reserve cache")
           cache: 'false'
