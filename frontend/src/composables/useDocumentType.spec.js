@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { useDocumentType } from './useDocumentType.js'
-import { DOCUMENT_TYPES } from '../data/documentTypes.js'
-import { DRAFT, SENT, ACCEPTED, REJECTED, PAID, CANCELLED, PARTIALLY_PAID } from '../utils/documentStatus.js'
+import { DOCUMENT_TYPES } from '../data/documentTypes.ts'
+import { DRAFT, SENT, ACCEPTED, REJECTED, PAID, CANCELLED, PARTIALLY_PAID } from '../utils/documentStatus.ts'
 
 function dayOffset(days) {
   const d = new Date()

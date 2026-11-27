@@ -72,7 +72,7 @@
 <script>
 import TemplateThumbnail from './TemplateThumbnail.vue'
 import { TEMPLATE_PRESETS, getPreset } from '../../utils/templatePresets.js'
-import { DOCUMENT_TYPES, CREDIT_NOTE, INVOICE } from '../../data/documentTypes.js'
+import { DOCUMENT_TYPES, CREDIT_NOTE, INVOICE } from '../../data/documentTypes.ts'
 import { documentTitle } from '../../utils/blockRegistry.js'
 import { applySections } from '../../utils/documentExchange.js'
 import { validateImportFile } from '../../utils/fileValidation.js'

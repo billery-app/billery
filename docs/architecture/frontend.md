@@ -26,7 +26,7 @@ components/             shared components
   *Modal.vue            create / edit dialogs (customer, article, owner, document, …)
   TemplateEditor.vue    orchestrates the block editor
 services/               axios API clients (one per resource + baseService)
-utils/                  pure JS — registries, sanitisation, preview; vat.js mirrors the
+utils/                  pure JS — registries, sanitisation, preview; vat.ts mirrors the
                         backend VAT rules for editor totals (display only, the server recomputes)
 composables/            reusable composition functions (useDocumentType, useUnsavedChangesGuard, useHistory)
 data/                   static lookup tables (documentTypes)
@@ -57,7 +57,7 @@ time (the settings area titles in `settingsAreas.js`, the tour stations in `util
 getters over `t()`, so they follow a switch without a reload. ESLint checks every `$t` / `t` key
 (`@intlify/vue-i18n/no-missing-keys`) and keeps every template free of hard-coded text
 (`no-raw-text`, every `.vue` file). The whole interface is in the message files: app shell,
-views, settings, dialogs, both tours and the template editor. `data/documentTypes.js` gives each
+views, settings, dialogs, both tours and the template editor. `data/documentTypes.ts` gives each
 type getters (`label`, `plural`, `newLabel`, `listTitle`, …) over `t()`; only its `title` stays a
 fixed German word, because the PDF prints it (`blockRegistry.documentTitle`). The block registry
 (`utils/blockRegistry.js`) keeps its German editor texts in the source: they are the words of the
@@ -649,7 +649,7 @@ layers so the invariant cannot be bypassed by a malformed DTO.
 - `composables/useDocumentType.js` — encapsulates the
   document-type → label / strategy mapping. Use this from any view that
   needs to display document-type names in the UI.
-- `data/documentTypes.js` — static lookup table for dropdowns. The
+- `data/documentTypes.ts` — static lookup table for dropdowns. The
   values here must match the IDs in `V1__baseline.sql` (`document_type` and
   `document_status` rows). The template start gallery's presets live in
   `utils/templatePresets.js` (built from the block registry).

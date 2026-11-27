@@ -1,7 +1,7 @@
 import { computed } from 'vue'
 import { t } from '../i18n/index.js'
-import { DOCUMENT_TYPES, getDocumentType, getDocumentTypeById, getDocumentTypeKey, INVOICE, OFFER, COST_CALCULATION, CREDIT_NOTE, isInvoice, isCreditNote } from '../data/documentTypes.js'
-import { DRAFT, SENT, ACCEPTED, REJECTED, CONVERTED, PAID, CANCELLED, PARTIALLY_PAID, isDraft, isSent, isAccepted, isRejected, isPaid, isPartiallyPaid, isCancelled, isInvoiceOverdue, isOfferExpired, OFFER_TRANSITIONS } from '../utils/documentStatus.js'
+import { DOCUMENT_TYPES, getDocumentType, getDocumentTypeById, getDocumentTypeKey, INVOICE, OFFER, COST_CALCULATION, CREDIT_NOTE, isInvoice, isCreditNote } from '../data/documentTypes.ts'
+import { DRAFT, SENT, ACCEPTED, REJECTED, CONVERTED, PAID, CANCELLED, PARTIALLY_PAID, isDraft, isSent, isAccepted, isRejected, isPaid, isPartiallyPaid, isCancelled, isInvoiceOverdue, isOfferExpired, OFFER_TRANSITIONS } from '../utils/documentStatus.ts'
 
 const TAB_KEYS = ['invoice', 'offer', 'costCalculation']
 

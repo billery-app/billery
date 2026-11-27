@@ -9,7 +9,7 @@ vi.mock('../services/invoiceService.js', () => ({
 
 import invoiceAPI from '../services/invoiceService.js'
 import { convertDocument } from './documentConversion.js'
-import { DRAFT, CONVERTED, SENT } from './documentStatus.js'
+import { DRAFT, CONVERTED, SENT } from './documentStatus.ts'
 
 describe('convertDocument', () => {
   beforeEach(() => {

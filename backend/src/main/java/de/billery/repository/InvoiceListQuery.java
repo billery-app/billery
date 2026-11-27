@@ -114,7 +114,7 @@ public record InvoiceListQuery(
 
   /**
    * The status filter as SQL. {@code overdue} and {@code expired} are derived exactly like {@code
-   * isInvoiceOverdue} / {@code isOfferExpired} in {@code frontend/src/utils/documentStatus.js}.
+   * isInvoiceOverdue} / {@code isOfferExpired} in {@code frontend/src/utils/documentStatus.ts}.
    */
   private String statusCondition() {
     if (status == null || status.isBlank()) {

@@ -21,15 +21,22 @@
         "./src/*"
       ]
     },
-    "strict": false
+    "strict": false,
+    "noImplicitThis": true,
+    "strictBindCallApply": true,
+    "strictFunctionTypes": true,
+    "alwaysStrict": true,
+    "allowImportingTsExtensions": true
   },
   "include": [
     "src/**/*.js",
+    "src/**/*.ts",
     "src/**/*.vue"
   ],
   "exclude": [
     "node_modules",
     "dist",
-    "src/**/*.spec.js"
+    "src/**/*.spec.js",
+    "src/**/*.spec.ts"
   ]
 }

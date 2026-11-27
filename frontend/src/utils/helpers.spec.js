@@ -119,6 +119,15 @@ describe('helpers - Real Workflows', () => {
       expect(fn).toHaveBeenCalledTimes(1)
     })
 
+    it('calls with the this and the arguments of the last call', () => {
+      const seen = []
+      const owner = { name: 'owner', run: debounce(function (value) { seen.push([this && this.name, value]) }, 300) }
+      owner.run(1)
+      owner.run(2)
+      vi.advanceTimersByTime(300)
+      expect(seen).toEqual([['owner', 2]])
+    })
+
     it('resets timer on subsequent calls', async () => {
       const fn = vi.fn()
       const debouncedFn = debounce(fn, 300)

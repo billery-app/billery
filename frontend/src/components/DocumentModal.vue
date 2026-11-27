@@ -325,10 +325,10 @@ import CustomerCreateModal from './CustomerCreateModal.vue'
 import CustomerPicker from './CustomerPicker.vue'
 import TemplateEditor from './TemplateEditor.vue'
 import { useDocumentType } from '../composables/useDocumentType.js'
-import { DRAFT, CANCELLED, CONVERTED, isCancelled, isDraft } from '../utils/documentStatus.js'
-import { INVOICE, OFFER, isInvoice, isBookkeepingRecord } from '../data/documentTypes.js'
+import { DRAFT, CANCELLED, CONVERTED, isCancelled, isDraft } from '../utils/documentStatus.ts'
+import { INVOICE, OFFER, isInvoice, isBookkeepingRecord } from '../data/documentTypes.ts'
 import { buildPreviewVariables, buildLineItemsData } from '../utils/invoiceVariables.js'
-import { TAX_TREATMENTS, SMALL_BUSINESS, calculateVat, chargesVat, legalNote, formatRate } from '../utils/vat.js'
+import { TAX_TREATMENTS, SMALL_BUSINESS, calculateVat, chargesVat, legalNote, formatRate } from '../utils/vat.ts'
 import { captureKeyboardZoomSnapshot, createKeyboardZoomTelemetry } from '../utils/keyboardZoomTelemetry.js'
 
 const { t } = useI18n()

@@ -126,7 +126,7 @@
 <script>
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { getDocumentTypeById } from '../data/documentTypes.js'
+import { getDocumentTypeById } from '../data/documentTypes.ts'
 import { useRouter } from 'vue-router'
 import { runTemplateTour } from '../utils/tour.js'
 import TemplateEditor from '../components/TemplateEditor.vue'

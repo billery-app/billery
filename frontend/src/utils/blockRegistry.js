@@ -1,5 +1,5 @@
 import { escapeHtml } from './sanitize.js'
-import { DOCUMENT_TYPES, CREDIT_NOTE } from '../data/documentTypes.js'
+import { DOCUMENT_TYPES, CREDIT_NOTE } from '../data/documentTypes.ts'
 import { t } from '../i18n/index.js'
 
 /**

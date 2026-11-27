@@ -1,5 +1,5 @@
 import { apiClient } from './baseService.js'
-import { INVOICE } from '../data/documentTypes.js'
+import { INVOICE } from '../data/documentTypes.ts'
 
 /**
  * Documents of every type, their payments, history and e-invoice (`/api/invoices`).

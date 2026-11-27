@@ -12,7 +12,7 @@
 Source of truth: `V1__baseline.sql` (lookup tables),
 `backend/src/main/java/de/billery/document/`
 (strategy package), and
-`frontend/src/data/documentTypes.js` (frontend
+`frontend/src/data/documentTypes.ts` (frontend
 labels).
 
 ## Lookup table
@@ -43,12 +43,12 @@ ON CONFLICT DO NOTHING;
 
 Note: id=7 was formerly `OVERDUE` and has been removed. "Overdue" is now
 a derived property of `(SENT, past due_date, no paid_date)` — see
-`frontend/src/utils/documentStatus.js#isInvoiceOverdue` and the
+`frontend/src/utils/documentStatus.ts#isInvoiceOverdue` and the
 `migrateDropOverdueStatus` step in `DatabaseMigration.java`.
 
 The IDs are fixed. Renumbering requires a data migration and a
 frontend change. Frontend labels are in
-`frontend/src/data/documentTypes.js`.
+`frontend/src/data/documentTypes.ts`.
 
 ## Strategy package
 
@@ -96,7 +96,7 @@ status change.
   which creates the next document and then sets `CONVERTED` with `convertedToInvoiceId`.
 - **One table, two readers.** `backend/src/test/resources/status-parity/transitions.json` is read by
   `OfferStatusTransitionsTest` (Java) and by `useDocumentType.spec.js` (SPA, against
-  `OFFER_TRANSITIONS` in `utils/documentStatus.js`). Changing the lifecycle means changing the
+  `OFFER_TRANSITIONS` in `utils/documentStatus.ts`). Changing the lifecycle means changing the
   strategy, `OFFER_TRANSITIONS` and that file together; either test fails otherwise.
 
 ## Strategy base class
@@ -140,7 +140,7 @@ for how to add a new type.
    create a new `XxxStrategy` class extending
    `BaseDocumentTypeStrategy`, define its `TRANSITIONS` table, and
    register it in `DocumentStrategyRegistry`'s constructor.
-3. **`frontend/src/data/documentTypes.js`** — add
+3. **`frontend/src/data/documentTypes.ts`** — add
    the new type's label / icon to the frontend lookup.
 4. **Optional** — add a seed template in the same migration (id, name,
    `html_content = '<!-- placeholder -->'`, `is_default = 1`,

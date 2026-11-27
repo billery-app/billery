@@ -308,7 +308,7 @@ import { renderBlockPreview } from '../utils/renderBlockPreview.js'
 import { scopeCss, styleElement } from '../utils/scopeCss.js'
 import { TEMPLATE_BASE_CSS } from '../utils/templateBaseCss.js'
 import { escapeBlockData } from '../utils/sanitize.js'
-import { INVOICE, DOCUMENT_TYPES, CREDIT_NOTE } from '../data/documentTypes.js'
+import { INVOICE, DOCUMENT_TYPES, CREDIT_NOTE } from '../data/documentTypes.ts'
 import { useUnsavedChangesGuard } from '../composables/useUnsavedChangesGuard.js'
 import { useHistory } from '../composables/useHistory.js'
 

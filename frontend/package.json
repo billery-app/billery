@@ -14,7 +14,7 @@
     "test:e2e": "playwright test",
     "test:e2e:install": "playwright install --with-deps chromium",
     "lint": "eslint . --max-warnings 0",
-    "typecheck": "vue-tsc --noEmit -p jsconfig.json",
+    "typecheck": "vue-tsc --noEmit -p tsconfig.json",
     "api:types": "openapi-typescript ../backend/target/openapi.json -o src/api/schema.d.ts"
   },
   "dependencies": {
@@ -42,6 +42,7 @@
     "jsonc-eslint-parser": "3.3.0",
     "openapi-typescript": "7.13.0",
     "typescript": "6.0.3",
+    "typescript-eslint": "8.72.2",
     "vite": "^8.3.6",
     "vite-plugin-vue-devtools": "^8.2.1",
     "vitest": "^5.0.5",

@@ -269,7 +269,7 @@ the strategy registry and the lookup tables.
    create the new strategy. The simplest case extends
    `BaseDocumentTypeStrategy` and provides the status transition
    table. Look at `InvoiceStrategy.java` for a 22-line example.
-5. **`frontend/src/data/documentTypes.js`** — add
+5. **`frontend/src/data/documentTypes.ts`** — add
    the new document type to the frontend's lookup so the UI
    shows the correct label.
 6. (Optional) **Frontend view** — add a tab or section for the new

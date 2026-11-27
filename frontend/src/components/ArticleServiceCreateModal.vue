@@ -92,7 +92,7 @@ import { ref, watch, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import articleAPI from '../services/articleService.js'
 import equipmentAPI from '../services/equipmentService.js'
-import { VAT_RATES } from '../utils/vat.js'
+import { VAT_RATES } from '../utils/vat.ts'
 
 const { t } = useI18n()
 
