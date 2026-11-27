@@ -11,6 +11,11 @@ backend/src/main/resources/static/
 .env/
 .env
 
+# DeepL API keys (scripts/translate-locale.mjs reads ~/.config/billery/deepl.key or DEEPL_API_KEY)
+.deepl
+*.deepl
+deepl.key
+
 # Testfiles
 /backend/testFiles
 

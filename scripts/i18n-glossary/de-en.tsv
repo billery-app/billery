@@ -1,0 +1,32 @@
+# German term<TAB>English term: sent as a DeepL glossary by scripts/translate-locale.mjs.
+# Keep in step with the hand-written en.json; DeepL matches word forms, list the base forms.
+Rechnung	invoice
+Angebot	offer
+Kostenvoranschlag	cost estimate
+Kostenberechnung	cost estimate
+Stornorechnung	cancellation invoice
+Gutschrift	credit note
+Entwurf	draft
+Ausstellen	issue
+Leistungsdatum	service date
+Leistungszeitraum	service period
+Fälligkeitsdatum	due date
+Kunde	customer
+Inhaber	owner
+Firmendaten	company details
+Vorlage	template
+Block	block
+Platzhalter	placeholder
+Position	line item
+Positionen	line items
+Leistung	service
+Artikel	article
+Ausstattung	equipment
+Zahlung	payment
+Verwendungszweck	payment reference
+Datensicherung	backup
+Mandant	company
+Kleinunternehmer	small business
+E-Rechnung	e-invoice
+Fußzeile	footer
+Kopfzeile	header
