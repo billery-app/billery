@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import de from './de.json'
 import en from './en.json'
-import { flatten, matchInitialCase, protect, restore, unflatten } from '../../../scripts/translate-locale.mjs'
+import {
+  flatten, isShort, matchInitialCase, planRequests, protect, restore, unflatten
+} from '../../../scripts/translate-locale.mjs'
 
 /**
  * The DeepL script (`scripts/translate-locale.mjs`) hides the vue-i18n syntax from the
@@ -35,6 +37,27 @@ describe('translate-locale.mjs', () => {
     expect(matchInitialCase('{n} Einsätze', '{n} jobs')).toBe('{n} jobs')
     expect(matchInitialCase('oder Bild hierher ziehen', 'or drag an image here')).toBe('or drag an image here')
     expect(matchInitialCase('3 Tage', '3 days')).toBe('3 days')
+  })
+
+  it('keeps exchange words in German quotation marks, and only those', () => {
+    const text = 'Abschnitte wie „Kopfzeile“ mit Zeilen wie „Text: …“, nicht „Werkzeuge“ oder „Textblock“.'
+    const { xml, tokens } = protect(text, ['Kopfzeile', 'Text'])
+    expect(tokens).toEqual(['Kopfzeile', 'Text: …'])
+    expect(xml).toContain('„Werkzeuge“')
+    expect(xml).toContain('„Textblock“')
+    expect(restore(xml, tokens)).toBe(text)
+  })
+
+  it('sends short labels grouped by their screen area, with the German neighbours as context', () => {
+    expect(isShort('Links')).toBe(true)
+    expect(isShort("{'{{current}}'} von {'{{total}}'}")).toBe(true)
+    expect(isShort('Bitte eine Datei auswählen.')).toBe(false)
+    const all = flatten(de)
+    const requests = planRequests(all, all)
+    const sides = requests.find(r => r.items.some(([key]) => key === 'design.sides.left'))
+    expect(sides.context).toContain('Oben')
+    expect(sides.context.length).toBeLessThanOrEqual(500)
+    expect(requests.flatMap(r => r.items).length).toBe(all.length)
   })
 
   it('rebuilds the message tree in the same order', () => {

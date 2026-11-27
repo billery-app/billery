@@ -29,6 +29,11 @@
  *   line), sent as a DeepL glossary for this run and deleted afterwards.
  * - Initial capitals: a message that starts with a capital letter keeps one (DeepL writes
  *   glossary terms in their listed case, also at the start).
+ * - Short labels: texts of up to three words are sent grouped by the screen area of their key,
+ *   with the German texts around them as context ("Links" next to "Oben, Rechts, Unten"); one
+ *   that comes back unchanged is asked once more on its own with its direct neighbours.
+ * - German words that must stay German: a quotation „…“ starting with a word of
+ *   `scripts/i18n-glossary/keep.txt` (the DOCX / ODT exchange words) is not translated.
  */
 import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { homedir } from 'node:os'
@@ -114,14 +119,21 @@ export function unflatten(pairs) {
 const SYNTAX = /\{'[^']*'\}|\{[^{}]*\}| \| /g
 
 /**
- * Replaces the vue-i18n syntax of a message by numbered XML tags DeepL does not touch.
+ * Replaces the vue-i18n syntax of a message, and German words in „…“ that must stay German (the
+ * DOCX / ODT exchange words such as „Kopfzeile“ or „Text: …“), by numbered XML tags DeepL does
+ * not touch. The quotation marks stay outside, so DeepL still sets the target language's ones.
  * @param {string} text
+ * @param {string[]} [keep] - words that stay German when a quotation starts with them
  * @returns {{xml: string, tokens: string[]}}
  */
-export function protect(text) {
+export function protect(text, keep = []) {
   const tokens = []
   const escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-  const xml = escaped.replace(SYNTAX, (match) => {
+  const kept = keep.length
+    ? `(?<=„)(?:${keep.map(word => word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})(?![\\p{L}])[^“]*(?=“)|`
+    : ''
+  const pattern = new RegExp(kept + SYNTAX.source, 'gu')
+  const xml = escaped.replace(pattern, (match) => {
     tokens.push(match)
     return `<x i="${tokens.length - 1}"/>`
   })
@@ -167,6 +179,80 @@ export function matchInitialCase(source, translation) {
   return translation.slice(0, at) + translation[at].toUpperCase() + translation.slice(at + 1)
 }
 
+/** A text of at most this many words (syntax not counted) is translated with its neighbours as context. */
+const SHORT_WORDS = 3
+/**
+ * Longest context sent with one group of short texts (characters; DeepL does not bill context).
+ * Short and plain works best: a long list with key names made DeepL leave words untranslated.
+ */
+const CONTEXT_LIMIT = 500
+
+/**
+ * Whether a message is a short label ("Links", "An", "{n} von {m}") that DeepL cannot translate
+ * well without knowing where it stands.
+ * @param {string} text
+ * @returns {boolean}
+ */
+export function isShort(text) {
+  const words = text.replace(SYNTAX, ' ').split(/\s+/).filter(word => /\p{L}/u.test(word))
+  return words.length <= SHORT_WORDS
+}
+
+/**
+ * Splits the texts into requests. Long texts go in batches of {@link BATCH} with the general
+ * context; short texts are grouped by the screen area of their key (the key without its last
+ * part, a small area together with the level above), each group in a request of its own whose
+ * context lists the German texts of that area (plain, at most {@link CONTEXT_LIMIT} characters),
+ * so "Links" next to "Oben, Rechts, Unten" reads as a side, not as links.
+ * @param {[string, string][]} todo - the texts to translate
+ * @param {[string, string][]} all - every source text, for the neighbours
+ * @returns {{items: [string, string][], context: string}[]}
+ */
+export function planRequests(todo, all) {
+  const parent = (path) => path.split('.').slice(0, -1).join('.')
+  const requests = []
+  const long = todo.filter(([, text]) => !isShort(text))
+  for (let start = 0; start < long.length; start += BATCH) {
+    requests.push({ items: long.slice(start, start + BATCH), context: CONTEXT })
+  }
+  const groups = new Map()
+  for (const pair of todo.filter(([, text]) => isShort(text))) {
+    const area = parent(pair[0])
+    if (!groups.has(area)) groups.set(area, [])
+    groups.get(area).push(pair)
+  }
+  const under = (scope) => all.filter(([path]) => !scope || path.startsWith(`${scope}.`))
+  for (const [area, items] of groups) {
+    // a small area (the four sides of a margin) is read with the level above it (the margins)
+    const scope = under(area).length < 6 && area.includes('.') ? parent(area) : area
+    const own = (path) => (path.startsWith(`${area}.`) ? 0 : 1)
+    const neighbours = under(scope)
+      .sort(([a], [b]) => own(a) - own(b)) // the area's own texts first, before the limit cuts
+      .map(([, text]) => text)
+      .filter(text => text.length <= 60)
+    let context = 'Short labels on one screen of an invoicing web application. Other labels on that screen: '
+    for (const text of neighbours) {
+      if (context.length + text.length + 2 > CONTEXT_LIMIT) break
+      context += `${text}, `
+    }
+    context = context.replace(/, $/, '.')
+    for (let start = 0; start < items.length; start += BATCH) {
+      requests.push({ items: items.slice(start, start + BATCH), context })
+    }
+  }
+  return requests
+}
+
+/**
+ * Reads the words that stay German in quotations (`scripts/i18n-glossary/keep.txt`, one per line).
+ * @returns {string[]}
+ */
+function keepWords() {
+  const file = join(GLOSSARIES, 'keep.txt')
+  if (!existsSync(file)) return []
+  return readFileSync(file, 'utf8').split('\n').map(line => line.trim()).filter(line => line && !line.startsWith('#'))
+}
+
 /**
  * One call of the DeepL API.
  * @param {string} base - https://api(-free).deepl.com
@@ -177,13 +263,21 @@ export function matchInitialCase(source, translation) {
  * @returns {Promise<any>}
  */
 async function deepl(base, key, path, body, method = body ? 'POST' : 'GET') {
-  const response = await fetch(base + path, {
-    method,
-    headers: { Authorization: `DeepL-Auth-Key ${key}`, ...(body ? { 'Content-Type': 'application/json' } : {}) },
-    body: body ? JSON.stringify(body) : undefined
-  })
-  if (!response.ok) throw new Error(`DeepL ${method} ${path}: ${response.status} ${await response.text()}`)
-  return response.status === 204 ? null : response.json()
+  for (let attempt = 1; ; attempt++) {
+    const response = await fetch(base + path, {
+      method,
+      headers: { Authorization: `DeepL-Auth-Key ${key}`, ...(body ? { 'Content-Type': 'application/json' } : {}) },
+      body: body ? JSON.stringify(body) : undefined
+    })
+    // too many requests or briefly unavailable: wait as told (or 2, 4, 8 … s) and try again
+    if ((response.status === 429 || response.status === 503) && attempt < 8) {
+      const wait = Number(response.headers.get('retry-after')) || 2 ** attempt
+      await new Promise(done => setTimeout(done, wait * 1000))
+      continue
+    }
+    if (!response.ok) throw new Error(`DeepL ${method} ${path}: ${response.status} ${await response.text()}`)
+    return response.status === 204 ? null : response.json()
+  }
 }
 
 /**
@@ -224,29 +318,56 @@ async function main() {
   const glossaryId = await createGlossary(base, key, options.source, options.target.toLowerCase())
   const translated = new Map()
   const rejected = []
+  const keep = keepWords()
+  const requests = planRequests(todo, sourcePairs)
+  let done = 0
   try {
-    for (let start = 0; start < todo.length; start += BATCH) {
-      const batch = todo.slice(start, start + BATCH)
-      const protectedTexts = batch.map(([, text]) => protect(text))
+    for (const request of requests) {
+      const protectedTexts = request.items.map(([, text]) => protect(text, keep))
       const result = await deepl(base, key, '/v2/translate', {
         text: protectedTexts.map(p => p.xml),
         source_lang: options.source.toUpperCase(),
         target_lang: targetCode,
         tag_handling: 'xml',
         ignore_tags: ['x'],
-        context: CONTEXT,
+        context: request.context,
         ...(glossaryId ? { glossary_id: glossaryId } : {}),
         ...(options.formality ? { formality: options.formality } : {})
       })
       result.translations.forEach((translation, i) => {
-        const [path, original] = batch[i]
+        const [path, original] = request.items[i]
         const text = restore(translation.text, protectedTexts[i].tokens)
         if (text === null) rejected.push([path, original, translation.text])
         else translated.set(path, matchInitialCase(original, text))
       })
-      process.stdout.write(`\r${Math.min(start + BATCH, todo.length)} / ${todo.length}`)
+      done += request.items.length
+      process.stdout.write(`\r${done} / ${todo.length} (${requests.length} requests)`)
     }
     process.stdout.write('\n')
+    // Safety net: a word that came back unchanged ("Links") is asked once more on its own, with
+    // only its direct neighbours as context. Words that are the same in both languages
+    // ("Status", "Logo") simply come back unchanged again.
+    const parent = (path) => path.split('.').slice(0, -1).join('.')
+    for (const [path, original] of todo) {
+      if (translated.get(path) !== original || !/\p{L}/u.test(original)) continue
+      const siblings = sourcePairs.filter(([other]) => parent(other) === parent(path) && other !== path)
+        .map(([, text]) => text).filter(text => text.length <= 40).slice(0, 12)
+      const { xml, tokens } = protect(original, keep)
+      const result = await deepl(base, key, '/v2/translate', {
+        text: [xml],
+        source_lang: options.source.toUpperCase(),
+        target_lang: targetCode,
+        tag_handling: 'xml',
+        ignore_tags: ['x'],
+        context: `A short label in an invoicing web application, shown next to: ${siblings.join(', ')}.`,
+        ...(options.formality ? { formality: options.formality } : {})
+      })
+      const text = restore(result.translations[0].text, tokens)
+      if (text !== null && text !== original) {
+        translated.set(path, matchInitialCase(original, text))
+        console.log(`  second try: ${path}: ${original} -> ${translated.get(path)}`)
+      }
+    }
   } finally {
     if (glossaryId) await deepl(base, key, `/v2/glossaries/${glossaryId}`, undefined, 'DELETE')
   }
