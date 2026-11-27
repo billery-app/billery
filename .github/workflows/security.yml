@@ -102,6 +102,9 @@ jobs:
         if: steps.diff.outputs.deps == 'true'
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
+          # Trivy itself, pinned: the action's default (v0.70.0) is no longer published upstream
+          # (every scan failed installing it on 2026-11-27). Raise together with the action.
+          version: 'v0.76.2'
           scan-type: fs
           scan-ref: .
           scanners: vuln
@@ -121,6 +124,9 @@ jobs:
         if: always() && steps.diff.outputs.deps == 'true'
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
+          # Trivy itself, pinned: the action's default (v0.70.0) is no longer published upstream
+          # (every scan failed installing it on 2026-11-27). Raise together with the action.
+          version: 'v0.76.2'
           # the first Trivy step of this job restores and saves the database cache; a second save
           # of the same key only fails ("Unable to reserve cache")
           cache: 'false'
@@ -193,6 +199,9 @@ jobs:
       - name: Scan the image (fails on HIGH / CRITICAL with a fix)
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
+          # Trivy itself, pinned: the action's default (v0.70.0) is no longer published upstream
+          # (every scan failed installing it on 2026-11-27). Raise together with the action.
+          version: 'v0.76.2'
           scan-type: image
           image-ref: billery-${{ matrix.image }}:scan
           scanners: vuln
@@ -209,6 +218,9 @@ jobs:
         if: always()
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
+          # Trivy itself, pinned: the action's default (v0.70.0) is no longer published upstream
+          # (every scan failed installing it on 2026-11-27). Raise together with the action.
+          version: 'v0.76.2'
           # the first Trivy step of this job restores and saves the database cache; a second save
           # of the same key only fails ("Unable to reserve cache")
           cache: 'false'

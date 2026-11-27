@@ -19,7 +19,10 @@ Trivy reads `backend/pom.xml`, `frontend/package-lock.json`, `app-desktop/packag
 `app-desktop/Cargo.lock` for the tree, and the image layers (OS packages, the JAR's libraries, the
 SPA's node modules) for the images. The KoSIT validator of the test job is not in the repository
 (`scripts/fetch-kosit-validator.sh` downloads it with fixed checksums) and is not shipped. The Trivy action is pinned to a commit; Dependabot
-(`github-actions`) proposes its updates.
+(`github-actions`) proposes its updates. The Trivy binary it installs is pinned too (`version:` in
+every Trivy step of `security.yml` and `release.yml`), because the action's own default (v0.70.0)
+was no longer published upstream on 2026-11-27 and every scan failed while installing it; raise the
+version together with the action, to a release at least two weeks old.
 
 ## Severity policy
 
