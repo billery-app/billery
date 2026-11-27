@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { sanitizeHtml, escapeHtml, escapeBlockData } from './sanitize.js'
-import { BLOCK_TYPES } from './blockRegistry.js'
+import { BLOCK_TYPES } from './blockRegistry.ts'
 
 describe('sanitize - Real Workflows', () => {
   describe('Basic Sanitization', () => {

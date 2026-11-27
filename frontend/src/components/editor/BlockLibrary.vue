@@ -80,7 +80,7 @@
 </template>
 
 <script>
-import { canAddBlock } from '../../utils/blockValidation.js'
+import { canAddBlock } from '../../utils/blockValidation.ts'
 
 /**
  * Palette of block types. A block type whose limit is reached (e.g. a second
@@ -98,7 +98,7 @@ export default {
     },
     /** Blocks of the template, to disable types that reached their limit. */
     blocks: {
-      type: Array,
+      type: /** @type {import('vue').PropType<import('@/types.js').TemplateBlock[]>} */ (Array),
       default: () => []
     }
   },

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { VARIABLE_REGISTRY, DEFAULT_VARIABLES, VARIABLE_TYPES, getVariableLabel, getVariablesByCategory } from './variableRegistry.js'
+import { VARIABLE_REGISTRY, DEFAULT_VARIABLES, VARIABLE_TYPES, getVariableLabel, getVariablesByCategory } from './variableRegistry.ts'
 
 describe('variableRegistry - User Workflows', () => {
   describe('User Workflow: View Available Variables', () => {

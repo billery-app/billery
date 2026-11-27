@@ -212,14 +212,14 @@
 import { inputChecked, inputValue } from '../../utils/dom.js'
 import { uploadLogo } from '../../services/uploadService.js'
 import VariableTextInput from './VariableTextInput.vue'
-import { FONT_FAMILIES, getFormat, blockDisplayName } from '../../utils/blockRegistry.js'
-import { clone } from '../../utils/blockModel.js'
+import { FONT_FAMILIES, getFormat, blockDisplayName } from '../../utils/blockRegistry.ts'
+import { clone } from '../../utils/blockModel.ts'
 
 /**
  * Side panel to edit the selected block.
  *
  * The form is generated from the block type's `fields` (tab "Inhalt") and
- * `settings` + font format (tab "Darstellung") in `blockRegistry.js`. Every
+ * `settings` + font format (tab "Darstellung") in `blockRegistry.ts`. Every
  * change is applied immediately: the panel emits `update` with a new block
  * object and keeps no copy of its own, so preview, undo history and the
  * unsaved-changes guard always see the current state.
@@ -230,12 +230,12 @@ export default {
   name: 'BlockConfigPanel',
   components: { VariableTextInput },
   props: {
-    block: { type: Object, required: true },
-    blockType: { type: Object, default: null },
+    block: { type: /** @type {import('vue').PropType<import('@/utils/blockRegistry.ts').Block>} */ (Object), required: true },
+    blockType: { type: /** @type {import('vue').PropType<import('@/utils/blockRegistry.ts').BlockType | null>} */ (Object), default: null },
     /** Preview values, shown as examples in the variable picker. */
     previewValues: { type: Object, default: () => ({}) },
     /** Validation issues of this block ({ message }). */
-    issues: { type: /** @type {import('vue').PropType<import('@/utils/blockValidation.js').Issue[]>} */ (Array), default: () => [] }
+    issues: { type: /** @type {import('vue').PropType<import('@/utils/blockValidation.ts').Issue[]>} */ (Array), default: () => [] }
   },
   emits: ['update', 'close', 'duplicate', 'remove', 'notify'],
   data() {

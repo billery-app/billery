@@ -2,7 +2,7 @@ import { apiClient } from './baseService.js'
 
 /**
  * Template exchange with word processors (`/api/documents`). The sections format is described in
- * `utils/documentExchange.js`.
+ * `utils/documentExchange.ts`.
  */
 export default {
   /**

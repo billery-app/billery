@@ -42,7 +42,7 @@
 </template>
 
 <script>
-import { blockDisplayName } from '../../utils/blockRegistry.js'
+import { blockDisplayName } from '../../utils/blockRegistry.ts'
 
 /** dataTransfer type of an outline drag (moving an existing block). */
 export const MOVE_TYPE = 'application/x-template-block-index'
@@ -62,7 +62,7 @@ export default {
     blocks: { type: /** @type {import('vue').PropType<import('@/types.js').TemplateBlock[]>} */ (Array), required: true },
     selectedId: { type: String, default: null },
     /** Validation issues ({ blockId, message }). */
-    issues: { type: /** @type {import('vue').PropType<import('@/utils/blockValidation.js').Issue[]>} */ (Array), default: () => [] }
+    issues: { type: /** @type {import('vue').PropType<import('@/utils/blockValidation.ts').Issue[]>} */ (Array), default: () => [] }
   },
   emits: ['select', 'move', 'remove', 'add'],
   data() {

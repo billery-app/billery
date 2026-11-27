@@ -32,14 +32,24 @@ composables/            reusable composition functions (useDocumentType, useUnsa
 data/                   static lookup tables (documentTypes)
 ```
 
-The code is JavaScript, type-checked by TypeScript through `checkJs` (`jsconfig.json`, `npm run
-typecheck` = `vue-tsc`); JSDoc annotations are the types. `strict` is off and the spec files are not
-checked yet (#39, later steps). Shared JSDoc types are in `src/types.js`; `utils/dom.js`
+The code moves to TypeScript step by step (#39). `npm run typecheck` (`vue-tsc` on
+`tsconfig.json`) checks the `.ts` files and, through `checkJs`, the JavaScript and the components,
+where JSDoc annotations are the types. **TypeScript already:** the core modules other code builds
+on: `utils/blockRegistry.ts` (with the types `Block`, `BlockType`, `FieldDefinition`,
+`RenderContext`), `blockModel.ts`, `blockValidation.ts`, `documentExchange.ts`, `previewData.ts`,
+`invoiceVariables.ts`, `variableRegistry.ts`, `documentStatus.ts`, `vat.ts` and
+`data/documentTypes.ts`. New modules are written in TypeScript; a JavaScript file is converted when
+it is changed anyway, the large Options API components last. Imports name the file with its
+extension, `.ts` included (`allowImportingTsExtensions`). Of the strict options, `noImplicitThis`,
+`strictBindCallApply`, `strictFunctionTypes` and `alwaysStrict` are on; `strictNullChecks` and
+`noImplicitAny` follow, then the spec files. Shared JSDoc types for components are in `src/types.js`
+(names pointing at the real types); `utils/dom.js`
 (`inputValue($event)`, `inputChecked($event)`) and `utils/route.js` (`param`, `numberParam`) give
 templates and views typed access to `$event.target` and the router's parameters. ESLint
 (`eslint.config.js`, `npm run lint`) runs the recommended rules and `eslint-plugin-vue`'s
-`flat/recommended` without its layout rules. The `@` import alias maps to `./src` (see
-`jsconfig.json`); use it for any non-trivial import path.
+`flat/recommended` without its layout rules, and typescript-eslint's recommended rules for `.ts`
+files. The `@` import alias maps to `./src` (see `tsconfig.json`); use it for any non-trivial import
+path.
 
 ## Languages (#15)
 
@@ -60,8 +70,8 @@ getters over `t()`, so they follow a switch without a reload. ESLint checks ever
 views, settings, dialogs, both tours and the template editor. `data/documentTypes.ts` gives each
 type getters (`label`, `plural`, `newLabel`, `listTitle`, …) over `t()`; only its `title` stays a
 fixed German word, because the PDF prints it (`blockRegistry.documentTitle`). The block registry
-(`utils/blockRegistry.js`) keeps its German editor texts in the source: they are the words of the
-DOCX / ODT exchange (`exchangeName` / `exchangeLabel`, read by `utils/documentExchange.js`, so a
+(`utils/blockRegistry.ts`) keeps its German editor texts in the source: they are the words of the
+DOCX / ODT exchange (`exchangeName` / `exchangeLabel`, read by `utils/documentExchange.ts`, so a
 file exported in English imports anywhere), and `localizeRegistry` turns the displayed `name`,
 `description`, `label`, `help` and `placeholder` into getters over `blocks.*`; `de.json` must hold
 the same German text (`blockRegistry.spec.js`). Variable labels, chip labels and picker groups are
@@ -412,7 +422,7 @@ Each stored block is:
 }
 ```
 
-`utils/blockModel.js` converts between the stored form and the editor
+`utils/blockModel.ts` converts between the stored form and the editor
 form (`normalizeBlocks` / `serializeBlocks`) and holds the pure block
 operations (create, move, duplicate, layout rows). The editor state is
 `form` (array order = block order) plus `selectedBlockId`; undo/redo
@@ -422,16 +432,16 @@ Drag-and-drop uses native HTML5 events in `TemplateEditor.vue` and
 
 ### Variables
 
-There is one variable registry, `utils/variableRegistry.js` (lowercase German names:
+There is one variable registry, `utils/variableRegistry.ts` (lowercase German names:
 `{{firma}}`, `{{kunde}}`, `{{rechnungsnummer}}`, `{{netto}}`, `{{iban}}` …), used by the editor,
 its preview and, on the server side through the same names, the PDF. The block renderer is
-`BLOCK_TYPES[i].render(data, config, ctx)` in `blockRegistry.js`, called through
+`BLOCK_TYPES[i].render(data, config, ctx)` in `blockRegistry.ts`, called through
 `utils/renderBlockPreview.js`. The former second registry (`templateVariables.js` with
 uppercase `{{OWNER_*}}` names for the old HTML import) was removed together with its endpoints.
 
 ### DOCX / ODT exchange
 
-`utils/documentExchange.js` maps between a template's blocks and the sections of an exchanged
+`utils/documentExchange.ts` maps between a template's blocks and the sections of an exchanged
 file (`templateToSections`, `applySections`); `services/documentService.js` calls
 `POST /api/documents/import` / `export`. Export: the "DOCX" / "ODT" buttons of a template card
 (`TemplatesView`). Import: "Aus Datei übernehmen …" in `TemplateStartModal`, which applies the
@@ -441,7 +451,7 @@ saves. Format and rules: [`document-pipeline.md`](./document-pipeline.md#documen
 ### Block configuration contract
 
 A block type is described completely in `BLOCK_TYPES`
-(`utils/blockRegistry.js`): defaults, `fields` and `settings` (the
+(`utils/blockRegistry.ts`): defaults, `fields` and `settings` (the
 config panel's form), `limits` (validation and library),
 `formatDefaults` and the preview `render`. The config panel
 (`components/editor/BlockConfigPanel.vue`) is generated from it, so a
@@ -450,7 +460,7 @@ when a default key has no field / setting definition.
 
 If you add a new config key:
 
-1. Add it to `defaultConfig` **and** `settings` in `blockRegistry.js`.
+1. Add it to `defaultConfig` **and** `settings` in `blockRegistry.ts`.
 2. Honour it in the block's `render(data, config, ctx)`.
 3. Honour it in the matching `render*` method of
    `TemplateBasedPdfGenerator` (Java).
@@ -461,7 +471,7 @@ If you add a new config key:
 
 The page preview, the template thumbnails and the parity test all
 render a block with `renderBlockPreview(block, ctx)`: variables
-resolved from the preview context (`utils/previewData.js`), data
+resolved from the preview context (`utils/previewData.ts`), data
 escaped with `escapeBlockData`, then `render(data, config, ctx)`. The
 result is **an HTML string**, bound with `v-html`. This means:
 
@@ -675,7 +685,7 @@ its style blocks. The migration is finished, so `colorLiterals.baseline.json` is
 mechanism stays as a per-file allowance (`UPDATE_COLOR_BASELINE=1 npm run test:run -- colorLiterals`
 rewrites it, and the spec fails if a file is *below* its baseline until it is lowered). Use a role or add
 one to `tokens.css`. The document preview of the template editor is exempt (`TemplateThumbnail.vue`,
-`blockRegistry.js`, `previewData.js`): its colours come from the template and mirror the PDF (renderer
+`blockRegistry.ts`, `previewData.ts`): its colours come from the template and mirror the PDF (renderer
 parity); the sheet of the editor preview uses `--color-paper`, which stays white in every theme.
 
 **Migration status:** every view and dialog is migrated: no colour literals, no own `.btn-*`,

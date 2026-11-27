@@ -327,7 +327,7 @@ import TemplateEditor from './TemplateEditor.vue'
 import { useDocumentType } from '../composables/useDocumentType.js'
 import { DRAFT, CANCELLED, CONVERTED, isCancelled, isDraft } from '../utils/documentStatus.ts'
 import { INVOICE, OFFER, isInvoice, isBookkeepingRecord } from '../data/documentTypes.ts'
-import { buildPreviewVariables, buildLineItemsData } from '../utils/invoiceVariables.js'
+import { buildPreviewVariables, buildLineItemsData } from '../utils/invoiceVariables.ts'
 import { TAX_TREATMENTS, SMALL_BUSINESS, calculateVat, chargesVat, legalNote, formatRate } from '../utils/vat.ts'
 import { captureKeyboardZoomSnapshot, createKeyboardZoomTelemetry } from '../utils/keyboardZoomTelemetry.js'
 

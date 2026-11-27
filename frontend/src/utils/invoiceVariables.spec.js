@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildPreviewVariables, buildLineItemsData } from './invoiceVariables.js'
+import { buildPreviewVariables, buildLineItemsData } from './invoiceVariables.ts'
 
 const fullCustomer = {
   firstName: 'Anna',

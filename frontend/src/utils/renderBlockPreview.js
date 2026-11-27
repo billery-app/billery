@@ -1,4 +1,4 @@
-import { getBlockByType } from './blockRegistry.js'
+import { getBlockByType } from './blockRegistry.ts'
 import { resolveVariableText } from './variableText.js'
 import { escapeBlockData } from './sanitize.js'
 
@@ -24,7 +24,7 @@ function resolveDeep(value, values) {
  * (line items, VAT totals, number label). The stored block is not modified.
  *
  * @param {Object} block - Block as stored (`type`, `data`, `config`)
- * @param {Object} ctx - Preview context (`previewData.js > buildPreviewContext`)
+ * @param {Object} ctx - Preview context (`previewData.ts > buildPreviewContext`)
  * @returns {string} HTML, or '' for unknown block types
  */
 export function renderBlockPreview(block, ctx) {

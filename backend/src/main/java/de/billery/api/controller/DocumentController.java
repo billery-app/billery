@@ -26,7 +26,7 @@ import org.springframework.web.multipart.MultipartFile;
  *
  * <p>The file format is a list of sections (a heading per block, below it lines like "Text: …" with
  * the template's {@code {{variables}}}). Which block and field a line belongs to is decided by the
- * SPA ({@code utils/documentExchange.js}), which knows the block fields; this controller only
+ * SPA ({@code utils/documentExchange.ts}), which knows the block fields; this controller only
  * converts. Importing saves nothing: the SPA opens the result in the template editor, and the
  * template is saved like any other.
  */

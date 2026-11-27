@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   layoutRows, composePageHtml, isHalfWidth,
   createBlock, createDefaultBlocks, migrateBlock, normalizeBlocks, serializeBlocks, moveBlock, duplicateBlock
-} from './blockModel.js'
+} from './blockModel.ts'
 
 describe('blockModel', () => {
   it('createBlock applies role presets for addresses', () => {

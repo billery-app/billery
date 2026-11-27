@@ -1,4 +1,4 @@
-import { BLOCK_TYPES, getBlockByType } from './blockRegistry.js'
+import { BLOCK_TYPES, getBlockByType, type Block, type BlockValues } from './blockRegistry.ts'
 import { generateId } from './helpers.js'
 
 /**
@@ -17,7 +17,7 @@ import { generateId } from './helpers.js'
  * `DatabaseMigration.migrateTemplateSampleLiterals` for templates that are
  * opened before the backend migration ran (or come from an import).
  */
-const LEGACY_SAMPLE_LITERALS = {
+const LEGACY_SAMPLE_LITERALS: Readonly<Record<string, Record<string, [string, string]>>> = {
   'invoice-meta': {
     invoiceId: ['INV-2026-001', '{{rechnungsnummer}}'],
     invoiceDate: ['2026-03-17', '{{rechnungsdatum}}'],
@@ -29,24 +29,20 @@ const LEGACY_SAMPLE_LITERALS = {
 }
 
 /** Config keys that were removed from the block registry. */
-const REMOVED_CONFIG_KEYS = ['showUnit', 'showRate', 'decimalPlaces']
+const REMOVED_CONFIG_KEYS: readonly string[] = ['showUnit', 'showRate', 'decimalPlaces']
 
-/**
- * Deep-copies a JSON-compatible value.
- * @param {*} value
- * @returns {*}
- */
-export function clone(value) {
+/** Deep-copies a JSON-compatible value. */
+export function clone<T>(value: T): T {
   return value === undefined ? undefined : JSON.parse(JSON.stringify(value))
 }
 
 /**
  * Creates a new block with the registry defaults of its type.
- * @param {string} type - Block type key (`header`, `address`, ...)
- * @param {Object} [extraData] - Data overriding the defaults (e.g. `{ role: 'receiver' }`)
- * @returns {Object|null} The block, or `null` for an unknown type
+ * @param type - Block type key (`header`, `address`, ...)
+ * @param extraData - Data overriding the defaults (e.g. `{ role: 'receiver' }`)
+ * @returns The block, or `null` for an unknown type
  */
-export function createBlock(type, extraData = {}) {
+export function createBlock(type: string, extraData: BlockValues = {}): Block | null {
   const blockType = getBlockByType(type)
   if (!blockType) return null
   // Role presets: a receiver address starts with the customer variables, a sender with the company's.
@@ -60,11 +56,8 @@ export function createBlock(type, extraData = {}) {
   }
 }
 
-/**
- * The block set a new template starts with.
- * @returns {Object[]}
- */
-export function createDefaultBlocks() {
+/** The block set a new template starts with. */
+export function createDefaultBlocks(): Block[] {
   return [
     createBlock('header'),
     createBlock('address', { role: 'sender' }),
@@ -75,18 +68,16 @@ export function createDefaultBlocks() {
     createBlock('notes'),
     createBlock('payment'),
     createBlock('footer')
-  ]
+  ].filter((block): block is Block => block !== null)
 }
 
 /**
  * Brings one stored block up to the current registry shape: fills missing
  * config keys with defaults, drops removed keys and replaces legacy sample
  * literals by variables. Returns a new object; the input is not mutated.
- * @param {Object} block
- * @returns {Object}
  */
-export function migrateBlock(block) {
-  const migrated = clone(block)
+export function migrateBlock(block: Partial<Block> & { type: string }): Block {
+  const migrated = clone(block) as Block
   migrated.id = migrated.id || generateId()
   migrated.data = migrated.data || {}
   migrated.config = migrated.config || {}
@@ -119,11 +110,10 @@ export function migrateBlock(block) {
  * Parses stored blocks (JSON string or array), sorts them by their stored
  * `order` (stable, so equal orders keep their array position) and migrates
  * each block. The legacy header title moves to the invoice-meta block.
- * @param {string|Object[]|null|undefined} raw
- * @returns {Object[]} Blocks in display order, without `order` fields
+ * @returns Blocks in display order, without `order` fields
  */
-export function normalizeBlocks(raw) {
-  let blocks = raw
+export function normalizeBlocks(raw: string | unknown[] | null | undefined): Block[] {
+  let blocks: unknown = raw
   if (typeof raw === 'string') {
     try {
       blocks = JSON.parse(raw)
@@ -133,8 +123,8 @@ export function normalizeBlocks(raw) {
   }
   if (!Array.isArray(blocks)) return []
 
-  const sorted = blocks
-    .filter(b => b && typeof b === 'object' && b.type)
+  const sorted = (blocks as (Block | null)[])
+    .filter((b): b is Block => !!b && typeof b === 'object' && !!b.type)
     .map((block, index) => ({ block, index }))
     .sort((a, b) => (Number(a.block.order) || 0) - (Number(b.block.order) || 0) || a.index - b.index)
     .map(({ block }) => block)
@@ -154,21 +144,16 @@ export function normalizeBlocks(raw) {
 
 /**
  * Prepares blocks for storage: deep copy with `order` = array index.
- * @param {Object[]} blocks
- * @returns {Object[]}
  */
-export function serializeBlocks(blocks) {
+export function serializeBlocks(blocks: Block[]): Block[] {
   return blocks.map((block, index) => ({ ...clone(block), order: index }))
 }
 
 /**
  * Moves the block at `from` to position `to` (both clamped) in place.
- * @param {Object[]} blocks
- * @param {number} from
- * @param {number} to
- * @returns {boolean} Whether anything moved
+ * @returns Whether anything moved
  */
-export function moveBlock(blocks, from, to) {
+export function moveBlock<T>(blocks: T[], from: number, to: number): boolean {
   if (from < 0 || from >= blocks.length) return false
   const target = Math.max(0, Math.min(blocks.length - 1, to))
   if (target === from) return false
@@ -179,20 +164,22 @@ export function moveBlock(blocks, from, to) {
 
 /**
  * Copy of a block with a fresh id.
- * @param {Object} block
- * @returns {Object}
  */
-export function duplicateBlock(block) {
+export function duplicateBlock(block: Block): Block {
   return { ...clone(block), id: generateId() }
 }
 
 /**
  * Whether a block is half width (`config.width === 'half'`).
- * @param {Object} block
- * @returns {boolean}
  */
-export function isHalfWidth(block) {
+export function isHalfWidth(block: Pick<Block, 'config'> | null | undefined): boolean {
   return !!(block && block.config && block.config.width === 'half')
+}
+
+/** One row of the page: one full-width block, or one or two half-width blocks. */
+export interface LayoutRow<T> {
+  half: boolean
+  items: { block: T, index: number }[]
 }
 
 /**
@@ -200,11 +187,9 @@ export function isHalfWidth(block) {
  * two consecutive half-width blocks share one, a half-width block without a
  * partner takes the left half. Same rule as the PDF renderer
  * (`TemplateBasedPdfGenerator.layoutBlocks`).
- * @param {Object[]} blocks
- * @returns {{half: boolean, items: {block: Object, index: number}[]}[]}
  */
-export function layoutRows(blocks) {
-  const rows = []
+export function layoutRows<T extends Pick<Block, 'config'>>(blocks: T[]): LayoutRow<T>[] {
+  const rows: LayoutRow<T>[] = []
   for (let i = 0; i < blocks.length; i++) {
     if (!isHalfWidth(blocks[i])) {
       rows.push({ half: false, items: [{ block: blocks[i], index: i }] })
@@ -223,11 +208,8 @@ export function layoutRows(blocks) {
  * byte-for-byte like `TemplateBasedPdfGenerator.layoutBlocks`. Used for
  * thumbnails and the stored `htmlContent`; the editor preview lays out its
  * interactive wrappers itself.
- * @param {Object[]} blocks
- * @param {(block: Object) => string} renderOne
- * @returns {string}
  */
-export function composePageHtml(blocks, renderOne) {
+export function composePageHtml(blocks: Block[], renderOne: (block: Block) => string): string {
   return layoutRows(blocks).map(row => {
     if (!row.half) return renderOne(row.items[0].block)
     const [left, right] = row.items

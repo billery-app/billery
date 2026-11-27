@@ -14,8 +14,8 @@
 </template>
 
 <script>
-import { normalizeBlocks, composePageHtml } from '../../utils/blockModel.js'
-import { buildPreviewContext } from '../../utils/previewData.js'
+import { normalizeBlocks, composePageHtml } from '../../utils/blockModel.ts'
+import { buildPreviewContext } from '../../utils/previewData.ts'
 import { renderBlockPreview } from '../../utils/renderBlockPreview.js'
 import { scopeCss, styleElement } from '../../utils/scopeCss.js'
 import { TEMPLATE_BASE_CSS } from '../../utils/templateBaseCss.js'

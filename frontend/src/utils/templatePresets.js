@@ -1,5 +1,5 @@
-import { createDefaultBlocks, createBlock } from './blockModel.js'
-import { documentTitle } from './blockRegistry.js'
+import { createDefaultBlocks, createBlock } from './blockModel.ts'
+import { documentTitle } from './blockRegistry.ts'
 import { applyAccentColor, applyFontFamily, applyLayout, setPartVisible } from './designActions.js'
 import { t } from '../i18n/index.js'
 

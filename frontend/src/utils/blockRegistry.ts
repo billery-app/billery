@@ -23,7 +23,7 @@ import { t } from '../i18n/index.js'
  *
  * Languages (#15): the editor texts written here (`name`, `description`, the `label` / `help` /
  * `placeholder` of fields, settings and options) are the German originals. They stay fixed as
- * `exchangeName` / `exchangeLabel`, the words of the DOCX / ODT exchange (`documentExchange.js`),
+ * `exchangeName` / `exchangeLabel`, the words of the DOCX / ODT exchange (`documentExchange.ts`),
  * while `localizeRegistry` below turns the displayed properties into getters over the message
  * files (`blocks.<type>.name` / `.description`, `blocks.<type>.fields.<key>.…` for fields and
  * settings, shared ones under `blocks.common.…`). `de.json` must hold the same
@@ -31,30 +31,133 @@ import { t } from '../i18n/index.js'
  * `defaultConfig`, the column titles and the words in `render`) stays German: documents are German.
  */
 
+/**
+ * Stored data and config of a block: template JSON that users edit, so every value is checked
+ * where it is read (`safeColor`, `getFormat`, `escapeHtml`, `Number(...)`).
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- user-edited template JSON, see above
+export type BlockValues = Record<string, any>
+
+/** One block of a template as stored in `invoice_template.blocks` (array order = page order). */
+export interface Block {
+  id: string
+  type: string
+  data: BlockValues
+  config: BlockValues
+  /** Read once by `normalizeBlocks`, written by `serializeBlocks`. */
+  order?: number
+}
+
+/** Font settings of a block (`config.format`), defaults applied. */
+export interface Format {
+  fontFamily: string
+  fontSize: number
+  fontColor: string
+  fontWeight: 'bold' | 'normal'
+}
+
+/** One choice of a select field. `label` is translated (a getter after `localizeRegistry`). */
+export interface FieldOption {
+  value: string
+  label: string
+}
+
+/** How the config panel edits a field or setting. */
+export type FieldKind = 'text' | 'multiline' | 'select' | 'image' | 'columns' | 'toggle' | 'color'
+
+/**
+ * A field (`data`) or setting (`config`) of a block as the config panel shows it. `label`, `help`
+ * and `placeholder` are translated getters; `exchangeLabel` is the German label of the DOCX / ODT
+ * exchange.
+ */
+export interface FieldDefinition {
+  key: string
+  label: string
+  exchangeLabel?: string
+  kind: FieldKind
+  placeholder?: string
+  help?: string
+  options?: FieldOption[]
+  /** The setting is shown only while this other setting is on. */
+  showIf?: string
+  default?: string
+}
+
+/** A column of the line-items table. */
+export interface Column {
+  key: string
+  label: string
+  show?: boolean
+  width?: string
+}
+
+/** One line of the preview's line-items table (built by `invoiceVariables.buildLineItemsData`). */
+export interface PreviewItem {
+  description?: string
+  quantity?: number | string
+  unit?: string
+  rate?: number | string
+  amount?: number | string
+  taxRate?: number | string | null
+  isNote?: boolean
+  noteText?: string
+  children?: PreviewItem[]
+  [key: string]: unknown
+}
+
+/** VAT totals of the preview (`previewData.totalsFromInvoice`). */
+export interface PreviewTotals {
+  net: number
+  gross: number
+  groups: { ratePercent: number, net: number, tax: number }[]
+  chargesVat?: boolean
+  legalNote?: string
+}
+
+/** Document data a block renders but does not store. */
+export interface RenderContext {
+  variables?: Record<string, unknown>
+  items?: PreviewItem[]
+  totals?: PreviewTotals
+  documentTypeId?: number
+}
+
+/** Everything about one block type (see the file comment). */
+export interface BlockType {
+  type: string
+  /** Translated name (getter); `exchangeName` keeps the German one. */
+  name: string
+  exchangeName?: string
+  description: string
+  icon: string
+  limits: { max: number, required?: boolean }
+  formatDefaults: Partial<Format>
+  defaultData: BlockValues
+  defaultConfig: BlockValues
+  rolePresets?: Record<string, { data?: BlockValues, config?: BlockValues }>
+  fields: FieldDefinition[]
+  settings: FieldDefinition[]
+  render(data: BlockValues, config: BlockValues, ctx?: RenderContext): string
+}
+
 /** Fonts the PDF renderer can use. */
-export const FONT_FAMILIES = ['Inter', 'Arial', 'Helvetica', 'Times New Roman', 'Courier New', 'Georgia']
+export const FONT_FAMILIES: readonly string[] = ['Inter', 'Arial', 'Helvetica', 'Times New Roman', 'Courier New', 'Georgia']
 
 const COLOR_PATTERN = /^#[0-9a-fA-F]{3,8}$/
 const FONT_PATTERN = /^[A-Za-z0-9 ,'-]{1,60}$/
 
-/**
- * Returns a CSS color from user input, or the fallback when it is not a hex color.
- * @param {*} value
- * @param {string} fallback
- * @returns {string}
- */
-export function safeColor(value, fallback) {
+/** Returns a CSS color from user input, or the fallback when it is not a hex color. */
+export function safeColor(value: unknown, fallback: string): string {
   return typeof value === 'string' && COLOR_PATTERN.test(value) ? value : fallback
 }
 
 /**
  * Format settings of a block with its defaults.
- * @param {Object} config - Block config (`config.format` is optional)
- * @param {Object} [defaults] - Block-specific defaults (`formatDefaults`)
- * @returns {{fontFamily: string, fontSize: number, fontColor: string, fontWeight: string}}
+ * @param config - Block config (`config.format` is optional)
+ * @param defaults - Block-specific defaults (`formatDefaults`)
  */
-export function getFormat(config, defaults = {}) {
-  const f = (config && config.format) || {}
+export function getFormat(config: BlockValues | null | undefined, defaults: Partial<Format> = {}): Format {
+  const f: BlockValues = (config && config.format) || {}
   const d = { fontFamily: 'Inter', fontSize: 10.5, fontColor: '#1f2937', ...defaults }
   const size = Number(f.fontSize)
   return {
@@ -67,10 +170,8 @@ export function getFormat(config, defaults = {}) {
 
 /**
  * Formats a point size like the Java renderer (`10.5pt`, `9pt`).
- * @param {number} pt
- * @returns {string}
  */
-function pt(pt) {
+function pt(pt: number): string {
   return `${Math.round(pt * 100) / 100}pt`
 }
 
@@ -78,10 +179,8 @@ function pt(pt) {
  * Generic CSS family of a font. The PDF renderer only has the standard PDF
  * fonts and picks one by the generic family (serif → Times, monospace →
  * Courier, else Helvetica); mirrors `TemplateBasedPdfGenerator.genericFontFamily`.
- * @param {string} family
- * @returns {'serif'|'monospace'|'sans-serif'}
  */
-export function genericFontFamily(family) {
+export function genericFontFamily(family: string | null | undefined): 'serif' | 'monospace' | 'sans-serif' {
   const f = String(family || '').toLowerCase()
   if (f.includes('georgia') || f.includes('times')) return 'serif'
   if (f.includes('courier')) return 'monospace'
@@ -90,33 +189,25 @@ export function genericFontFamily(family) {
 
 /**
  * Body-text CSS of a block; mirrors `TemplateBasedPdfGenerator.buildBodyStyle`.
- * @param {Object} config
- * @param {Object} defaults
- * @returns {string}
  */
-function bodyStyle(config, defaults) {
+function bodyStyle(config: BlockValues, defaults: Partial<Format>): string {
   const fmt = getFormat(config, defaults)
   return `font-size: ${pt(fmt.fontSize)}; color: ${fmt.fontColor}; font-weight: ${fmt.fontWeight}; font-family: ${fmt.fontFamily}, ${genericFontFamily(fmt.fontFamily)};`
 }
 
 /**
  * Escaped config string (labels and titles are user text, never HTML).
- * @param {Object} config
- * @param {string} key
- * @param {string} fallback - Used when the key is missing (not when it is empty)
- * @returns {string}
+ * @param fallback - Used when the key is missing (not when it is empty)
  */
-function label(config, key, fallback) {
+function label(config: BlockValues, key: string, fallback: string): string {
   const value = config && key in config ? config[key] : fallback
   return escapeHtml(value == null ? '' : value)
 }
 
 /**
  * Formats an amount like the PDF (`1.234,56 €`).
- * @param {number|string} amount
- * @returns {string}
  */
-export function formatCurrency(amount) {
+export function formatCurrency(amount: unknown): string {
   const n = Number(amount)
   const value = Number.isFinite(n) ? n : 0
   return value.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'
@@ -124,10 +215,8 @@ export function formatCurrency(amount) {
 
 /**
  * Formats a percentage like the PDF (`19 %`, `7,5 %`).
- * @param {number|string} rate
- * @returns {string}
  */
-function formatPercent(rate) {
+function formatPercent(rate: unknown): string {
   const n = Number(rate)
   return `${String(Number.isFinite(n) ? n : 0).replace('.', ',')} %`
 }
@@ -135,20 +224,16 @@ function formatPercent(rate) {
 /**
  * Label of the document number per document type (`Angebotsnummer`, ...);
  * mirrors the Java document strategies.
- * @param {number} documentTypeId
- * @returns {string}
  */
-export function numberLabel(documentTypeId) {
-  const labels = { 2: 'Angebotsnummer', 3: 'Kostenberechnungsnummer', [CREDIT_NOTE]: 'Stornorechnungsnummer' }
-  return labels[documentTypeId] || 'Rechnungsnummer'
+export function numberLabel(documentTypeId: number | null | undefined): string {
+  const labels: Record<number, string> = { 2: 'Angebotsnummer', 3: 'Kostenberechnungsnummer', [CREDIT_NOTE]: 'Stornorechnungsnummer' }
+  return (documentTypeId != null && labels[documentTypeId]) || 'Rechnungsnummer'
 }
 
 /**
  * Display name of a document type for the title default.
- * @param {number} documentTypeId
- * @returns {string}
  */
-export function documentTitle(documentTypeId) {
+export function documentTitle(documentTypeId: number | null | undefined): string {
   const type = DOCUMENT_TYPES.find(dt => dt.id === documentTypeId)
   // the German name: it is stored in the template and printed (documents stay German)
   return type ? type.title : 'Rechnung'
@@ -159,9 +244,9 @@ const AUTO_HINT = 'Leer lassen: wird automatisch aus dem Dokument übernommen.'
 
 /**
  * Width of a block on the page. Two consecutive half-width blocks share a
- * row (see `blockModel.js > layoutRows` and `TemplateBasedPdfGenerator.layoutBlocks`).
+ * row (see `blockModel.ts > layoutRows` and `TemplateBasedPdfGenerator.layoutBlocks`).
  */
-const WIDTH_SETTING = {
+const WIDTH_SETTING: FieldDefinition = {
   key: 'width',
   label: 'Breite',
   kind: 'select',
@@ -172,13 +257,13 @@ const WIDTH_SETTING = {
   ]
 }
 
-const ALIGNMENT_OPTIONS = [
+const ALIGNMENT_OPTIONS: FieldOption[] = [
   { value: 'left', label: 'Links' },
   { value: 'center', label: 'Mitte' },
   { value: 'right', label: 'Rechts' }
 ]
 
-export const DEFAULT_COLUMNS = [
+export const DEFAULT_COLUMNS: readonly Column[] = [
   { key: 'description', label: 'Beschreibung', show: true, width: '50%' },
   { key: 'quantity', label: 'Menge', show: true, width: '15%' },
   { key: 'unit', label: 'Einheit', show: true, width: '10%' },
@@ -186,7 +271,7 @@ export const DEFAULT_COLUMNS = [
   { key: 'amount', label: 'Gesamt', show: true, width: '13%' }
 ]
 
-export const BLOCK_TYPES = [
+export const BLOCK_TYPES: BlockType[] = [
   {
     type: 'header',
     name: 'Kopfzeile',
@@ -628,19 +713,15 @@ export const BLOCK_TYPES = [
 
 /**
  * Looks up a block type.
- * @param {string} type
- * @returns {Object|undefined}
  */
-export function getBlockByType(type) {
+export function getBlockByType(type: string): BlockType | undefined {
   return BLOCK_TYPES.find(b => b.type === type)
 }
 
 /**
  * Name of a block instance in the editor's language (`Adresse – Empfänger`, `Address – recipient`).
- * @param {Object} block
- * @returns {string}
  */
-export function blockDisplayName(block) {
+export function blockDisplayName(block: Pick<Block, 'type'> & { data?: BlockValues }): string {
   const type = getBlockByType(block.type)
   if (!type) return block.type
   if (block.type === 'address') {
@@ -653,53 +734,38 @@ export function blockDisplayName(block) {
 /**
  * Name of a block instance in the DOCX / ODT exchange: always German (`Adresse – Empfänger`),
  * whatever the interface language, so a file exported in English imports anywhere.
- * @param {Object} block
- * @returns {string}
  */
-export function blockExchangeName(block) {
+export function blockExchangeName(block: Pick<Block, 'type'> & { data?: BlockValues }): string {
   const type = getBlockByType(block.type)
   if (!type) return block.type
   if (block.type === 'address') {
     return `${type.exchangeName} – ${block.data && block.data.role === 'receiver' ? 'Empfänger' : 'Absender'}`
   }
-  return type.exchangeName
+  return type.exchangeName ?? type.name
 }
 
-/**
- * Shared settings and texts, translated once under `blocks.common`.
- * @type {Map<Object, string>}
- */
-const SHARED_KEYS = new Map(/** @type {[Object, string][]} */ ([
+/** Shared settings and texts, translated once under `blocks.common`. */
+const SHARED_KEYS = new Map<object, string>([
   [WIDTH_SETTING, 'blocks.common.width'],
   [ALIGNMENT_OPTIONS, 'blocks.common.alignment']
-]))
+])
 
 /**
  * Every German original the registry replaced by a translated getter, keyed by its message key;
  * `blockRegistry.spec.js` checks `de.json` against it.
- * @type {Map<string, string>}
  */
-export const REGISTRY_ORIGINALS = new Map()
+export const REGISTRY_ORIGINALS = new Map<string, string>()
 
-/**
- * Replaces a text property by a getter over the message files and remembers the original.
- * @param {Object} target
- * @param {string} prop
- * @param {string} key
- */
-function translated(target, prop, key) {
-  if (typeof target[prop] !== 'string' || !target[prop]) return
-  REGISTRY_ORIGINALS.set(key, target[prop])
+/** Replaces a text property by a getter over the message files and remembers the original. */
+function translated<T extends object>(target: T, prop: keyof T & string, key: string): void {
+  const original = target[prop]
+  if (typeof original !== 'string' || !original) return
+  REGISTRY_ORIGINALS.set(key, original)
   Object.defineProperty(target, prop, { get: () => t(key), enumerable: true, configurable: true })
 }
 
-/**
- * Options of a select: a shared list once under its common key, otherwise under the setting's key.
- * @param {Object[]} options
- * @param {string} prefix
- * @param {Set<Object>} done
- */
-function localizeOptions(options, prefix, done) {
+/** Options of a select: a shared list once under its common key, otherwise under the setting's key. */
+function localizeOptions(options: FieldOption[] | undefined, prefix: string, done: Set<object>): void {
   if (!Array.isArray(options) || done.has(options)) return
   done.add(options)
   const base = SHARED_KEYS.get(options) || `${prefix}.options`
@@ -707,8 +773,8 @@ function localizeOptions(options, prefix, done) {
 }
 
 /** Turns the editor texts of every block type into translated getters (see the file comment). */
-function localizeRegistry() {
-  const done = new Set()
+function localizeRegistry(): void {
+  const done = new Set<object>()
   for (const type of BLOCK_TYPES) {
     type.exchangeName = type.name
     translated(type, 'name', `blocks.${type.type}.name`)

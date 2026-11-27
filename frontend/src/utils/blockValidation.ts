@@ -1,6 +1,12 @@
-import { BLOCK_TYPES, getBlockByType, blockDisplayName } from './blockRegistry.js'
+import { BLOCK_TYPES, getBlockByType, blockDisplayName, type Block } from './blockRegistry.ts'
 import { unknownVariablesIn } from './variableText.js'
 import { t } from '../i18n/index.js'
+
+/** A problem of a template, with the block it belongs to (null: the template as a whole). */
+export interface Issue {
+  message: string
+  blockId: string | null
+}
 
 /**
  * Checks a template's block list before it is saved.
@@ -14,13 +20,10 @@ import { t } from '../i18n/index.js'
  * Every issue carries the `blockId` it belongs to (when there is one) so the
  * editor can mark the block and jump to it.
  *
- * @param {Object[]} blocks
- * @returns {{errors: Issue[], warnings: Issue[]}}
- * @typedef {{message: string, blockId: (string|null)}} Issue
  */
-export function validateBlocks(blocks) {
-  const errors = []
-  const warnings = []
+export function validateBlocks(blocks: Block[] | null | undefined): { errors: Issue[], warnings: Issue[] } {
+  const errors: Issue[] = []
+  const warnings: Issue[] = []
   const list = Array.isArray(blocks) ? blocks : []
 
   for (const type of BLOCK_TYPES) {
@@ -68,11 +71,8 @@ export function validateBlocks(blocks) {
 
 /**
  * Whether one more block of a type may be added.
- * @param {Object[]} blocks
- * @param {string} type
- * @returns {boolean}
  */
-export function canAddBlock(blocks, type) {
+export function canAddBlock(blocks: Block[], type: string): boolean {
   const blockType = getBlockByType(type)
   if (!blockType) return false
   const max = (blockType.limits && blockType.limits.max) ?? Infinity

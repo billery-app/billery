@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { validateBlocks, canAddBlock } from './blockValidation.js'
-import { createBlock, createDefaultBlocks } from './blockModel.js'
+import { validateBlocks, canAddBlock } from './blockValidation.ts'
+import { createBlock, createDefaultBlocks } from './blockModel.ts'
 
 describe('blockValidation', () => {
   it('accepts the default template', () => {

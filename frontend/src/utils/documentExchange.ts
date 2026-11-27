@@ -15,26 +15,27 @@
  * every section whose heading is no block (an ordinary letter from Word), becomes free text, which
  * goes into the notes block ("Hinweise") before its `{{notizen}}`.
  */
-import { BLOCK_TYPES, blockExchangeName, getBlockByType } from './blockRegistry.js'
-import { clone, createBlock } from './blockModel.js'
+import { BLOCK_TYPES, blockExchangeName, getBlockByType, type Block, type FieldDefinition } from './blockRegistry.ts'
+import type { DocumentSection } from '../api/types.js'
+import { clone, createBlock } from './blockModel.ts'
 
 /** Field kinds that hold text the exchange carries; images, selects and columns stay in Billery. */
-const TEXT_KINDS = new Set(['text', 'multiline'])
+const TEXT_KINDS: ReadonlySet<string> = new Set(['text', 'multiline'])
 
 /** The text fields of a block type, in the order of the registry. */
-function textFields(type) {
+function textFields(type: string): FieldDefinition[] {
   const blockType = getBlockByType(type)
   return blockType ? (blockType.fields || []).filter(field => TEXT_KINDS.has(field.kind)) : []
 }
 
 /** "Text:" and "text" both match the label "Text". */
-function normalize(text) {
+function normalize(text: unknown): string {
   return String(text ?? '').trim().replace(/:$/, '').trim().toLowerCase()
 }
 
 /** Section headings of the blocks, numbered when a kind occurs more than once. */
-function headingsOf(blocks) {
-  const seen = new Map()
+function headingsOf(blocks: Block[]): string[] {
+  const seen = new Map<string, number>()
   return blocks.map(block => {
     const name = blockExchangeName(block)
     const count = (seen.get(name) || 0) + 1
@@ -45,14 +46,13 @@ function headingsOf(blocks) {
 
 /**
  * The sections of a template for the export.
- * @param {Object[]} blocks - the template's blocks in display order
- * @returns {{heading: string, paragraphs: string[]}[]}
+ * @param blocks - the template's blocks in display order
  */
-export function templateToSections(blocks) {
+export function templateToSections(blocks: Block[]): { heading: string, paragraphs: string[] }[] {
   const headings = headingsOf(blocks)
-  const sections = []
+  const sections: { heading: string, paragraphs: string[] }[] = []
   blocks.forEach((block, index) => {
-    const paragraphs = []
+    const paragraphs: string[] = []
     for (const field of textFields(block.type)) {
       const value = String(block.data?.[field.key] ?? '')
       if (!value.trim()) continue
@@ -69,15 +69,14 @@ export function templateToSections(blocks) {
 
 /**
  * Applies imported sections to the blocks of a preset.
- * @param {Object[]} presetBlocks - the blocks the new template starts with (not changed)
- * @param {import('@/api/types.js').DocumentSection[]} sections - from `POST /api/documents/import`
- *   (heading and paragraphs may be missing)
- * @returns {{blocks: Object[], fields: number, freeText: number}} the new blocks, how many fields
- *   were filled and how many lines went into the notes as free text
+ * @param presetBlocks - the blocks the new template starts with (not changed)
+ * @param sections - from `POST /api/documents/import` (heading and paragraphs may be missing)
+ * @returns the new blocks, how many fields were filled and how many lines went into the notes as
+ *   free text
  */
-export function applySections(presetBlocks, sections) {
+export function applySections(presetBlocks: Block[], sections: DocumentSection[] | null | undefined): { blocks: Block[], fields: number, freeText: number } {
   const blocks = clone(presetBlocks)
-  const free = []
+  const free: string[] = []
   let fields = 0
 
   for (const section of sections || []) {
@@ -89,8 +88,8 @@ export function applySections(presetBlocks, sections) {
       continue
     }
     const known = textFields(block.type)
-    const filled = new Set()
-    let current = null
+    const filled = new Set<string>()
+    let current: FieldDefinition | null = null
     for (const line of paragraphs) {
       const labelled = matchField(known, line)
       if (labelled) {
@@ -112,9 +111,9 @@ export function applySections(presetBlocks, sections) {
 }
 
 /** The block a heading names: "Hinweise", "hinweise:", "Hinweise (2)" for the second one. */
-function findBlock(blocks, heading) {
+function findBlock(blocks: Block[], heading: string | null | undefined): Block | null {
   if (!heading) return null
-  const match = /^(.*?)(?:\s*\((\d+)\))?$/.exec(String(heading).trim())
+  const match = /^(.*?)(?:\s*\((\d+)\))?$/.exec(String(heading).trim()) as RegExpExecArray
   const name = normalize(match[1])
   const occurrence = Number(match[2] || 1)
   let count = 0
@@ -128,7 +127,7 @@ function findBlock(blocks, heading) {
 }
 
 /** A block the file names but the preset lacks (an address block, notes …) is added before the footer. */
-function createMissingBlock(blocks, name) {
+function createMissingBlock(blocks: Block[], name: string): Block | null {
   for (const type of BLOCK_TYPES) {
     if (type.type === 'address') {
       for (const role of ['sender', 'receiver']) {
@@ -142,14 +141,14 @@ function createMissingBlock(blocks, name) {
   return null
 }
 
-function insertBeforeFooter(blocks, block) {
+function insertBeforeFooter(blocks: Block[], block: Block): Block {
   const footer = blocks.findIndex(b => b.type === 'footer')
   blocks.splice(footer === -1 ? blocks.length : footer, 0, block)
   return block
 }
 
 /** "Label: value" for one of the block's fields, or null. */
-function matchField(fields, line) {
+function matchField(fields: FieldDefinition[], line: string): { field: FieldDefinition, value: string } | null {
   const colon = line.indexOf(':')
   if (colon <= 0) return null
   const label = normalize(line.slice(0, colon))
@@ -161,7 +160,7 @@ function matchField(fields, line) {
  * Free text goes into the notes block before its `{{notizen}}` (the document's own notes keep
  * printing); a template without notes block gets one before the footer.
  */
-function addFreeText(blocks, lines) {
+function addFreeText(blocks: Block[], lines: string[]): void {
   let notes = blocks.find(b => b.type === 'notes')
   if (!notes) notes = insertBeforeFooter(blocks, createBlock('notes'))
   const text = lines.join('\n')

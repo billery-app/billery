@@ -43,7 +43,7 @@
 <script>
 import VariablePicker from './VariablePicker.vue'
 import { parseVariableText } from '../../utils/variableText.js'
-import { getChipLabel, isKnownVariable } from '../../utils/variableRegistry.js'
+import { getChipLabel, isKnownVariable } from '../../utils/variableRegistry.ts'
 
 /**
  * Text field for template texts that may contain variables.

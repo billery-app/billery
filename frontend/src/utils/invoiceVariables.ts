@@ -13,7 +13,9 @@
  * the rendered output.
  */
 
-import { totalsFromInvoice } from './previewData.js'
+import { totalsFromInvoice } from './previewData.ts'
+import type { PreviewItem } from './blockRegistry.ts'
+import type { Customer, InvoiceDto, InvoiceItemDto } from '../api/types.js'
 
 const DATE_FORMATTER = new Intl.DateTimeFormat('de-DE', {
   day: '2-digit',
@@ -27,7 +29,7 @@ const DATE_FORMATTER = new Intl.DateTimeFormat('de-DE', {
  * Returns the input unchanged on parse failure so a malformed date does
  * not blank the preview.
  */
-function formatDateForPreview(value) {
+function formatDateForPreview(value: unknown): string {
   if (value === null || value === undefined || value === '') {
     return ''
   }
@@ -44,11 +46,11 @@ function formatDateForPreview(value) {
   return DATE_FORMATTER.format(date)
 }
 
-function safe(value) {
+function safe(value: unknown): string {
   return value === null || value === undefined ? '' : String(value)
 }
 
-function fullName(customer) {
+function fullName(customer: Customer | null): string {
   if (!customer) return ''
   const first = safe(customer.firstName)
   const last = safe(customer.lastName)
@@ -59,7 +61,7 @@ function fullName(customer) {
   return `${first} ${last}`
 }
 
-function streetAndNumber(customer) {
+function streetAndNumber(customer: Customer | null): string {
   if (!customer) return ''
   const street = safe(customer.street)
   const house = customer.houseNumber === null || customer.houseNumber === undefined
@@ -69,12 +71,12 @@ function streetAndNumber(customer) {
   return `${street} ${house}`
 }
 
-function postalCodeAndCity(customer) {
+function postalCodeAndCity(customer: Customer | null): string {
   if (!customer) return ''
   return `${safe(customer.postalCode)} ${safe(customer.city)}`
 }
 
-function formatPeriod(workStart, workEnd) {
+function formatPeriod(workStart: unknown, workEnd: unknown): string {
   const start = formatDateForPreview(workStart)
   const end = formatDateForPreview(workEnd)
   if (!start && !end) return ''
@@ -99,23 +101,23 @@ function formatPeriod(workStart, workEnd) {
  */
 
 /**
- * @param {Object} [params]
- * @param {Object|null} [params.invoice] - Invoice DTO (`invoiceDate`, `dueDate`,
- *   `workStartDate`, `workEndDate`, `notes`, `netAmount`, `taxRate`,
- *   `taxAmount`, `grossAmount`, `invoiceNumber`).
- * @param {Object|null} [params.customer] - Customer DTO (`firstName`, `lastName`,
- *   `street`, `houseNumber`, `postalCode`, `city`, `email`, `phone`).
- * @returns {{ variables: Object, totals: Object }} live data to feed to the
- *   editor:
+ * @param params.invoice - Invoice DTO (`invoiceDate`, `dueDate`, `workStartDate`, `workEndDate`,
+ *   `notes`, `netAmount`, `taxRate`, `taxAmount`, `grossAmount`, `invoiceNumber`).
+ * @param params.customer - Customer (`firstName`, `lastName`, `street`, `houseNumber`,
+ *   `postalCode`, `city`, `email`, `phone`).
+ * @returns live data to feed to the editor:
  *   - `variables`: the {{...}} substitution map (German + English aliases
  *     for customer, invoice header, totals, payment reference).
  *   - `totals`: the `data.subtotal/taxRate/taxAmount/total/currency` object
  *     the `totals` block reads directly (its renderer doesn't use {{...}}
  *     substitution). Merged on top of the block's data at render time.
  */
-export function buildPreviewVariables({ invoice = null, customer = null } = {}) {
-  const variables = {}
-  const totals = {}
+export function buildPreviewVariables({ invoice = null, customer = null }: {
+  invoice?: InvoiceDto | null
+  customer?: Customer | null
+} = {}): { variables: Record<string, string | number>, totals: Record<string, unknown> } {
+  const variables: Record<string, string | number> = {}
+  const totals: Record<string, unknown> = {}
 
   // --- customer (receiver) ---
   variables.kunde = fullName(customer)
@@ -228,17 +230,17 @@ export function buildPreviewVariables({ invoice = null, customer = null } = {}) 
  * never mutated (TemplateEditor.renderBlock does the swap at preview
  * time), so the real items never leak into the stored template.
  */
-export function buildLineItemsData(items) {
+export function buildLineItemsData(items: InvoiceItemDto[] | null | undefined): PreviewItem[] {
   if (!Array.isArray(items)) {
     return []
   }
   return items.map((item) => buildOneLineItem(item))
 }
 
-function buildOneLineItem(item) {
+function buildOneLineItem(item: InvoiceItemDto): PreviewItem {
   const type = String(item.itemType || '').toUpperCase()
   const isNote = type === 'CUSTOM'
-  const out = {
+  const out: PreviewItem = {
     description: item.itemName === null || item.itemName === undefined
       ? ''
       : String(item.itemName),
@@ -246,8 +248,9 @@ function buildOneLineItem(item) {
     unit: isNote ? '' : (item.unit === null || item.unit === undefined ? '' : String(item.unit)),
     rate: isNote ? 0 : toNumberOr(item.unitPrice, 0),
     amount: isNote ? 0 : toNumberOr(item.totalPrice, 0),
-    // InvoiceItemDto calls the per-line VAT rate `taxRate` (percent, e.g. 19).
-    taxRate: isNote ? null : toNumberOr(item.taxRate ?? item.taxRatePercent, null),
+    // InvoiceItemDto calls the per-line VAT rate `taxRate` (percent, e.g. 19); `taxRatePercent`
+    // exists only on articles (the typed API showed the old fallback was never filled).
+    taxRate: isNote ? null : toNumberOr(item.taxRate, null),
     isNote,
     noteText: isNote ? (item.itemDescription == null ? '' : String(item.itemDescription)) : '',
     parentItemId: item.parentItemId && Number(item.parentItemId) > 0
@@ -260,7 +263,7 @@ function buildOneLineItem(item) {
   return out
 }
 
-function toNumberOr(value, fallback) {
+function toNumberOr<F>(value: unknown, fallback: F): number | F {
   if (value === null || value === undefined || value === '') {
     return fallback
   }

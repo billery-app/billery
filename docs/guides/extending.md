@@ -21,11 +21,11 @@ and a parity test keeps both in step.
 
 ### Files to edit (in order)
 
-1. **`frontend/src/utils/blockRegistry.js`** — add an entry to
+1. **`frontend/src/utils/blockRegistry.ts`** — add an entry to
    `BLOCK_TYPES`:
    - `type`, `name` (German), `description` (one line for the library),
      `icon` (add the SVG to `BlockLibrary.vue` for a new key).
-   - `limits`: `{ max, required }` — enforced by `blockValidation.js`
+   - `limits`: `{ max, required }` — enforced by `blockValidation.ts`
      and the library.
    - `defaultData`: text fields default to `{{variables}}` or empty
      strings, **never** to sample values (the PDF prints what is
@@ -60,12 +60,12 @@ and a parity test keeps both in step.
    `frontend/src/utils/templateParity.spec.js` both run it.
 
 4. **Optional — defaults for new templates:** add the block to
-   `createDefaultBlocks` (`utils/blockModel.js`) and/or the presets in
+   `createDefaultBlocks` (`utils/blockModel.ts`) and/or the presets in
    `utils/templatePresets.js`; the SQL seeds (`V1__baseline.sql`, both
    `scheme-h2.sql`) and `TemplateBlocksBackfill.getDefaultBlocksJson`
    (the layout a template stored without blocks gets) hold their own copy.
    A new text field is carried by the DOCX/ODT exchange automatically
-   (`utils/documentExchange.js` reads the `fields` of the registry).
+   (`utils/documentExchange.ts` reads the `fields` of the registry).
 
 ### Tests to add
 
@@ -90,14 +90,14 @@ Adding a variable is much cheaper than adding a block.
 
 ### Files to edit
 
-1. **`frontend/src/utils/variableRegistry.js`** —
+1. **`frontend/src/utils/variableRegistry.ts`** —
    - Add the variable to `VARIABLE_REGISTRY` (`name`, `label`, `type`,
      `category`) and, if the label alone is ambiguous, a chip label in
      `CHIP_LABELS`.
    - Add a sample value to `SAMPLE_DATA` (`utils/templatePreview.js`)
      and, when it comes from the company data, map it in
-     `previewData.js > ownerVariables`; for the per-document editor
-     add it in `invoiceVariables.js > buildPreviewVariables`.
+     `previewData.ts > ownerVariables`; for the per-document editor
+     add it in `invoiceVariables.ts > buildPreviewVariables`.
 2. **`backend/src/main/java/de/billery/pdf/TemplateBasedPdfGenerator.java`** —
    add the replacement to `replaceVariables(text, owner, customer, invoice)`
    in the block for its data source. Without it the PDF **removes**
@@ -295,7 +295,7 @@ the strategy registry and the lookup tables.
   fails in the other (e.g. `ENUM`, `AUTO_INCREMENT`) breaks the build
   without warning; CI runs the suite on both.
 - **Changing only one renderer.** A block option honoured in
-  `blockRegistry.js` but not in `TemplateBasedPdfGenerator` (or the
+  `blockRegistry.ts` but not in `TemplateBasedPdfGenerator` (or the
   other way round) makes the preview lie. Add a parity case; the
   config panel itself is generated from the registry.
 - **Inserting a template without `blocks`.** The PDF path refuses

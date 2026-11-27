@@ -1,5 +1,7 @@
 import { SAMPLE_DATA } from './templatePreview.js'
-import { formatCurrency } from './blockRegistry.js'
+import { formatCurrency, type PreviewItem, type PreviewTotals, type RenderContext } from './blockRegistry.ts'
+import { legalNote } from './vat.ts'
+import type { InvoiceDto, Owner } from '../api/types.js'
 
 /**
  * Data the template editor preview renders with.
@@ -15,8 +17,21 @@ import { formatCurrency } from './blockRegistry.js'
  * the real document (per-document editor, `liveData`).
  */
 
+/** Real document data of the per-document editor (`DocumentModal.openCustomize`). */
+export interface LiveData {
+  variables?: Record<string, unknown>
+  items?: PreviewItem[]
+  totals?: PreviewTotals
+  invoiceId?: number
+}
+
+/** What the preview renders with (see the file comment). */
+export interface PreviewContext extends Required<Pick<RenderContext, 'variables' | 'items' | 'totals' | 'documentTypeId'>> {
+  isSample: boolean
+}
+
 /** Sample line items: two VAT rates and a sub-item, so every case is visible. */
-export const SAMPLE_ITEMS = [
+export const SAMPLE_ITEMS: PreviewItem[] = [
   { description: 'Beratung und Planung', quantity: 5, unit: 'Std.', rate: 100, amount: 500, taxRate: 19 },
   {
     description: 'Material',
@@ -30,7 +45,7 @@ export const SAMPLE_ITEMS = [
 ]
 
 /** Totals matching {@link SAMPLE_ITEMS}. */
-export const SAMPLE_TOTALS = {
+export const SAMPLE_TOTALS: PreviewTotals = {
   net: 1000,
   gross: 1190,
   groups: [{ ratePercent: 19, net: 1000, tax: 190 }],
@@ -38,26 +53,14 @@ export const SAMPLE_TOTALS = {
   legalNote: ''
 }
 
-/** Legal notes per tax treatment; mirrors `TaxTreatment.legalNote` (Java). */
-const LEGAL_NOTES = {
-  SMALL_BUSINESS: 'Gemäß § 19 UStG wird keine Umsatzsteuer berechnet (Kleinunternehmer).',
-  REVERSE_CHARGE: 'Steuerschuldnerschaft des Leistungsempfängers (§ 13b UStG).',
-  TAX_EXEMPT: 'Steuerfreie Leistung'
-}
-
 /**
  * VAT totals for the preview from an invoice DTO (`vatGroups`, `taxTreatment`
- * come from the server's `VatCalculator`; nothing is recomputed here).
- * @param {Object} invoice
- * @returns {Object} totals in the shape of {@link SAMPLE_TOTALS}
+ * come from the server's `VatCalculator`; nothing is recomputed here). The legal note is the one
+ * of `vat.ts` (mirrors `TaxTreatment.legalNote` in Java).
+ * @returns totals in the shape of {@link SAMPLE_TOTALS}
  */
-export function totalsFromInvoice(invoice) {
+export function totalsFromInvoice(invoice: InvoiceDto): PreviewTotals {
   const treatment = String(invoice.taxTreatment || 'STANDARD').toUpperCase()
-  let legalNote = LEGAL_NOTES[treatment] || ''
-  if (treatment === 'TAX_EXEMPT') {
-    const reason = String(invoice.taxExemptionReason || '').trim()
-    legalNote = reason ? `${legalNote} ${reason}.` : `${legalNote}.`
-  }
   return {
     net: Number(invoice.netAmount) || 0,
     gross: Number(invoice.grossAmount) || 0,
@@ -67,26 +70,24 @@ export function totalsFromInvoice(invoice) {
       tax: Number(g.tax)
     })),
     chargesVat: treatment === 'STANDARD',
-    legalNote
+    legalNote: legalNote(treatment, invoice.taxExemptionReason)
   }
 }
 
 /** Converts `2025-01-15` to `15.01.2025`; other values pass through. */
-function germanDate(value) {
+function germanDate(value: unknown): unknown {
   const match = typeof value === 'string' && value.match(/^(\d{4})-(\d{2})-(\d{2})$/)
   return match ? `${match[3]}.${match[2]}.${match[1]}` : value
 }
 
 /** Variables whose values are amounts and print as `1.234,56 €`. */
-const MONEY_VARIABLES = ['netto', 'steuer', 'betrag', 'rabatt']
+const MONEY_VARIABLES: readonly string[] = ['netto', 'steuer', 'betrag', 'rabatt']
 
 /**
  * Formats raw variable values like the PDF renderer does.
- * @param {Object} values
- * @returns {Object}
  */
-export function formatVariables(values) {
-  const out = { ...values }
+export function formatVariables(values: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...values }
   for (const key of ['rechnungsdatum', 'faelligkeitsdatum', 'leistungsdatum']) {
     if (key in out) out[key] = germanDate(out[key])
   }
@@ -101,12 +102,10 @@ export function formatVariables(values) {
  * Company variables from the owner record, formatted like the PDF
  * (`TemplateBasedPdfGenerator.replaceVariables`). Empty fields stay empty,
  * so the preview shows what the PDF will print.
- * @param {Object|null} owner
- * @returns {Object}
  */
-export function ownerVariables(owner) {
+export function ownerVariables(owner: Owner | null | undefined): Record<string, string> {
   if (!owner) return {}
-  const value = (v) => (v == null ? '' : String(v))
+  const value = (v: unknown): string => (v == null ? '' : String(v))
   return {
     firma: value(owner.companyName),
     adresse: `${value(owner.street)} ${value(owner.houseNumber)}, ${value(owner.postalCode)} ${value(owner.city)}`,
@@ -122,14 +121,15 @@ export function ownerVariables(owner) {
 
 /**
  * Builds the preview context.
- * @param {Object} params
- * @param {Object|null} [params.owner] - Company data; without it the sample company is shown
- * @param {Object|null} [params.liveData] - Real document data (`variables`, `items`, `totals`)
- * @param {number} [params.documentTypeId]
- * @returns {{variables: Object, items: Object[], totals: Object, documentTypeId: number, isSample: boolean}}
+ * @param params.owner - Company data; without it the sample company is shown
+ * @param params.liveData - Real document data (`variables`, `items`, `totals`)
  */
-export function buildPreviewContext({ owner = null, liveData = null, documentTypeId = 1 } = {}) {
-  const sample = { ...SAMPLE_DATA }
+export function buildPreviewContext({ owner = null, liveData = null, documentTypeId = 1 }: {
+  owner?: Owner | null
+  liveData?: LiveData | null
+  documentTypeId?: number
+} = {}): PreviewContext {
+  const sample: Record<string, unknown> = { ...SAMPLE_DATA }
   delete sample.positionen
   const live = liveData && liveData.variables ? liveData.variables : {}
   // Live variables set to '' mean "this document has no value": keep them empty.
