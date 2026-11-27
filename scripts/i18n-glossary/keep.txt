@@ -1,0 +1,12 @@
+# Words that stay German when a quotation „…“ starts with them (scripts/translate-locale.mjs):
+# the section and field names of the DOCX / ODT template exchange (blockRegistry.js exchangeName / exchangeLabel).
+Kopfzeile
+Fußzeile
+Adresse
+Dokumentdaten
+Positionen
+Summen
+Zahlungsdaten
+Hinweise
+Text
+Firmenname

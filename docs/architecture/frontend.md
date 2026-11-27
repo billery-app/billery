@@ -69,6 +69,20 @@ the same German text (`blockRegistry.spec.js`). Variable labels, chip labels and
 renderers print, default units (`Stk`, `Std`), payment methods, legal notes, sample data of the
 preview. Still German: the messages of the backend (their error codes come next).
 Amounts and dates keep the German format in both languages (the business runs in Germany).
+**A further language** is drafted with DeepL: `node scripts/translate-locale.mjs <code>` reads
+`de.json` and writes `<code>.json` (only missing keys; `--all` for everything, `--out` for a
+comparison file), hides the vue-i18n syntax from the translation and refuses a result whose
+placeholders changed, applies the glossary `scripts/i18n-glossary/de-<code>.tsv`, keeps a German
+initial capital and the exchange words of `scripts/i18n-glossary/keep.txt` in „…“. Short labels
+(up to three words) go grouped by the screen area of their key, with the German neighbour texts as
+a short plain context (a long one made DeepL leave words untranslated); a word that comes back
+unchanged is asked once more with its direct neighbours. 429 answers are retried with a wait.
+Compared with the hand-written English, about half the texts come out word for word the same and
+none stays German; ambiguous short verbs ("Stornieren" a payment) still need a person. The key comes from `DEEPL_API_KEY` or `~/.config/billery/deepl.key`, never
+from the repository; only our interface texts are sent, never customer data, and never from the
+app or CI. The draft is reviewed by a speaker of the language before release; then the code goes
+into `LANGUAGES` (`src/i18n/index.js`) and `locales.spec.js` checks it like the others.
+`en.json` stays hand-written: it is the reference and the source of the glossary.
 
 ## Application bootstrap
 
