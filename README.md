@@ -156,12 +156,13 @@ npm run lint             # ESLint
 npm run typecheck        # type check (JavaScript with JSDoc, checked by TypeScript)
 ```
 
-**Desktop shell (Tauri 2, optional)**
+**Desktop shell (Tauri 2, optional)**: building the installers and developing the app is in
+[`docs/guides/desktop.md`](docs/guides/desktop.md); installing it in
+[`app-desktop/README.md`](app-desktop/README.md).
 
 ```bash
-cd app-desktop
-npm install              # one-time, fetches @tauri-apps/cli
-npx tauri build          # or: cargo tauri build
+./scripts/build-desktop.sh   # installer for this system (Windows: scripts\build-desktop.ps1)
+cd app-desktop && npx tauri dev
 ```
 
 The Tauri window opens the bundled backend (`http://127.0.0.1:8080`, bound to localhost only), not an embedded SPA build. The `npm run build` and `npm run dev` scripts in `app-desktop/` delegate to the Vue frontend in `../frontend/`, so `tauri.conf.json`'s `beforeBuildCommand` / `beforeDevCommand` work without leaving the desktop dir.
