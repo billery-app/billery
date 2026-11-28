@@ -13,7 +13,8 @@ $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $RootDir = Split-Path -Parent $ScriptDir
 $BackendDir = Join-Path $RootDir "backend"
 $FrontendDir = Join-Path $RootDir "frontend"
-$TauriDir = Join-Path $FrontendDir "src-tauri"
+# the Tauri project (it used to live in frontend/src-tauri)
+$TauriDir = Join-Path $RootDir "app-desktop"
 $ResourcesDir = Join-Path $TauriDir "resources"
 $JarFile = Join-Path (Join-Path $BackendDir "target") "backend-1.0-SNAPSHOT.jar"
 $JlinkOutput = Join-Path (Join-Path $BackendDir "target") "runtime"

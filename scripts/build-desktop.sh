@@ -52,7 +52,9 @@ fi
 # Discover required modules
 echo "  Discovering required modules..."
 MODULES=$(jdeps --ignore-missing-deps --print-module-deps "$JAR_FILE" 2>/dev/null || true)
-MODULES="${MODULES},java.desktop,java.naming,java.management,java.instrument,jdk.unsupported,java.scripting,java.security.jgss,java.security.sasl"
+# jdk.localedata: without it the runtime knows only the root locale and amounts print as
+# "1,234.56 €" instead of "1.234,56 €" (#22); --include-locales keeps only German and English.
+MODULES="${MODULES},java.desktop,java.naming,java.management,java.instrument,jdk.unsupported,java.scripting,java.security.jgss,java.security.sasl,jdk.localedata"
 
 echo "  Modules: $MODULES"
 
@@ -91,6 +93,7 @@ fi
 rm -rf "$JLINK_OUTPUT"
 jlink --module-path "$JMODS_PATH" \
       --add-modules "$MODULES" \
+      --include-locales=de,en \
       --output "$JLINK_OUTPUT" \
       --strip-debug \
       --no-header-files \
