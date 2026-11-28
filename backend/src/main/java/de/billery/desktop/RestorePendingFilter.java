@@ -1,5 +1,6 @@
 package de.billery.desktop;
 
+import de.billery.api.error.ErrorCode;
 import de.billery.config.AppConfig;
 import de.billery.data.Database;
 import jakarta.servlet.FilterChain;
@@ -34,10 +35,8 @@ public class RestorePendingFilter extends OncePerRequestFilter {
           "DELETE /api/desktop/backups/restore",
           "POST /api/desktop/shutdown");
 
-  static final String MESSAGE =
-      "Eine Wiederherstellung ist vorgemerkt: bis zum Neustart wird nichts mehr gespeichert. Bitte"
-          + " Billery beenden und neu starten, oder die Wiederherstellung unter Einstellungen →"
-          + " Datensicherung abbrechen.";
+  /** The answer to a refused write (409), with its code (#15). */
+  static final String MESSAGE = ErrorCode.BACKUP_RESTORE_PENDING.template();
 
   private final BackupLocations locations;
   private final WriteGate gate;
@@ -110,6 +109,14 @@ public class RestorePendingFilter extends OncePerRequestFilter {
     response.setStatus(HttpServletResponse.SC_CONFLICT);
     response.setContentType("application/json");
     response.setCharacterEncoding("UTF-8");
-    response.getWriter().write("{\"message\":\"" + MESSAGE + "\"}");
+    // the message holds no quote or backslash, so it is written as it is
+    response
+        .getWriter()
+        .write(
+            "{\"message\":\""
+                + MESSAGE
+                + "\",\"code\":\""
+                + ErrorCode.BACKUP_RESTORE_PENDING.code()
+                + "\",\"params\":{}}");
   }
 }

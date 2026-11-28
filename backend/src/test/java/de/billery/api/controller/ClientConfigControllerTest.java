@@ -2,6 +2,7 @@ package de.billery.api.controller;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import de.billery.api.error.ErrorCode;
 import de.billery.config.DemoMode;
 import de.billery.data.Database;
 import de.billery.data.TestDatabaseConfig;
@@ -67,9 +68,10 @@ class ClientConfigControllerTest {
         new ClientConfigController(new MockEnvironment(), demo, VERSION).config());
     de.billery.service.DocumentStateException refused =
         org.junit.jupiter.api.Assertions.assertThrows(
-            de.billery.service.DocumentStateException.class, () -> demo.refuse("Der Mailversand"));
+            de.billery.service.DocumentStateException.class,
+            () -> demo.refuse(ErrorCode.DEMO_MAIL_DISABLED));
     assertEquals("Der Mailversand ist in der Demo abgeschaltet.", refused.getMessage());
-    NO_DEMO.refuse("Der Mailversand"); // outside the demo nothing is refused
+    NO_DEMO.refuse(ErrorCode.DEMO_MAIL_DISABLED); // outside the demo nothing is refused
   }
 
   @Test

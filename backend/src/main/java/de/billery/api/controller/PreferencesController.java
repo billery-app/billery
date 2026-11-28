@@ -1,5 +1,7 @@
 package de.billery.api.controller;
 
+import de.billery.api.error.ErrorBody;
+import de.billery.api.error.ErrorCode;
 import de.billery.preferences.UserPreferences;
 import java.util.HashMap;
 import java.util.Map;
@@ -48,8 +50,7 @@ public class PreferencesController {
   public ResponseEntity<Map<String, Object>> update(@RequestBody Map<String, String> body) {
     String language = body == null ? null : body.get("language");
     if (language == null || !UserPreferences.LANGUAGES.contains(language)) {
-      return ResponseEntity.badRequest()
-          .body(Map.of("message", "Unbekannte Sprache. Möglich sind: de, en."));
+      return ResponseEntity.badRequest().body(ErrorBody.from(ErrorCode.LANGUAGE_UNKNOWN.with()));
     }
     preferences.setLanguage(language);
     return ResponseEntity.ok(get());

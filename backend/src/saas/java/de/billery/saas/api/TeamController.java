@@ -76,6 +76,7 @@ public class TeamController {
    * @param expiresAt until when it can be accepted
    * @param mailSent whether the SMTP server accepted the invitation mail
    * @param mailProblem why no mail went out (German), null when it did
+   * @param mailProblemCode the code of that reason, which the SPA translates (#15), null when sent
    */
   public record InviteResponse(
       UUID id,
@@ -84,7 +85,8 @@ public class TeamController {
       Instant createdAt,
       Instant expiresAt,
       boolean mailSent,
-      String mailProblem) {}
+      String mailProblem,
+      String mailProblemCode) {}
 
   /** Body of {@code PUT /api/tenant/members/{userId}}. */
   public record RoleRequest(String role) {}
@@ -93,7 +95,7 @@ public class TeamController {
     try {
       return Role.valueOf(value == null ? "" : value.trim().toUpperCase(java.util.Locale.ROOT));
     } catch (IllegalArgumentException e) {
-      throw new ApiError(HttpStatus.BAD_REQUEST, "Unknown role: " + value, e);
+      throw new ApiError(HttpStatus.BAD_REQUEST, SaasErrorCode.ROLE_UNKNOWN.with("role", value), e);
     }
   }
 
@@ -181,7 +183,8 @@ public class TeamController {
         invitation.createdAt(),
         invitation.expiresAt(),
         mail.sent(),
-        mail.problem());
+        mail.problem() == null ? null : mail.problem().text(),
+        mail.problem() == null ? null : mail.problem().code().code());
   }
 
   /**

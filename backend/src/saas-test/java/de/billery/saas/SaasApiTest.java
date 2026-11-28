@@ -525,7 +525,8 @@ class SaasApiTest extends SaasApiTestBase {
     Reply refused =
         post("/api/customers", owner, tenant, "{\"firstName\":\"x\",\"lastName\":\"y\"}");
     assertEquals(403, refused.status());
-    assertTrue(refused.body().contains("read-only"), refused.body());
+    // refused because the company is read-only (the code, not the wording: #15)
+    assertTrue(refused.body().contains("\"code\":\"saas.tenantReadOnly\""), refused.body());
     assertEquals(
         409, post("/api/invitations/" + eveInvitation + "/accept", eve, null, null).status());
     assertEquals(
@@ -560,7 +561,8 @@ class SaasApiTest extends SaasApiTestBase {
     Reply refused =
         post("/api/customers", owner, tenant, "{\"firstName\":\"x\",\"lastName\":\"y\"}");
     assertEquals(403, refused.status(), "suspended: no writes");
-    assertTrue(refused.body().contains("read-only"), refused.body());
+    // refused because the company is read-only (the code, not the wording: #15)
+    assertTrue(refused.body().contains("\"code\":\"saas.tenantReadOnly\""), refused.body());
     assertEquals(
         200,
         get("/api/export/gobd?from=2026-01-01&to=2026-12-31&documents=false", owner, tenant)

@@ -1345,5 +1345,215 @@
     "fromFile": "Aus Datei übernehmen …",
     "next": "Weiter",
     "importFailed": "Die Datei konnte nicht übernommen werden."
+  },
+  "errors": {
+    "backup": {
+      "databaseUnreadable": "Die Datenbank in dieser Sicherung lässt sich nicht öffnen; sie wird nicht wiederhergestellt.",
+      "folderCreate": "Der Ordner kann nicht angelegt werden: {folder}",
+      "folderNotWritable": "In diesen Ordner kann nicht geschrieben werden: {folder}",
+      "folderRelative": "Bitte einen vollständigen Ordnerpfad angeben.",
+      "gone": "Die Sicherung gibt es nicht mehr.",
+      "invalid": "Die Datei ist keine gültige Billery-Sicherung.",
+      "keepRange": "Die Anzahl der aufbewahrten Sicherungen muss zwischen 1 und {max} liegen.",
+      "passwordNeeded": "Diese Sicherung ist verschlüsselt: bitte das Passwort angeben.",
+      "passwordShort": "Das Passwort muss mindestens {min} Zeichen haben.",
+      "passwordWrong": "Das Passwort ist falsch, oder die Sicherung ist beschädigt.",
+      "restoreLoss": "Seit dieser Sicherung wurden {issued} Belege ausgestellt oder storniert, {payments} Zahlungen erfasst, {changes} Änderungen an Dokumenten gemacht und {files} hochgeladene Dateien (Logos, Anhänge) neu angelegt oder geändert. Sie fehlen nach der Wiederherstellung im Programm; erhalten bleiben sie in der Sicherheitskopie, die vorher angelegt und nicht automatisch gelöscht wird und wie alle Rechnungen aufzubewahren ist (§ 147 AO).",
+      "restorePending": "Eine Wiederherstellung ist vorgemerkt: bis zum Neustart wird nichts mehr gespeichert. Bitte Billery beenden und neu starten, oder die Wiederherstellung unter Einstellungen → Datensicherung abbrechen.",
+      "restoreStaged": "Die Sicherung wird beim nächsten Start von Billery wiederhergestellt. Der jetzige Stand wird vorher gesichert.",
+      "tooLarge": "Die Daten sind zu groß für eine Sicherung (höchstens {max} Dateien und 4 GB). Bitte nicht mehr benötigte Logos und Anhänge entfernen.",
+      "unknown": "Unbekannte Sicherung.",
+      "writeFailed": "Die Sicherung konnte nicht geschrieben werden. Ist der Sicherungsordner erreichbar?",
+      "writesRunning": "Gerade wird noch gespeichert. Bitte einen Moment warten und die Wiederherstellung erneut wählen."
+    },
+    "cancel": {
+      "alreadyCancelled": "Die Rechnung ist bereits storniert.",
+      "draft": "Entwürfe werden gelöscht, nicht storniert.",
+      "notInvoice": "Nur Rechnungen werden mit einer Stornorechnung storniert."
+    },
+    "creditNote": {
+      "notClonable": "Stornorechnungen können nicht dupliziert werden.",
+      "onlyByCancel": "Stornorechnungen entstehen nur durch das Stornieren einer Rechnung."
+    },
+    "customer": {
+      "hasDocuments": "Der Kunde hat Dokumente und kann nicht gelöscht werden (Aufbewahrungspflicht)."
+    },
+    "database": {
+      "failed": "Datenbankfehler: Die Änderung wurde nicht gespeichert."
+    },
+    "demo": {
+      "mailDisabled": "Der Mailversand ist in der Demo abgeschaltet."
+    },
+    "document": {
+      "deleteNotDraft": "Nur Entwürfe können gelöscht werden. Ausgestellte Dokumente bitte archivieren oder stornieren (Aufbewahrungspflicht).",
+      "notFound": "Dokument {id} wurde nicht gefunden."
+    },
+    "einvoice": {
+      "missing": "Für die E-Rechnung (XRechnung) fehlen: {missing}.",
+      "notIssued": "Eine E-Rechnung gibt es erst für ausgestellte Rechnungen.",
+      "onlyInvoices": "E-Rechnungen gibt es nur für Rechnungen und Stornorechnungen."
+    },
+    "exchange": {
+      "exportEmpty": "Die Vorlage enthält keine Texte zum Exportieren.",
+      "exportMissing": "Keine Exportdaten.",
+      "formatUnknown": "Unbekanntes Format; möglich sind docx und odt.",
+      "importUnreadable": "Das Dokument konnte nicht gelesen werden. Unterstützt werden DOCX- und ODT-Dateien bis 2 MB.",
+      "sectionInvalid": "Ungültiger Abschnitt im Export.",
+      "textTooLong": "Ein Text des Exports ist zu lang.",
+      "tooManyParagraphs": "Zu viele Absätze für einen Export.",
+      "tooManySections": "Zu viele Abschnitte für einen Export."
+    },
+    "export": {
+      "alreadyRunning": "Es läuft bereits ein Export. Bitte in einigen Minuten erneut versuchen.",
+      "periodTooLong": "Der Zeitraum ist zu lang (höchstens {max} Tage pro Export).",
+      "tooLarge": "Der Export ist zu groß (höchstens {max} MB) und wurde abgebrochen. Bitte den Zeitraum verkleinern oder ohne Belegdateien exportieren.",
+      "tooMany": "Es laufen gerade zu viele Exporte. Bitte in einigen Minuten erneut versuchen.",
+      "tooManyDocuments": "Zu viele Belege für einen Export ({count}, höchstens {max}). Bitte den Zeitraum verkleinern.",
+      "tooManyWithFiles": "Zu viele Belege für einen Export mit PDF und XRechnung ({count}, höchstens {max}). Bitte den Zeitraum verkleinern oder ohne Belegdateien exportieren.",
+      "tooSlow": "Der Export hat zu lange gedauert und wurde abgebrochen. Bitte den Zeitraum verkleinern oder ohne Belegdateien exportieren."
+    },
+    "invoice": {
+      "alreadyIssued": "Die Rechnung wurde bereits ausgestellt.",
+      "dateMissing": "Bitte ein Rechnungsdatum angeben.",
+      "exemptionReasonMissing": "Bitte den Grund der Steuerbefreiung angeben (z. B. \"gemäß § 4 Nr. 14 UStG\").",
+      "issueNotDraft": "Nur Rechnungsentwürfe können ausgestellt werden.",
+      "issuedLocked": "Ausgestellte Rechnungen können nicht mehr geändert werden (GoBD). Bitte stornieren und eine korrigierte Rechnung erstellen.",
+      "layoutLocked": "Das Layout einer ausgestellten Rechnung kann nicht mehr geändert werden.",
+      "noItems": "Eine Rechnung ohne Positionen kann nicht ausgestellt werden.",
+      "reverseChargeTaxId": "Für das Reverse-Charge-Verfahren (§ 13b UStG) braucht der Kunde eine USt-IdNr. oder Steuernummer.",
+      "serviceDateMissing": "Bitte das Leistungsdatum angeben (Pflichtangabe nach §14 Abs. 4 UStG).",
+      "taxRateNotAllowed": "Position \"{item}\" hat den Steuersatz {rate} % (erlaubt: 19 %, 7 %)."
+    },
+    "item": {
+      "taxRateInvalid": "Ungültiger Steuersatz {rate} % für \"{item}\" (erlaubt: 19 %, 7 %)."
+    },
+    "mail": {
+      "accountMissing": "Die Angaben zum Mailkonto fehlen.",
+      "accountName": "Bitte einen Namen für das Konto angeben (bis 100 Zeichen).",
+      "auth": "Der Mailserver hat die Anmeldung abgelehnt. Bitte Benutzername und Passwort prüfen.",
+      "connect": "Der Mailserver ist nicht erreichbar. Bitte Server und Port prüfen.",
+      "encryptionRequired": "Bitte eine verschlüsselte Verbindung wählen (STARTTLS oder SSL/TLS).",
+      "fromInvalid": "Bitte eine gültige Absenderadresse angeben.",
+      "fromNameInvalid": "Der Absendername ist zu lang oder enthält Steuerzeichen.",
+      "hostFormat": "Bitte den Mailserver als Namen angeben, z. B. smtp.example.com (ohne http:// und ohne Port).",
+      "hostInternal": "Der Mailserver „{host}“ zeigt auf eine interne Adresse. Bitte den öffentlichen Mailserver Ihres Anbieters eintragen.",
+      "hostUnknown": "Der Mailserver „{host}“ ist nicht bekannt. Bitte die Adresse prüfen.",
+      "noSecretsKey": "Passwörter können hier nicht gespeichert werden: der Betreiber hat keinen Schlüssel eingerichtet (BILLERY_SECRETS_KEY).",
+      "other": "Die Nachricht konnte nicht gesendet werden.",
+      "passwordReenter": "Server, Port, Verschlüsselung oder Benutzername wurden geändert: bitte das Passwort erneut eingeben.",
+      "passwordTooLong": "Das Passwort ist zu lang.",
+      "plaintextLogin": "Ohne Verschlüsselung würden Benutzername und Passwort lesbar übertragen: bitte STARTTLS oder SSL/TLS wählen.",
+      "portNotAllowed": "Als Port sind hier nur 25, 465, 587 und 2525 möglich (meist 587 mit STARTTLS oder 465 mit SSL/TLS).",
+      "portRange": "Der Port muss zwischen 1 und 65535 liegen.",
+      "refusedHost": "Dieser Mailserver ist hier nicht erlaubt.",
+      "rejected": "Der Mailserver hat die Nachricht abgelehnt (Absender oder Empfänger).",
+      "securityValue": "Die Verschlüsselung muss STARTTLS, SSL oder NONE sein.",
+      "timeout": "Der Mailserver hat nicht rechtzeitig geantwortet.",
+      "tls": "Die verschlüsselte Verbindung zum Mailserver ist fehlgeschlagen. Bitte die Verschlüsselung (STARTTLS oder SSL/TLS) und den Port prüfen.",
+      "usernameInvalid": "Der Benutzername ist zu lang oder enthält Steuerzeichen."
+    },
+    "mailTemplate": {
+      "missing": "Die Vorlagen fehlen.",
+      "subject": "Bitte einen Betreff angeben (bis {max} Zeichen).",
+      "subjectLinebreak": "Der Betreff darf keinen Zeilenumbruch enthalten.",
+      "textTooLong": "Der Text ist zu lang (höchstens 20 000 Zeichen).",
+      "unknown": "Unbekannte Mailvorlage: {kind}"
+    },
+    "owner": {
+      "exists": "Es gibt bereits einen Inhaber. Bitte die vorhandenen Firmendaten bearbeiten.",
+      "missing": "Bitte zuerst die Firmendaten (Inhaber) anlegen, bevor Dokumente erzeugt werden."
+    },
+    "payment": {
+      "alreadyReversed": "Die Zahlung wurde bereits storniert.",
+      "amountNotPositive": "Der Zahlungsbetrag muss größer als 0 sein.",
+      "dateMissing": "Bitte das Zahlungsdatum angeben.",
+      "exceedsOpen": "Der Betrag übersteigt den offenen Betrag von {open}.",
+      "notOpen": "Zahlungen können nur für ausgestellte, noch offene Rechnungen erfasst werden.",
+      "otherInvoice": "Die Zahlung gehört nicht zu dieser Rechnung.",
+      "reversalNotReversible": "Eine Stornobuchung kann nicht storniert werden."
+    },
+    "preferences": {
+      "languageUnknown": "Unbekannte Sprache. Möglich sind: de, en."
+    },
+    "saas": {
+      "emailNotVerified": "Für die erste Anmeldung ist eine bestätigte E-Mail-Adresse nötig.",
+      "heavyRequestsRunning": "Es werden gerade schon Dokumente erzeugt. Bitte warten, bis sie fertig sind.",
+      "invitationNotFound": "Diese Einladung gibt es nicht.",
+      "inviteAddressInvalid": "Bitte eine gültige E-Mail-Adresse angeben.",
+      "inviteAlreadyInvited": "Diese Adresse ist bereits eingeladen.",
+      "inviteAlreadyMember": "Diese Person ist bereits Mitglied.",
+      "inviteMailFailed": "Die E-Mail konnte nicht verschickt werden.",
+      "inviteMailLimit": "Das Tageslimit für Einladungsmails ist erreicht.",
+      "inviteMailNotSetUp": "Der Mailversand ist nicht eingerichtet.",
+      "lastOwnerDemote": "Der letzte Inhaber kann seine Rolle nicht abgeben.",
+      "lastOwnerRemove": "Der letzte Inhaber kann nicht entfernt werden.",
+      "memberNotFound": "Dieses Mitglied gibt es nicht.",
+      "noRole": "Sie haben in dieser Firma keine Rolle.",
+      "notMember": "Sie sind nicht Mitglied dieser Firma.",
+      "notSignedIn": "Nicht angemeldet.",
+      "roleNotAllowed": "Ihre Rolle darf das nicht.",
+      "roleNotManageable": "Ihre Rolle darf die Rolle {role} nicht vergeben.",
+      "roleReadOnly": "Ihre Rolle darf in dieser Firma nur lesen.",
+      "roleUnknown": "Unbekannte Rolle: {role}",
+      "signupLimitIp": "Von diesem Anschluss wurden heute schon zu viele Firmen angelegt. Bitte versuchen Sie es später wieder.",
+      "signupLimitSystem": "Heute können keine neuen Firmen mehr angelegt werden. Bitte versuchen Sie es morgen wieder.",
+      "signupLimitUser": "Sie haben heute schon mehrere Firmen angelegt. Bitte versuchen Sie es morgen wieder.",
+      "tenantClosed": "Die Firma ist geschlossen oder gesperrt.",
+      "tenantHeaderInvalid": "Der Header X-Tenant-Id muss die Nummer einer Firma sein.",
+      "tenantHeaderMissing": "Bitte die Firma im Header X-Tenant-Id angeben.",
+      "tenantNameLength": "Der Name muss 1 bis 255 Zeichen haben.",
+      "tenantNotActive": "Die Firma ist nicht aktiv.",
+      "tenantReadOnly": "Die Firma ist geschlossen oder gesperrt und nur noch lesbar.",
+      "tokenIncomplete": "Die Anmeldung ist unvollständig (Aussteller oder Benutzer fehlt).",
+      "tooManyCompanies": "Sie besitzen bereits {count} Firmen, mehr sind nicht möglich. Schließen Sie eine Firma oder wenden Sie sich an den Betreiber.",
+      "tooManyRequests": "Zu viele Anfragen in kurzer Zeit. Bitte einen Moment warten.",
+      "userNotCreated": "Das Benutzerkonto konnte nicht angelegt werden."
+    },
+    "send": {
+      "accountGone": "Das gewählte Mailkonto gibt es nicht (mehr).",
+      "addressInvalid": "Keine gültige E-Mail-Adresse: {address}",
+      "dailyLimit": "Das Tageslimit für Mails an Kunden ist erreicht. Bitte später erneut versuchen.",
+      "draftNeedsIssue": "Die Rechnung ist ein Entwurf: bitte „Ausstellen und senden“ bestätigen.",
+      "failedIssued": "{reason} Die Rechnung wurde als {number} ausgestellt und kann erneut gesendet werden.",
+      "noAccount": "Es ist noch kein Mailkonto eingerichtet: Einstellungen → Mail-Einstellungen.",
+      "noRecipient": "Bitte mindestens einen Empfänger angeben.",
+      "notRecorded": "Die Mail wurde gesendet, konnte aber nicht in der Historie des Dokuments vermerkt werden. Bitte nicht erneut senden; der Betreiber ist informiert.",
+      "requestMissing": "Die Angaben zum Versand fehlen.",
+      "subjectEmpty": "Der Betreff ist nach dem Einsetzen der Variablen leer.",
+      "tooManyRecipients": "Höchstens {max} Empfänger (An und Kopie zusammen) pro Nachricht.",
+      "xrechnungMissing": "Für die XRechnung fehlen noch: {missing}.",
+      "xrechnungOnlyInvoices": "Eine XRechnung gibt es nur für Rechnungen und Stornos."
+    },
+    "status": {
+      "changeFinal": "Der Status „{from}“ kann nicht in „{to}“ geändert werden. Von diesem Status aus ist kein Wechsel mehr möglich.",
+      "changeRefused": "Der Status „{from}“ kann nicht in „{to}“ geändert werden. Möglich: {possible}."
+    },
+    "statusName": {
+      "accepted": "Angenommen",
+      "cancelled": "Storniert",
+      "converted": "Umgewandelt",
+      "draft": "Entwurf",
+      "other": "{id}",
+      "paid": "Bezahlt",
+      "partiallyPaid": "Teilweise bezahlt",
+      "rejected": "Abgelehnt",
+      "sent": "Gesendet"
+    },
+    "template": {
+      "importEmpty": "Das Dokument enthält keinen Text; es wurde keine Vorlage angelegt.",
+      "missingForType": "Für diesen Dokumenttyp ist keine Vorlage vorhanden (Typ {type}).",
+      "noBlocks": "Die Vorlage enthält keine Blöcke."
+    },
+    "upload": {
+      "contentMismatch": "Dateiinhalt passt nicht zur Dateiendung oder ist kein Bild",
+      "empty": "Datei ist leer",
+      "failed": "Upload fehlgeschlagen: {reason}",
+      "nameInvalid": "Ungültiger Dateiname",
+      "tooLarge": "Datei zu groß (max. 2 MB)",
+      "type": "Nur PNG, JPG, JPEG und GIF sind erlaubt"
+    }
+  },
+  "upload": {
+    "logoFailed": "Logo-Upload fehlgeschlagen: {reason}"
   }
 }

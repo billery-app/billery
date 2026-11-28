@@ -1,6 +1,7 @@
 package de.billery.api.controller;
 
 import de.billery.api.dto.InvoiceTemplateDto;
+import de.billery.api.error.ErrorCode;
 import de.billery.data.Invoice;
 import de.billery.data.InvoiceTemplate;
 import de.billery.document.DocumentStatus;
@@ -215,8 +216,7 @@ public class InvoiceTemplateController {
     if (DocumentType.isBookkeepingRecord(document.getDocumentTypeId())
         && document.getDocumentStatusId() != DocumentStatus.DRAFT) {
       // The clone would re-render the frozen snapshot of an issued invoice.
-      throw new DocumentStateException(
-          "Das Layout einer ausgestellten Rechnung kann nicht mehr geändert werden.");
+      throw new DocumentStateException(ErrorCode.INVOICE_LAYOUT_LOCKED.with());
     }
     Integer sourceTemplateId =
         body != null && body.sourceTemplateId() != null ? body.sourceTemplateId() : null;

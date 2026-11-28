@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import de.billery.api.controller.DesktopController;
 import de.billery.api.controller.HealthController;
+import de.billery.api.error.ErrorCode;
 import de.billery.data.DatabaseException;
 import de.billery.pdf.MissingConfigurationException;
 import java.sql.SQLException;
@@ -22,17 +23,20 @@ class ApiEndpointsTest {
             new DatabaseException("save invoice", new SQLException("FK violation on table x")));
 
     assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
-    assertFalse(response.getBody().get("message").contains("FK violation"));
+    assertFalse(((String) response.getBody().get("message")).contains("FK violation"));
   }
 
   @Test
   void missingConfigurationBecomes409WithTheUserFacingMessage() {
     var response =
         handler.handleMissingConfiguration(
-            new MissingConfigurationException("Bitte zuerst die Firmendaten anlegen"));
+            new MissingConfigurationException(ErrorCode.OWNER_MISSING.with()));
 
     assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
-    assertEquals("Bitte zuerst die Firmendaten anlegen", response.getBody().get("message"));
+    assertEquals(
+        "Bitte zuerst die Firmendaten (Inhaber) anlegen, bevor Dokumente erzeugt werden.",
+        response.getBody().get("message"));
+    assertEquals("owner.missing", response.getBody().get("code"));
   }
 
   @Test

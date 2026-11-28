@@ -1,8 +1,10 @@
 package de.billery.saas.provisioning;
 
+import de.billery.api.error.UserMessage;
 import de.billery.mail.MailException;
 import de.billery.mail.MailMessage;
 import de.billery.mail.MailProvider;
+import de.billery.saas.api.SaasErrorCode;
 import de.billery.saas.identity.Role;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -59,9 +61,9 @@ public class InvitationMailer {
    * What happened to the mail.
    *
    * @param sent whether the SMTP server accepted it
-   * @param problem why not (German, shown to the inviting user), null when sent
+   * @param problem why not (shown to the inviting user, with its code), null when sent
    */
-  public record Outcome(boolean sent, String problem) {}
+  public record Outcome(boolean sent, UserMessage problem) {}
 
   /**
    * @param mail the SMTP sender
@@ -132,10 +134,10 @@ public class InvitationMailer {
    */
   public Outcome send(InvitationService.Invitation invitation, String sourceIp) {
     if (!mail.configured() || publicUrl.isEmpty()) {
-      return new Outcome(false, "Der Mailversand ist nicht eingerichtet.");
+      return new Outcome(false, SaasErrorCode.INVITE_MAIL_NOT_SET_UP.with());
     }
     if (!quota.claim(Permissions.user(), invitation.email(), sourceIp)) {
-      return new Outcome(false, "Das Tageslimit für Einladungsmails ist erreicht.");
+      return new Outcome(false, SaasErrorCode.INVITE_MAIL_LIMIT.with());
     }
     String company =
         jdbc.sql("SELECT name FROM tenant WHERE id = :tenant")
@@ -164,7 +166,7 @@ public class InvitationMailer {
       return new Outcome(true, null);
     } catch (MailException e) {
       LOG.warn("Invitation mail could not be sent: {}", failureSummary(e));
-      return new Outcome(false, "Die E-Mail konnte nicht verschickt werden.");
+      return new Outcome(false, SaasErrorCode.INVITE_MAIL_FAILED.with());
     }
   }
 

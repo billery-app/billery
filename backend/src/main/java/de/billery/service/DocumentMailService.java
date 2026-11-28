@@ -1,5 +1,6 @@
 package de.billery.service;
 
+import de.billery.api.error.ErrorCode;
 import de.billery.data.Customer;
 import de.billery.data.Invoice;
 import de.billery.data.MailAccount;
@@ -250,15 +251,15 @@ public class DocumentMailService {
   public Result send(int id, Request request) {
     Invoice invoice = require(id);
     if (request == null) {
-      throw new BadRequestException("Die Angaben zum Versand fehlen.");
+      throw new BadRequestException(ErrorCode.SEND_REQUEST_MISSING.with());
     }
     List<String> to = addresses(request.to());
     List<String> cc = addresses(request.cc());
     if (to.isEmpty()) {
-      throw new BadRequestException("Bitte mindestens einen Empfänger angeben.");
+      throw new BadRequestException(ErrorCode.SEND_NO_RECIPIENT.with());
     }
     if (to.size() + cc.size() > MAX_RECIPIENTS) {
-      throw new BadRequestException("Höchstens 5 Empfänger (An und Kopie zusammen) pro Nachricht.");
+      throw new BadRequestException(ErrorCode.SEND_TOO_MANY_RECIPIENTS.with("max", MAX_RECIPIENTS));
     }
     MailTemplateService.Template content =
         MailTemplateService.check(
@@ -266,18 +267,16 @@ public class DocumentMailService {
     MailAccount account = account(request.accountId());
     boolean issueNow = isInvoiceDraft(invoice);
     if (issueNow && !request.confirmsIssue()) {
-      throw new DocumentStateException(
-          "Die Rechnung ist ein Entwurf: bitte „Ausstellen und senden“ bestätigen.");
+      throw new DocumentStateException(ErrorCode.SEND_DRAFT_NEEDS_ISSUE.with());
     }
     if (invoice.getDocumentTypeId() == DocumentType.CREDIT_NOTE
         || DocumentType.isInvoice(invoice.getDocumentTypeId())) {
       requireXRechnungData(id, request.wantsXRechnung());
     } else if (request.wantsXRechnung()) {
-      throw new BadRequestException("Eine XRechnung gibt es nur für Rechnungen und Stornos.");
+      throw new BadRequestException(ErrorCode.SEND_XRECHNUNG_ONLY_INVOICES.with());
     }
     if (!limit.claim()) {
-      throw new MailDeliveryException(
-          "Das Tageslimit für Mails an Kunden ist erreicht. Bitte später erneut versuchen.", true);
+      throw new MailDeliveryException(ErrorCode.SEND_DAILY_LIMIT.with(), true);
     }
     if (issueNow) {
       lifecycle.issue(id);
@@ -289,13 +288,12 @@ public class DocumentMailService {
     } catch (MailException e) {
       LOG.warn(
           "Mail of document {} through mail account {} failed: {}", id, account.id(), e.reason());
-      String hint =
+      throw new MailDeliveryException(
           issueNow
-              ? " Die Rechnung wurde als "
-                  + invoice.getFormattedInvoiceNumber()
-                  + " ausgestellt und kann erneut gesendet werden."
-              : "";
-      throw new MailDeliveryException(e.reason().explanation() + hint, e);
+              ? ErrorCode.SEND_FAILED_ISSUED.with(
+                  "reason", e.reason().message(), "number", invoice.getFormattedInvoiceNumber())
+              : e.reason().message(),
+          e);
     }
     // The log pair "versendet" / "vermerkt" (no addresses) shows a dispatch that went out but did
     // not reach the history, also when the backend stopped in between (runbook: ops-gotchas.md).
@@ -306,10 +304,7 @@ public class DocumentMailService {
     } catch (RuntimeException e) {
       metrics.dispatchUnrecorded();
       LOG.error("Mail zu Dokument {} wurde versendet, aber nicht in der Historie vermerkt", id, e);
-      throw new MailNotRecordedException(
-          "Die Mail wurde gesendet, konnte aber nicht in der Historie des Dokuments vermerkt"
-              + " werden. Bitte nicht erneut senden; der Betreiber ist informiert.",
-          e);
+      throw new MailNotRecordedException(ErrorCode.SEND_NOT_RECORDED.with(), e);
     }
     LOG.info("Versand von Dokument {} vermerkt", id);
     Invoice after = require(id);
@@ -323,7 +318,7 @@ public class DocumentMailService {
     List<String> missing = eInvoices.check(id);
     if (!missing.isEmpty()) {
       throw new DocumentStateException(
-          "Für die XRechnung fehlen noch: " + String.join(", ", missing) + ".");
+          ErrorCode.SEND_XRECHNUNG_MISSING.with("missing", String.join(", ", missing)));
     }
   }
 
@@ -342,7 +337,7 @@ public class DocumentMailService {
     }
     String subject = generator.resolvePlainText(content.subject(), invoice).trim();
     if (subject.isEmpty() || MailAddresses.hasControlCharacters(subject)) {
-      throw new BadRequestException("Der Betreff ist nach dem Einsetzen der Variablen leer.");
+      throw new BadRequestException(ErrorCode.SEND_SUBJECT_EMPTY.with());
     }
     message.setSubject(subject);
     message.setText(generator.resolvePlainText(content.text(), invoice));
@@ -406,7 +401,7 @@ public class DocumentMailService {
     if (accountId != null) {
       MailAccount account = accounts.findById(accountId);
       if (account == null) {
-        throw new BadRequestException("Das gewählte Mailkonto gibt es nicht (mehr).");
+        throw new BadRequestException(ErrorCode.SEND_ACCOUNT_GONE.with());
       }
       return account;
     }
@@ -414,11 +409,7 @@ public class DocumentMailService {
         .filter(MailAccount::isDefault)
         .findFirst()
         .or(() -> accounts.findAll().stream().findFirst())
-        .orElseThrow(
-            () ->
-                new DocumentStateException(
-                    "Es ist noch kein Mailkonto eingerichtet: Einstellungen →"
-                        + " Mail-Einstellungen."));
+        .orElseThrow(() -> new DocumentStateException(ErrorCode.SEND_NO_ACCOUNT.with()));
   }
 
   private static List<String> addresses(List<String> raw) {
@@ -432,7 +423,7 @@ public class DocumentMailService {
         continue;
       }
       if (!MailAddresses.isAddress(trimmed)) {
-        throw new BadRequestException("Keine gültige E-Mail-Adresse: " + trimmed);
+        throw new BadRequestException(ErrorCode.SEND_ADDRESS_INVALID.with("address", trimmed));
       }
       if (!out.contains(trimmed)) {
         out.add(trimmed);

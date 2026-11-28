@@ -95,6 +95,7 @@ import { inputValue } from '../utils/dom.js'
 import { activeRole, session } from '../services/session.js'
 import teamService from '../services/teamService.js'
 import { manageableRoles, roleLabel } from '../utils/roles.js'
+import { reasonText } from '../services/apiErrors.ts'
 
 /** The actions of the administration log (`TenantAuditLog`); their names are in the message files. */
 const AUDIT_ACTIONS = [
@@ -210,14 +211,15 @@ export default {
      * The confirmation after inviting: whether the mail went out, and if not, how to tell the
      * person instead (the invitation exists either way).
      * @param {string} address - the invited address
-     * @param {{mailSent: boolean, mailProblem: ?string}} result - the backend's answer
+     * @param {{mailSent: boolean, mailProblem: ?string, mailProblemCode: ?string}} result - the backend's answer
      * @returns {{ok: boolean, text: string}} - the notice to show
      */
     inviteNotice(address, result) {
       if (result.mailSent) {
         return { ok: true, text: this.$t('team.invited', { address }) }
       }
-      const reason = result.mailProblem ? ` (${result.mailProblem.replace(/\.$/, '')})` : ''
+      const problem = reasonText(result.mailProblem, result.mailProblemCode)
+      const reason = problem ? ` (${problem.replace(/\.$/, '')})` : ''
       return {
         ok: false,
         text: this.$t('team.invitedWithoutMail', { address, reason, origin: window.location.origin })

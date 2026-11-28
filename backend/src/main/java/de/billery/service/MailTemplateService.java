@@ -1,5 +1,6 @@
 package de.billery.service;
 
+import de.billery.api.error.ErrorCode;
 import de.billery.document.DocumentType;
 import de.billery.mail.MailAddresses;
 import de.billery.repository.UserSettingsRepository;
@@ -137,7 +138,7 @@ public class MailTemplateService {
    */
   public Map<String, Template> save(Map<String, Template> templates) {
     if (templates == null) {
-      throw new BadRequestException("Die Vorlagen fehlen.");
+      throw new BadRequestException(ErrorCode.MAIL_TEMPLATES_MISSING.with());
     }
     Map<Kind, Template> checked = new LinkedHashMap<>();
     for (Map.Entry<String, Template> entry : templates.entrySet()) {
@@ -148,7 +149,7 @@ public class MailTemplateService {
         }
       }
       if (kind == null || entry.getValue() == null) {
-        throw new BadRequestException("Unbekannte Mailvorlage: " + entry.getKey());
+        throw new BadRequestException(ErrorCode.MAIL_TEMPLATE_UNKNOWN.with("kind", entry.getKey()));
       }
       checked.put(kind, check(entry.getValue()));
     }
@@ -172,13 +173,13 @@ public class MailTemplateService {
     String subject = template.subject() == null ? "" : template.subject().trim();
     String text = template.text() == null ? "" : template.text();
     if (subject.isEmpty() || subject.length() > MAX_SUBJECT) {
-      throw new BadRequestException("Bitte einen Betreff angeben (bis 200 Zeichen).");
+      throw new BadRequestException(ErrorCode.MAIL_TEMPLATE_SUBJECT.with("max", MAX_SUBJECT));
     }
     if (MailAddresses.hasControlCharacters(subject)) {
-      throw new BadRequestException("Der Betreff darf keinen Zeilenumbruch enthalten.");
+      throw new BadRequestException(ErrorCode.MAIL_TEMPLATE_SUBJECT_LINEBREAK.with());
     }
     if (text.length() > MAX_TEXT) {
-      throw new BadRequestException("Der Text ist zu lang (höchstens 20 000 Zeichen).");
+      throw new BadRequestException(ErrorCode.MAIL_TEMPLATE_TEXT_TOO_LONG.with());
     }
     return new Template(subject, text);
   }

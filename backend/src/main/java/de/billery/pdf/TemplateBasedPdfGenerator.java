@@ -2,6 +2,7 @@ package de.billery.pdf;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import de.billery.api.error.ErrorCode;
 import de.billery.data.*;
 import de.billery.document.DocumentStrategyRegistry;
 import de.billery.document.DocumentType;
@@ -201,7 +202,7 @@ public class TemplateBasedPdfGenerator {
    */
   public String generateTemplatePreviewHtml(InvoiceTemplate draft, Integer invoiceId) {
     if (!hasValidBlocks(draft)) {
-      throw new MissingConfigurationException("Die Vorlage enthält keine Blöcke.");
+      throw new MissingConfigurationException(ErrorCode.TEMPLATE_NO_BLOCKS.with());
     }
     Invoice invoice;
     Customer customer;
@@ -364,7 +365,7 @@ public class TemplateBasedPdfGenerator {
     }
 
     throw new MissingConfigurationException(
-        "Für diesen Dokumenttyp ist keine Vorlage vorhanden (Typ " + documentTypeId + ").");
+        ErrorCode.TEMPLATE_MISSING_FOR_TYPE.with("type", documentTypeId));
   }
 
   private boolean hasValidBlocks(InvoiceTemplate template) {
@@ -1585,8 +1586,7 @@ public class TemplateBasedPdfGenerator {
   private Owner getOwner() {
     List<Owner> owners = ownerRepository.findAll();
     if (owners.isEmpty()) {
-      throw new MissingConfigurationException(
-          "Bitte zuerst die Firmendaten (Inhaber) anlegen, bevor Dokumente erzeugt werden.");
+      throw new MissingConfigurationException(ErrorCode.OWNER_MISSING.with());
     }
     return owners.get(0);
   }

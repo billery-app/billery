@@ -1,5 +1,7 @@
 package de.billery.api.controller;
 
+import de.billery.api.error.ErrorBody;
+import de.billery.api.error.ErrorCode;
 import de.billery.storage.FileStorage;
 import java.io.IOException;
 import java.util.Locale;
@@ -27,18 +29,18 @@ public class FileUploadController {
   }
 
   @PostMapping
-  public ResponseEntity<Map<String, String>> uploadFile(@RequestParam("file") MultipartFile file) {
+  public ResponseEntity<Map<String, Object>> uploadFile(@RequestParam("file") MultipartFile file) {
     if (file.isEmpty()) {
-      return ResponseEntity.badRequest().body(Map.of("message", "Datei ist leer"));
+      return ResponseEntity.badRequest().body(ErrorBody.from(ErrorCode.UPLOAD_EMPTY.with()));
     }
 
     if (file.getSize() > MAX_FILE_SIZE) {
-      return ResponseEntity.badRequest().body(Map.of("message", "Datei zu groß (max. 2 MB)"));
+      return ResponseEntity.badRequest().body(ErrorBody.from(ErrorCode.UPLOAD_TOO_LARGE.with()));
     }
 
     String originalFilename = file.getOriginalFilename();
     if (originalFilename == null || originalFilename.isEmpty()) {
-      return ResponseEntity.badRequest().body(Map.of("message", "Ungültiger Dateiname"));
+      return ResponseEntity.badRequest().body(ErrorBody.from(ErrorCode.UPLOAD_NAME_INVALID.with()));
     }
 
     String extension = "";
@@ -48,8 +50,7 @@ public class FileUploadController {
     }
 
     if (!ALLOWED_EXTENSIONS.contains(extension)) {
-      return ResponseEntity.badRequest()
-          .body(Map.of("message", "Nur PNG, JPG, JPEG und GIF sind erlaubt"));
+      return ResponseEntity.badRequest().body(ErrorBody.from(ErrorCode.UPLOAD_TYPE.with()));
     }
 
     try {
@@ -57,7 +58,7 @@ public class FileUploadController {
       String detected = detectImageExtension(content);
       if (detected == null || !detected.equals(canonicalExtension(extension))) {
         return ResponseEntity.badRequest()
-            .body(Map.of("message", "Dateiinhalt passt nicht zur Dateiendung oder ist kein Bild"));
+            .body(ErrorBody.from(ErrorCode.UPLOAD_CONTENT_MISMATCH.with()));
       }
 
       // The stored extension comes from the detected content, never from the client's filename.
@@ -68,7 +69,7 @@ public class FileUploadController {
     } catch (IOException e) {
       LOGGER.log(Level.SEVERE, "File upload failed", e);
       return ResponseEntity.internalServerError()
-          .body(Map.of("message", "Upload fehlgeschlagen: " + e.getMessage()));
+          .body(ErrorBody.from(ErrorCode.UPLOAD_FAILED.with("reason", e.getMessage())));
     }
   }
 

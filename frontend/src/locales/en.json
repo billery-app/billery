@@ -1345,5 +1345,215 @@
     "fromFile": "Take from a file …",
     "next": "Next",
     "importFailed": "The file could not be taken over."
+  },
+  "errors": {
+    "backup": {
+      "databaseUnreadable": "The database in this backup cannot be opened; it is not restored.",
+      "folderCreate": "The folder cannot be created: {folder}",
+      "folderNotWritable": "This folder cannot be written to: {folder}",
+      "folderRelative": "Please enter a complete folder path.",
+      "gone": "The backup no longer exists.",
+      "invalid": "The file is not a valid Billery backup.",
+      "keepRange": "The number of kept backups must be between 1 and {max}.",
+      "passwordNeeded": "This backup is encrypted: please enter the password.",
+      "passwordShort": "The password must have at least {min} characters.",
+      "passwordWrong": "The password is wrong, or the backup is damaged.",
+      "restoreLoss": "Since this backup, {issued} documents were issued or cancelled, {payments} payments recorded, {changes} changes made to documents and {files} uploaded files (logos, attachments) created or changed. They are missing from the program after the restore; they remain in the safety copy, which is made beforehand, is not deleted automatically and must be retained like all invoices (§ 147 AO).",
+      "restorePending": "A restore is pending: nothing is saved until the restart. Please quit and restart Billery, or cancel the restore under Settings → Backup.",
+      "restoreStaged": "The backup is restored at the next start of Billery. The current state is backed up first.",
+      "tooLarge": "The data is too large for a backup (at most {max} files and 4 GB). Please remove logos and attachments no longer needed.",
+      "unknown": "Unknown backup.",
+      "writeFailed": "The backup could not be written. Can the backup folder be reached?",
+      "writesRunning": "Data is still being saved. Please wait a moment and choose the restore again."
+    },
+    "cancel": {
+      "alreadyCancelled": "The invoice has already been cancelled.",
+      "draft": "Drafts are deleted, not cancelled.",
+      "notInvoice": "Only invoices are cancelled with a cancellation invoice."
+    },
+    "creditNote": {
+      "notClonable": "Cancellation invoices cannot be duplicated.",
+      "onlyByCancel": "Cancellation invoices are created only by cancelling an invoice."
+    },
+    "customer": {
+      "hasDocuments": "The customer has documents and cannot be deleted (retention obligation)."
+    },
+    "database": {
+      "failed": "Database error: the change was not saved."
+    },
+    "demo": {
+      "mailDisabled": "Sending mail is switched off in the demo."
+    },
+    "document": {
+      "deleteNotDraft": "Only drafts can be deleted. Please archive or cancel issued documents (retention obligation).",
+      "notFound": "Document {id} was not found."
+    },
+    "einvoice": {
+      "missing": "The e-invoice (XRechnung) lacks: {missing}.",
+      "notIssued": "An e-invoice exists only for issued invoices.",
+      "onlyInvoices": "E-invoices exist only for invoices and cancellation invoices."
+    },
+    "exchange": {
+      "exportEmpty": "The template contains no texts to export.",
+      "exportMissing": "No export data.",
+      "formatUnknown": "Unknown format; docx and odt are possible.",
+      "importUnreadable": "The document could not be read. DOCX and ODT files up to 2 MB are supported.",
+      "sectionInvalid": "Invalid section in the export.",
+      "textTooLong": "A text of the export is too long.",
+      "tooManyParagraphs": "Too many paragraphs for one export.",
+      "tooManySections": "Too many sections for one export."
+    },
+    "export": {
+      "alreadyRunning": "An export is already running. Please try again in a few minutes.",
+      "periodTooLong": "The period is too long (at most {max} days per export).",
+      "tooLarge": "The export is too large (at most {max} MB) and was stopped. Please choose a shorter period or export without document files.",
+      "tooMany": "Too many exports are running right now. Please try again in a few minutes.",
+      "tooManyDocuments": "Too many documents for one export ({count}, at most {max}). Please choose a shorter period.",
+      "tooManyWithFiles": "Too many documents for an export with PDF and XRechnung ({count}, at most {max}). Please choose a shorter period or export without document files.",
+      "tooSlow": "The export took too long and was stopped. Please choose a shorter period or export without document files."
+    },
+    "invoice": {
+      "alreadyIssued": "The invoice has already been issued.",
+      "dateMissing": "Please enter an invoice date.",
+      "exemptionReasonMissing": "Please enter the reason for the tax exemption (e.g. \"gemäß § 4 Nr. 14 UStG\", printed on the invoice).",
+      "issueNotDraft": "Only invoice drafts can be issued.",
+      "issuedLocked": "Issued invoices cannot be changed any more (GoBD). Please cancel and create a corrected invoice.",
+      "layoutLocked": "The layout of an issued invoice cannot be changed any more.",
+      "noItems": "An invoice without line items cannot be issued.",
+      "reverseChargeTaxId": "For reverse charge (§ 13b UStG) the customer needs a VAT ID or tax number.",
+      "serviceDateMissing": "Please enter the service date (required by §14 (4) UStG).",
+      "taxRateNotAllowed": "Line item \"{item}\" has the VAT rate {rate} % (allowed: 19 %, 7 %)."
+    },
+    "item": {
+      "taxRateInvalid": "Invalid VAT rate {rate} % for \"{item}\" (allowed: 19 %, 7 %)."
+    },
+    "mail": {
+      "accountMissing": "The mail account details are missing.",
+      "accountName": "Please give the account a name (up to 100 characters).",
+      "auth": "The mail server refused the login. Please check user name and password.",
+      "connect": "The mail server cannot be reached. Please check server and port.",
+      "encryptionRequired": "Please choose an encrypted connection (STARTTLS or SSL/TLS).",
+      "fromInvalid": "Please enter a valid sender address.",
+      "fromNameInvalid": "The sender name is too long or contains control characters.",
+      "hostFormat": "Please enter the mail server as a name, e.g. smtp.example.com (without http:// and without port).",
+      "hostInternal": "The mail server “{host}” points to an internal address. Please enter your provider’s public mail server.",
+      "hostUnknown": "The mail server “{host}” is not known. Please check the address.",
+      "noSecretsKey": "Passwords cannot be stored here: the operator has not set up a key (BILLERY_SECRETS_KEY).",
+      "other": "The message could not be sent.",
+      "passwordReenter": "Server, port, encryption or user name were changed: please enter the password again.",
+      "passwordTooLong": "The password is too long.",
+      "plaintextLogin": "Without encryption, user name and password would travel readable: please choose STARTTLS or SSL/TLS.",
+      "portNotAllowed": "Only the ports 25, 465, 587 and 2525 are possible here (usually 587 with STARTTLS or 465 with SSL/TLS).",
+      "portRange": "The port must be between 1 and 65535.",
+      "refusedHost": "This mail server is not allowed here.",
+      "rejected": "The mail server refused the message (sender or recipient).",
+      "securityValue": "The encryption must be STARTTLS, SSL or NONE.",
+      "timeout": "The mail server did not answer in time.",
+      "tls": "The encrypted connection to the mail server failed. Please check the encryption (STARTTLS or SSL/TLS) and the port.",
+      "usernameInvalid": "The user name is too long or contains control characters."
+    },
+    "mailTemplate": {
+      "missing": "The templates are missing.",
+      "subject": "Please enter a subject (up to {max} characters).",
+      "subjectLinebreak": "The subject must not contain a line break.",
+      "textTooLong": "The text is too long (at most 20,000 characters).",
+      "unknown": "Unknown mail template: {kind}"
+    },
+    "owner": {
+      "exists": "There is already an owner. Please edit the existing company details.",
+      "missing": "Please create the company details (owner) first, before documents are produced."
+    },
+    "payment": {
+      "alreadyReversed": "The payment has already been reversed.",
+      "amountNotPositive": "The payment amount must be greater than 0.",
+      "dateMissing": "Please enter the payment date.",
+      "exceedsOpen": "The amount exceeds the open amount of {open}.",
+      "notOpen": "Payments can only be recorded for issued invoices that are still open.",
+      "otherInvoice": "The payment does not belong to this invoice.",
+      "reversalNotReversible": "A reversal cannot be reversed."
+    },
+    "preferences": {
+      "languageUnknown": "Unknown language. Possible are: de, en."
+    },
+    "saas": {
+      "emailNotVerified": "A verified email address is required for the first sign-in.",
+      "heavyRequestsRunning": "Documents are already being produced. Please wait until they are done.",
+      "invitationNotFound": "There is no such invitation.",
+      "inviteAddressInvalid": "Please enter a valid email address.",
+      "inviteAlreadyInvited": "This address has already been invited.",
+      "inviteAlreadyMember": "This person is already a member.",
+      "inviteMailFailed": "The email could not be sent.",
+      "inviteMailLimit": "The daily limit for invitation mails is reached.",
+      "inviteMailNotSetUp": "Sending mail is not set up.",
+      "lastOwnerDemote": "The last owner cannot be given another role.",
+      "lastOwnerRemove": "The last owner cannot be removed.",
+      "memberNotFound": "There is no such member.",
+      "noRole": "You have no role in this company.",
+      "notMember": "You are not a member of this company.",
+      "notSignedIn": "Not signed in.",
+      "roleNotAllowed": "Your role is not allowed to do this.",
+      "roleNotManageable": "Your role may not manage the role {role}.",
+      "roleReadOnly": "Your role may only read in this company.",
+      "roleUnknown": "Unknown role: {role}",
+      "signupLimitIp": "Too many companies were created from this connection today. Please try again later.",
+      "signupLimitSystem": "No more companies can be created today. Please try again tomorrow.",
+      "signupLimitUser": "You have already created several companies today. Please try again tomorrow.",
+      "tenantClosed": "The company is closed or suspended.",
+      "tenantHeaderInvalid": "The X-Tenant-Id header must be the number of a company.",
+      "tenantHeaderMissing": "Please name the company in the X-Tenant-Id header.",
+      "tenantNameLength": "The name must have 1 to 255 characters.",
+      "tenantNotActive": "The company is not active.",
+      "tenantReadOnly": "The company is closed or suspended and read-only.",
+      "tokenIncomplete": "The sign-in is incomplete (issuer or user missing).",
+      "tooManyCompanies": "You already own {count} companies; more are not possible. Close a company or contact the operator.",
+      "tooManyRequests": "Too many requests in a short time. Please wait a moment.",
+      "userNotCreated": "The user account could not be created."
+    },
+    "send": {
+      "accountGone": "The chosen mail account does not exist (any more).",
+      "addressInvalid": "Not a valid email address: {address}",
+      "dailyLimit": "The daily limit for mails to customers is reached. Please try again later.",
+      "draftNeedsIssue": "The invoice is a draft: please confirm “Issue and send”.",
+      "failedIssued": "{reason} The invoice was issued as {number} and can be sent again.",
+      "noAccount": "No mail account is set up yet: Settings → Mail settings.",
+      "noRecipient": "Please enter at least one recipient.",
+      "notRecorded": "The mail was sent but could not be recorded in the document’s history. Please do not send it again; the operator has been informed.",
+      "requestMissing": "The sending details are missing.",
+      "subjectEmpty": "The subject is empty once the variables are filled in.",
+      "tooManyRecipients": "At most {max} recipients (To and Cc together) per message.",
+      "xrechnungMissing": "The XRechnung still lacks: {missing}.",
+      "xrechnungOnlyInvoices": "An XRechnung exists only for invoices and cancellations."
+    },
+    "status": {
+      "changeFinal": "The status “{from}” cannot be changed to “{to}”. No change is possible from this status.",
+      "changeRefused": "The status “{from}” cannot be changed to “{to}”. Possible: {possible}."
+    },
+    "statusName": {
+      "accepted": "Accepted",
+      "cancelled": "Cancelled",
+      "converted": "Converted",
+      "draft": "Draft",
+      "other": "{id}",
+      "paid": "Paid",
+      "partiallyPaid": "Partly paid",
+      "rejected": "Rejected",
+      "sent": "Sent"
+    },
+    "template": {
+      "importEmpty": "The document contains no text; no template was created.",
+      "missingForType": "There is no template for this document type (type {type}).",
+      "noBlocks": "The template contains no blocks."
+    },
+    "upload": {
+      "contentMismatch": "The file content does not match its extension or is not an image",
+      "empty": "The file is empty",
+      "failed": "Upload failed: {reason}",
+      "nameInvalid": "Invalid file name",
+      "tooLarge": "File too large (max. 2 MB)",
+      "type": "Only PNG, JPG, JPEG and GIF are allowed"
+    }
+  },
+  "upload": {
+    "logoFailed": "Logo upload failed: {reason}"
   }
 }

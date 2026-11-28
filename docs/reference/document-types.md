@@ -90,7 +90,8 @@ status change.
 - **Setting the status a document already has is a no-op** (`200`, no history entry), so a double
   click on "Angenommen" is harmless.
 - **A refused change answers HTTP 400 with a JSON `message`** that names both statuses and the
-  possible targets (`InvalidStatusChangeException`, mapped in `ApiExceptionHandler`). Invoice types
+  possible targets (`InvalidStatusChangeException`, mapped in `ApiExceptionHandler`; code
+  `status.changeRefused` / `status.changeFinal`, the status names as nested messages, #15). Invoice types
   keep their plain `400`.
 - **`CONVERTED` is never a plain button.** The SPA converts through `utils/documentConversion.js`,
   which creates the next document and then sets `CONVERTED` with `convertedToInvoiceId`.

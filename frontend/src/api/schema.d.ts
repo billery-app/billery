@@ -2032,7 +2032,7 @@ export interface operations {
                 };
                 content: {
                     "*/*": {
-                        [key: string]: string;
+                        [key: string]: unknown;
                     };
                 };
             };
@@ -2129,7 +2129,7 @@ export interface operations {
                 };
                 content: {
                     "*/*": {
-                        [key: string]: string;
+                        [key: string]: unknown;
                     };
                 };
             };

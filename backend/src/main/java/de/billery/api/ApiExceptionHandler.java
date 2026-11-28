@@ -1,5 +1,7 @@
 package de.billery.api;
 
+import de.billery.api.error.ErrorBody;
+import de.billery.api.error.ErrorCode;
 import de.billery.data.DatabaseException;
 import de.billery.pdf.MissingConfigurationException;
 import de.billery.service.BadRequestException;
@@ -21,8 +23,9 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 /**
- * Turns exceptions that escape a controller into a JSON error body ({@code {"message": "..."}})
- * that the SPA's axios error handling can display. Without it a failed repository call would
+ * Turns exceptions that escape a controller into a JSON error body ({@link ErrorBody}: {@code
+ * {"message": "...", "code": "...", "params": {...}}}, code and params when the message has one,
+ * #15) that the SPA's axios error handling can display. Without it a failed repository call would
  * surface as Spring's default HTML error page.
  */
 @RestControllerAdvice
@@ -37,7 +40,7 @@ public class ApiExceptionHandler {
    * @return HTTP 500 with a generic message
    */
   @ExceptionHandler(DatabaseException.class)
-  public ResponseEntity<Map<String, String>> handleDatabase(DatabaseException e) {
+  public ResponseEntity<Map<String, Object>> handleDatabase(DatabaseException e) {
     return databaseFailure();
   }
 
@@ -49,14 +52,14 @@ public class ApiExceptionHandler {
    * @return HTTP 500 with the same generic message as {@link #handleDatabase}
    */
   @ExceptionHandler(TransactionException.class)
-  public ResponseEntity<Map<String, String>> handleTransaction(TransactionException e) {
+  public ResponseEntity<Map<String, Object>> handleTransaction(TransactionException e) {
     LOGGER.log(Level.SEVERE, "Transaction failed", e);
     return databaseFailure();
   }
 
-  private static ResponseEntity<Map<String, String>> databaseFailure() {
+  private static ResponseEntity<Map<String, Object>> databaseFailure() {
     return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-        .body(Map.of("message", "Datenbankfehler: Die Änderung wurde nicht gespeichert."));
+        .body(ErrorBody.from(ErrorCode.DATABASE_FAILED.with()));
   }
 
   /**
@@ -66,9 +69,9 @@ public class ApiExceptionHandler {
    * @return HTTP 409 with the exception message
    */
   @ExceptionHandler(OwnerAlreadyExistsException.class)
-  public ResponseEntity<Map<String, String>> handleOwnerAlreadyExists(
+  public ResponseEntity<Map<String, Object>> handleOwnerAlreadyExists(
       OwnerAlreadyExistsException e) {
-    return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("message", e.getMessage()));
+    return ResponseEntity.status(HttpStatus.CONFLICT).body(ErrorBody.from(e));
   }
 
   /**
@@ -79,10 +82,10 @@ public class ApiExceptionHandler {
    * @return HTTP 409 with the exception message
    */
   @ExceptionHandler(MissingConfigurationException.class)
-  public ResponseEntity<Map<String, String>> handleMissingConfiguration(
+  public ResponseEntity<Map<String, Object>> handleMissingConfiguration(
       MissingConfigurationException e) {
     LOGGER.log(Level.WARNING, e.getMessage(), e);
-    return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("message", e.getMessage()));
+    return ResponseEntity.status(HttpStatus.CONFLICT).body(ErrorBody.from(e));
   }
 
   /**
@@ -93,8 +96,8 @@ public class ApiExceptionHandler {
    * @return HTTP 409 with the exception message
    */
   @ExceptionHandler(DocumentStateException.class)
-  public ResponseEntity<Map<String, String>> handleDocumentState(DocumentStateException e) {
-    return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("message", e.getMessage()));
+  public ResponseEntity<Map<String, Object>> handleDocumentState(DocumentStateException e) {
+    return ResponseEntity.status(HttpStatus.CONFLICT).body(ErrorBody.from(e));
   }
 
   /**
@@ -105,9 +108,9 @@ public class ApiExceptionHandler {
    * @return HTTP 400 with the exception message
    */
   @ExceptionHandler(InvalidStatusChangeException.class)
-  public ResponseEntity<Map<String, String>> handleInvalidStatusChange(
+  public ResponseEntity<Map<String, Object>> handleInvalidStatusChange(
       InvalidStatusChangeException e) {
-    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", e.getMessage()));
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ErrorBody.from(e));
   }
 
   /**
@@ -117,9 +120,8 @@ public class ApiExceptionHandler {
    * @return HTTP 413 with the exception message
    */
   @ExceptionHandler(ExportLimitException.class)
-  public ResponseEntity<Map<String, String>> handleExportLimit(ExportLimitException e) {
-    return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
-        .body(Map.of("message", e.getMessage()));
+  public ResponseEntity<Map<String, Object>> handleExportLimit(ExportLimitException e) {
+    return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(ErrorBody.from(e));
   }
 
   /**
@@ -129,10 +131,10 @@ public class ApiExceptionHandler {
    * @return HTTP 429 with the exception message and a retry hint
    */
   @ExceptionHandler(ExportBusyException.class)
-  public ResponseEntity<Map<String, String>> handleExportBusy(ExportBusyException e) {
+  public ResponseEntity<Map<String, Object>> handleExportBusy(ExportBusyException e) {
     return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
         .header(HttpHeaders.RETRY_AFTER, "60")
-        .body(Map.of("message", e.getMessage()));
+        .body(ErrorBody.from(e));
   }
 
   /**
@@ -142,8 +144,8 @@ public class ApiExceptionHandler {
    * @return HTTP 404 with the exception message
    */
   @ExceptionHandler(DocumentNotFoundException.class)
-  public ResponseEntity<Map<String, String>> handleDocumentNotFound(DocumentNotFoundException e) {
-    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", e.getMessage()));
+  public ResponseEntity<Map<String, Object>> handleDocumentNotFound(DocumentNotFoundException e) {
+    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ErrorBody.from(e));
   }
 
   /**
@@ -154,8 +156,8 @@ public class ApiExceptionHandler {
    * @return HTTP 400 with the exception message
    */
   @ExceptionHandler(BadRequestException.class)
-  public ResponseEntity<Map<String, String>> handleBadRequest(BadRequestException e) {
-    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", e.getMessage()));
+  public ResponseEntity<Map<String, Object>> handleBadRequest(BadRequestException e) {
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ErrorBody.from(e));
   }
 
   /**
@@ -166,13 +168,13 @@ public class ApiExceptionHandler {
    * @return HTTP 502 or 429 with the exception message
    */
   @ExceptionHandler(MailDeliveryException.class)
-  public ResponseEntity<Map<String, String>> handleMailDelivery(MailDeliveryException e) {
+  public ResponseEntity<Map<String, Object>> handleMailDelivery(MailDeliveryException e) {
     if (e.limitReached()) {
       return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
           .header(HttpHeaders.RETRY_AFTER, "3600")
-          .body(Map.of("message", e.getMessage()));
+          .body(ErrorBody.from(e));
     }
-    return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(Map.of("message", e.getMessage()));
+    return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(ErrorBody.from(e));
   }
 
   /**
@@ -183,8 +185,7 @@ public class ApiExceptionHandler {
    * @return HTTP 500 with the exception message
    */
   @ExceptionHandler(MailNotRecordedException.class)
-  public ResponseEntity<Map<String, String>> handleMailNotRecorded(MailNotRecordedException e) {
-    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-        .body(Map.of("message", e.getMessage()));
+  public ResponseEntity<Map<String, Object>> handleMailNotRecorded(MailNotRecordedException e) {
+    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ErrorBody.from(e));
   }
 }

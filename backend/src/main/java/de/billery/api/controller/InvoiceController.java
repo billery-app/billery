@@ -5,6 +5,8 @@ import de.billery.api.dto.InvoiceItemDto;
 import de.billery.api.dto.InvoicePageDto;
 import de.billery.api.dto.PaymentRequest;
 import de.billery.api.dto.StatusChangeRequest;
+import de.billery.api.error.ErrorCode;
+import de.billery.api.error.UserMessage;
 import de.billery.data.Customer;
 import de.billery.data.DatabaseException;
 import de.billery.data.DocumentHistoryEntry;
@@ -348,7 +350,7 @@ public class InvoiceController {
         case DocumentStatus.SENT -> lifecycleService.issue(id);
         case DocumentStatus.PAID -> {
           if (body.paymentDate() == null) {
-            throw new DocumentStateException("Bitte das Zahlungsdatum angeben.");
+            throw new DocumentStateException(ErrorCode.PAYMENT_DATE_MISSING.with());
           }
           lifecycleService.recordFullPayment(id, body.paymentDate());
         }
@@ -371,22 +373,32 @@ public class InvoiceController {
   }
 
   /** Explains a refused offer / cost calculation status change and names what is possible. */
-  private static String refusedTransitionMessage(DocumentTypeStrategy strategy, int from, int to) {
-    List<String> possible =
+  private static UserMessage refusedTransitionMessage(
+      DocumentTypeStrategy strategy, int from, int to) {
+    List<UserMessage> possible =
         strategy.getAvailableStatuses(from).stream()
             .filter(status -> status != from)
-            .map(DocumentStatus::germanName)
+            .map(InvoiceController::statusName)
             .toList();
-    String hint =
-        possible.isEmpty()
-            ? "Von diesem Status aus ist kein Wechsel mehr möglich."
-            : "Möglich: " + String.join(", ", possible) + ".";
-    return "Der Status „"
-        + DocumentStatus.germanName(from)
-        + "“ kann nicht in „"
-        + DocumentStatus.germanName(to)
-        + "“ geändert werden. "
-        + hint;
+    return possible.isEmpty()
+        ? ErrorCode.STATUS_CHANGE_FINAL.with("from", statusName(from), "to", statusName(to))
+        : ErrorCode.STATUS_CHANGE_REFUSED.with(
+            "from", statusName(from), "to", statusName(to), "possible", possible);
+  }
+
+  /** The name of a status as a message (translated by the SPA, German in the text). */
+  private static UserMessage statusName(int statusId) {
+    return switch (statusId) {
+      case DocumentStatus.DRAFT -> ErrorCode.STATUS_NAME_DRAFT.with();
+      case DocumentStatus.SENT -> ErrorCode.STATUS_NAME_SENT.with();
+      case DocumentStatus.ACCEPTED -> ErrorCode.STATUS_NAME_ACCEPTED.with();
+      case DocumentStatus.REJECTED -> ErrorCode.STATUS_NAME_REJECTED.with();
+      case DocumentStatus.CONVERTED -> ErrorCode.STATUS_NAME_CONVERTED.with();
+      case DocumentStatus.PAID -> ErrorCode.STATUS_NAME_PAID.with();
+      case DocumentStatus.CANCELLED -> ErrorCode.STATUS_NAME_CANCELLED.with();
+      case DocumentStatus.PARTIALLY_PAID -> ErrorCode.STATUS_NAME_PARTIALLY_PAID.with();
+      default -> ErrorCode.STATUS_NAME_OTHER.with("id", statusId);
+    };
   }
 
   /**

@@ -1,6 +1,7 @@
 package de.billery.saas.provisioning;
 
 import de.billery.saas.api.ApiError;
+import de.billery.saas.api.SaasErrorCode;
 import de.billery.saas.identity.Role;
 import de.billery.saas.tenant.TenantContext;
 import java.util.UUID;
@@ -15,7 +16,7 @@ final class Permissions {
   static UUID user() {
     String id = TenantContext.userId();
     if (id == null) {
-      throw new ApiError(HttpStatus.UNAUTHORIZED, "Not signed in");
+      throw new ApiError(HttpStatus.UNAUTHORIZED, SaasErrorCode.NOT_SIGNED_IN.with());
     }
     return UUID.fromString(id);
   }
@@ -24,7 +25,7 @@ final class Permissions {
   static int tenant() {
     Integer id = TenantContext.tenantId();
     if (id == null) {
-      throw new ApiError(HttpStatus.BAD_REQUEST, "Name the tenant in the X-Tenant-Id header");
+      throw new ApiError(HttpStatus.BAD_REQUEST, SaasErrorCode.TENANT_HEADER_MISSING.with());
     }
     return id;
   }
@@ -33,7 +34,7 @@ final class Permissions {
   static Role role() {
     Role role = TenantContext.role();
     if (role == null) {
-      throw new ApiError(HttpStatus.FORBIDDEN, "No role in this tenant");
+      throw new ApiError(HttpStatus.FORBIDDEN, SaasErrorCode.NO_ROLE.with());
     }
     return role;
   }
@@ -46,7 +47,7 @@ final class Permissions {
         return;
       }
     }
-    throw new ApiError(HttpStatus.FORBIDDEN, "Your role is not allowed to do this");
+    throw new ApiError(HttpStatus.FORBIDDEN, SaasErrorCode.ROLE_NOT_ALLOWED.with());
   }
 
   /**
@@ -64,7 +65,8 @@ final class Permissions {
   /** Requires that the acting user may manage {@code target}. */
   static void requireManage(Role target) {
     if (!mayManage(target)) {
-      throw new ApiError(HttpStatus.FORBIDDEN, "Your role may not manage the role " + target);
+      throw new ApiError(
+          HttpStatus.FORBIDDEN, SaasErrorCode.ROLE_NOT_MANAGEABLE.with("role", target));
     }
   }
 }

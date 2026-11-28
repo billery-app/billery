@@ -1,5 +1,7 @@
 package de.billery.config;
 
+import de.billery.api.error.ErrorCode;
+import de.billery.api.error.MessageCode;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -31,12 +33,12 @@ public class DemoMode {
   /**
    * Refuses a function the demo does not offer.
    *
-   * @param what the function, for the message (e.g. "Der Mailversand")
+   * @param message what the user is told (e.g. {@link ErrorCode#DEMO_MAIL_DISABLED})
    * @throws de.billery.service.DocumentStateException (HTTP 409) in the demo
    */
-  public void refuse(String what) {
+  public void refuse(MessageCode message) {
     if (active) {
-      throw new de.billery.service.DocumentStateException(what + " ist in der Demo abgeschaltet.");
+      throw new de.billery.service.DocumentStateException(message.with());
     }
   }
 }

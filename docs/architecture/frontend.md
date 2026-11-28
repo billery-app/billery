@@ -77,7 +77,8 @@ file exported in English imports anywhere), and `localizeRegistry` turns the dis
 the same German text (`blockRegistry.spec.js`). Variable labels, chip labels and picker groups are
 `variables.*` (the variable names stay German ids). Stored or printed data stays German: what the
 renderers print, default units (`Stk`, `Std`), payment methods, legal notes, sample data of the
-preview. Still German: the messages of the backend (their error codes come next).
+preview. The backend's messages arrive with a code and are shown in the interface language
+(`services/apiErrors.ts`, see Errors below).
 Amounts and dates keep the German format in both languages (the business runs in Germany).
 **A further language** is drafted with DeepL: `node scripts/translate-locale.mjs <code>` reads
 `de.json` and writes `<code>.json` (only missing keys; `--all` for everything, `--out` for a
@@ -505,9 +506,12 @@ doubled last segment). New `v-html` must render escaped or `sanitizeHtml()`
 output.
 
 Errors: the shared `apiClient` (`services/baseService.js`) has a response
-interceptor that copies the backend's `{"message": ...}` into
-`error.message`, including for `responseType: 'blob'` downloads, so
-`'... fehlgeschlagen: ' + err.message` shows the real reason.
+interceptor that puts the backend's message into `error.message` (and into `data.message` for
+code that reads the body), including for `responseType: 'blob'` downloads. The backend sends
+`{message, code, params}`; `services/apiErrors.ts` shows `errors.<code>` from the message files in
+the interface language (nested messages and lists in `params` translated too) and falls back to
+the German `message` for an unknown code. The codes come from the backend's `ErrorCode` /
+`SaasErrorCode` (`docs/architecture/backend.md > Messages for the user`).
 
 ## Modal pattern
 

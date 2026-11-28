@@ -82,7 +82,7 @@ class InvitationMailerTest {
             .send(INVITATION, "127.0.0.1");
 
     assertFalse(outcome.sent());
-    assertEquals("Der Mailversand ist nicht eingerichtet.", outcome.problem());
+    assertEquals("Der Mailversand ist nicht eingerichtet.", outcome.problem().text());
     assertTrue(sent.isEmpty());
   }
 
@@ -97,7 +97,7 @@ class InvitationMailerTest {
             .deliver(InvitationMailer.compose(INVITATION, "X", "Y", "https://app.test"));
 
     assertFalse(outcome.sent());
-    assertEquals("Die E-Mail konnte nicht verschickt werden.", outcome.problem());
+    assertEquals("Die E-Mail konnte nicht verschickt werden.", outcome.problem().text());
   }
 
   @Test
@@ -120,7 +120,7 @@ class InvitationMailerTest {
         new InvitationMailer(sent::add, null, null, " ").send(INVITATION, "127.0.0.1");
 
     assertFalse(outcome.sent());
-    assertEquals("Der Mailversand ist nicht eingerichtet.", outcome.problem());
+    assertEquals("Der Mailversand ist nicht eingerichtet.", outcome.problem().text());
     assertTrue(sent.isEmpty());
   }
 

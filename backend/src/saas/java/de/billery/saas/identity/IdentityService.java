@@ -1,5 +1,6 @@
 package de.billery.saas.identity;
 
+import de.billery.saas.api.SaasErrorCode;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.context.annotation.Profile;
@@ -40,7 +41,7 @@ public class IdentityService {
     String issuer = token.getIssuer() == null ? null : token.getIssuer().toString();
     String subject = token.getSubject();
     if (issuer == null || subject == null) {
-      throw new IdentityException("The token has no issuer or subject");
+      throw new IdentityException(SaasErrorCode.TOKEN_INCOMPLETE.with());
     }
     Optional<UUID> known = identities.findUserByIdentity(issuer, subject);
     if (known.isPresent()) {
@@ -50,7 +51,7 @@ public class IdentityService {
     if (email == null
         || email.isBlank()
         || !Boolean.TRUE.equals(token.getClaimAsBoolean("email_verified"))) {
-      throw new IdentityException("A verified e-mail address is required for the first sign-in");
+      throw new IdentityException(SaasErrorCode.EMAIL_NOT_VERIFIED.with());
     }
     String name = token.getClaimAsString("name");
     return transactions.execute(
@@ -60,7 +61,7 @@ public class IdentityService {
                   .findUserByEmail(email)
                   .or(() -> identities.createUser(email, name))
                   .or(() -> identities.findUserByEmail(email))
-                  .orElseThrow(() -> new IdentityException("The user could not be created"));
+                  .orElseThrow(() -> new IdentityException(SaasErrorCode.USER_NOT_CREATED.with()));
           identities.linkIdentity(issuer, subject, user);
           // The link may have been created by a concurrent first sign-in: its user wins.
           return identities.findUserByIdentity(issuer, subject).orElse(user);

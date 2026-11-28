@@ -1,5 +1,6 @@
 package de.billery.api.controller;
 
+import de.billery.api.error.ErrorCode;
 import de.billery.config.DemoMode;
 import de.billery.service.DocumentMailService;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -47,7 +48,7 @@ public class DocumentMailController {
   @PostMapping
   public DocumentMailService.Result send(
       @PathVariable int id, @RequestBody DocumentMailService.Request request) {
-    demo.refuse("Der Mailversand");
+    demo.refuse(ErrorCode.DEMO_MAIL_DISABLED);
     return mail.send(id, request);
   }
 }

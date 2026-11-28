@@ -206,7 +206,27 @@ public Customer findById(int id) {
 `api/ApiExceptionHandler` maps `DatabaseException` and a failed commit
 (`TransactionException`) to HTTP 500 and
 `pdf/MissingConfigurationException` (no owner / no usable template) to 409,
-all with a JSON body `{"message": "..."}` that the SPA displays.
+all with the same JSON body (`api/error/ErrorBody`).
+
+### Messages for the user: codes (#15)
+
+Every message a user can see carries a code: `{"message": "...", "code": "...", "params": {...}}`.
+`message` is the German text (older clients, logs, operators reading a body); the SPA shows
+`errors.<code>` from its message files in the interface language, with `params` filled in.
+
+- The codes and their German templates (`{name}` placeholders) are the enums
+  `api/error/ErrorCode` (core) and `saas/api/SaasErrorCode` (SaaS). They are generated together with
+  the `errors.*` entries of `de.json` / `en.json`; `frontend/src/locales/errorCodes.spec.ts` fails
+  when a code is missing in a message file, the German text differs from the template, the English
+  text has other placeholders, or a message file keeps a code the backend no longer has.
+- An exception for the user implements `api/error/UserFacing` and takes a `UserMessage`
+  (`ErrorCode.X.with("name", value, …)`); the user-facing exceptions have no String constructor, so a
+  new message cannot skip its code. `ErrorBody.from(exception)` writes the body,
+  `ErrorBody.write(response, status, message)` the answer of a servlet filter.
+- A parameter can be a message itself (a reason inside a sentence, a status name) or a list; the
+  SPA translates them on their own. Amounts and dates are formatted (German) before they become
+  parameters; names that come from data (field names of the e-invoice check) stay as they are.
+- A code never changes once released; a new message gets a new constant and both translations.
 
 ### Per-entity repositories
 

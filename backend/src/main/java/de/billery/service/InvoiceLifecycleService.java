@@ -1,5 +1,6 @@
 package de.billery.service;
 
+import de.billery.api.error.ErrorCode;
 import de.billery.data.Customer;
 import de.billery.data.Invoice;
 import de.billery.data.InvoiceItem;
@@ -141,7 +142,7 @@ public class InvoiceLifecycleService {
     Invoice invoice = require(id);
     if (!DocumentType.isInvoice(invoice.getDocumentTypeId())
         || invoice.getDocumentStatusId() != DocumentStatus.DRAFT) {
-      throw new DocumentStateException("Nur Rechnungsentwürfe können ausgestellt werden.");
+      throw new DocumentStateException(ErrorCode.INVOICE_ISSUE_NOT_DRAFT.with());
     }
     checkMandatoryFields(invoice);
 
@@ -151,7 +152,7 @@ public class InvoiceLifecycleService {
       number = numberService.generateDocumentNumber(invoice.getDocumentTypeId(), year);
     }
     if (!invoiceRepository.issue(id, number, DocumentStatus.SENT, DocumentStatus.DRAFT)) {
-      throw new DocumentStateException("Die Rechnung wurde bereits ausgestellt.");
+      throw new DocumentStateException(ErrorCode.INVOICE_ALREADY_ISSUED.with());
     }
     invoice.setDocumentNumber(number);
     invoice.setDocumentStatusId(DocumentStatus.SENT);
@@ -166,31 +167,26 @@ public class InvoiceLifecycleService {
 
   private void checkMandatoryFields(Invoice invoice) {
     if (invoice.getInvoiceDate() == null || invoice.getInvoiceDate().isEmpty()) {
-      throw new DocumentStateException("Bitte ein Rechnungsdatum angeben.");
+      throw new DocumentStateException(ErrorCode.INVOICE_DATE_MISSING.with());
     }
     if (invoice.getWorkStartDate() == null || invoice.getWorkStartDate().isEmpty()) {
-      throw new DocumentStateException(
-          "Bitte das Leistungsdatum angeben (Pflichtangabe nach §14 Abs. 4 UStG).");
+      throw new DocumentStateException(ErrorCode.INVOICE_SERVICE_DATE_MISSING.with());
     }
     List<InvoiceItem> items = invoiceRepository.findItemsByInvoiceId(invoice.getId());
     if (items.isEmpty()) {
-      throw new DocumentStateException(
-          "Eine Rechnung ohne Positionen kann nicht ausgestellt werden.");
+      throw new DocumentStateException(ErrorCode.INVOICE_NO_ITEMS.with());
     }
     TaxTreatment treatment = TaxTreatment.parse(invoice.getTaxTreatment());
     if (treatment.chargesVat()) {
       checkRates(items);
     }
     if (treatment == TaxTreatment.TAX_EXEMPT && invoice.getTaxExemptionReason().isBlank()) {
-      throw new DocumentStateException(
-          "Bitte den Grund der Steuerbefreiung angeben (z. B. \"gemäß § 4 Nr. 14 UStG\").");
+      throw new DocumentStateException(ErrorCode.INVOICE_EXEMPTION_REASON_MISSING.with());
     }
     if (treatment == TaxTreatment.REVERSE_CHARGE) {
       Customer customer = customerRepository.findById(invoice.getCustomerId());
       if (customer == null || customer.getTaxId() == null || customer.getTaxId().isBlank()) {
-        throw new DocumentStateException(
-            "Für das Reverse-Charge-Verfahren (§ 13b UStG) braucht der Kunde eine USt-IdNr."
-                + " oder Steuernummer.");
+        throw new DocumentStateException(ErrorCode.INVOICE_REVERSE_CHARGE_TAX_ID.with());
       }
     }
   }
@@ -201,11 +197,8 @@ public class InvoiceLifecycleService {
       boolean isNote = InvoiceItem.ItemType.CUSTOM.getValue().equalsIgnoreCase(item.getItemType());
       if (!isNote && !VatCalculator.isAllowedRate(item.getTaxRatePercent())) {
         throw new DocumentStateException(
-            "Position \""
-                + item.getItemName()
-                + "\" hat den Steuersatz "
-                + item.getTaxRatePercent()
-                + " % (erlaubt: 19 %, 7 %).");
+            ErrorCode.INVOICE_TAX_RATE_NOT_ALLOWED.with(
+                "item", item.getItemName(), "rate", item.getTaxRatePercent()));
       }
       if (item.getChildren() != null) {
         checkRates(item.getChildren());
@@ -265,16 +258,15 @@ public class InvoiceLifecycleService {
       String reference,
       String notes) {
     if (paymentDate == null) {
-      throw new DocumentStateException("Bitte das Zahlungsdatum angeben.");
+      throw new DocumentStateException(ErrorCode.PAYMENT_DATE_MISSING.with());
     }
     BigDecimal open = grossAmount(invoice).subtract(paidAmount(invoice.getId()));
     if (amount == null || amount.signum() <= 0) {
-      throw new DocumentStateException("Der Zahlungsbetrag muss größer als 0 sein.");
+      throw new DocumentStateException(ErrorCode.PAYMENT_AMOUNT_NOT_POSITIVE.with());
     }
     BigDecimal cents = amount.setScale(2, RoundingMode.HALF_UP);
     if (cents.compareTo(open) > 0) {
-      throw new DocumentStateException(
-          "Der Betrag übersteigt den offenen Betrag von " + euro(open) + ".");
+      throw new DocumentStateException(ErrorCode.PAYMENT_EXCEEDS_OPEN.with("open", euro(open)));
     }
     Payment saved =
         paymentRepository.save(
@@ -307,13 +299,13 @@ public class InvoiceLifecycleService {
     Invoice invoice = require(invoiceId);
     Payment original = paymentRepository.findById(paymentId);
     if (original == null || original.invoiceId() != invoiceId) {
-      throw new DocumentStateException("Die Zahlung gehört nicht zu dieser Rechnung.");
+      throw new DocumentStateException(ErrorCode.PAYMENT_OTHER_INVOICE.with());
     }
     if (original.reversesPaymentId() != null) {
-      throw new DocumentStateException("Eine Stornobuchung kann nicht storniert werden.");
+      throw new DocumentStateException(ErrorCode.PAYMENT_REVERSAL_NOT_REVERSIBLE.with());
     }
     if (paymentRepository.isReversed(paymentId)) {
-      throw new DocumentStateException("Die Zahlung wurde bereits storniert.");
+      throw new DocumentStateException(ErrorCode.PAYMENT_ALREADY_REVERSED.with());
     }
     Payment reversal =
         paymentRepository.save(
@@ -355,13 +347,13 @@ public class InvoiceLifecycleService {
     Invoice invoice = require(invoiceId);
     int status = invoice.getDocumentStatusId();
     if (!DocumentType.isInvoice(invoice.getDocumentTypeId())) {
-      throw new DocumentStateException("Nur Rechnungen werden mit einer Stornorechnung storniert.");
+      throw new DocumentStateException(ErrorCode.CANCEL_NOT_INVOICE.with());
     }
     if (status == DocumentStatus.DRAFT) {
-      throw new DocumentStateException("Entwürfe werden gelöscht, nicht storniert.");
+      throw new DocumentStateException(ErrorCode.CANCEL_DRAFT.with());
     }
     if (status == DocumentStatus.CANCELLED) {
-      throw new DocumentStateException("Die Rechnung ist bereits storniert.");
+      throw new DocumentStateException(ErrorCode.CANCEL_ALREADY_CANCELLED.with());
     }
 
     LocalDate today = LocalDate.now();
@@ -437,9 +429,7 @@ public class InvoiceLifecycleService {
         status -> {
           Invoice invoice = require(id);
           if (invoice.getDocumentStatusId() != DocumentStatus.DRAFT) {
-            throw new DocumentStateException(
-                "Nur Entwürfe können gelöscht werden. Ausgestellte Dokumente bitte archivieren"
-                    + " oder stornieren (Aufbewahrungspflicht).");
+            throw new DocumentStateException(ErrorCode.DELETE_NOT_DRAFT.with());
           }
           historyRepository.deleteDraftHistory(id);
           invoiceRepository.delete(id);
@@ -483,8 +473,7 @@ public class InvoiceLifecycleService {
     int status = invoice.getDocumentStatusId();
     if (!DocumentType.isInvoice(invoice.getDocumentTypeId())
         || status != DocumentStatus.SENT && status != DocumentStatus.PARTIALLY_PAID) {
-      throw new DocumentStateException(
-          "Zahlungen können nur für ausgestellte, noch offene Rechnungen erfasst werden.");
+      throw new DocumentStateException(ErrorCode.PAYMENT_NOT_OPEN.with());
     }
     return invoice;
   }

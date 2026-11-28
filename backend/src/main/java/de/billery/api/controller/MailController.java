@@ -1,5 +1,6 @@
 package de.billery.api.controller;
 
+import de.billery.api.error.ErrorCode;
 import de.billery.config.DemoMode;
 import de.billery.service.MailAccountService;
 import de.billery.service.MailTemplateService;
@@ -96,7 +97,7 @@ public class MailController {
   public ResponseEntity<MailAccountService.AccountView> create(
       @RequestBody MailAccountService.AccountInput input) {
     managers.requireManager();
-    demo.refuse("Der Mailversand");
+    demo.refuse(ErrorCode.DEMO_MAIL_DISABLED);
     return ResponseEntity.status(HttpStatus.CREATED).body(accounts.create(input));
   }
 
@@ -111,7 +112,7 @@ public class MailController {
   public ResponseEntity<MailAccountService.AccountView> update(
       @PathVariable int id, @RequestBody MailAccountService.AccountInput input) {
     managers.requireManager();
-    demo.refuse("Der Mailversand");
+    demo.refuse(ErrorCode.DEMO_MAIL_DISABLED);
     MailAccountService.AccountView updated = accounts.update(id, input);
     return updated == null ? ResponseEntity.notFound().build() : ResponseEntity.ok(updated);
   }
@@ -153,7 +154,7 @@ public class MailController {
   @PostMapping("/accounts/{id}/test")
   public ResponseEntity<Void> test(@PathVariable int id) {
     managers.requireManager();
-    demo.refuse("Der Mailversand");
+    demo.refuse(ErrorCode.DEMO_MAIL_DISABLED);
     return accounts.test(id)
         ? ResponseEntity.noContent().build()
         : ResponseEntity.notFound().build();

@@ -1,5 +1,6 @@
 package de.billery.service;
 
+import de.billery.api.error.ErrorCode;
 import de.billery.service.FileSecurityService.ValidationResult;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -185,29 +186,29 @@ public class DocumentConversionService {
    * Refuses an export that is larger than a template can be (it is built in memory).
    *
    * @param sections the requested content
-   * @throws IllegalArgumentException with a German message if a limit is exceeded or the content is
+   * @throws BadRequestException with a coded message if a limit is exceeded or the content is
    *     missing
    */
   public static void checkExportLimits(List<DocumentSection> sections) {
     if (sections == null || sections.isEmpty()) {
-      throw new IllegalArgumentException("Die Vorlage enthält keine Texte zum Exportieren.");
+      throw new BadRequestException(ErrorCode.EXCHANGE_EXPORT_EMPTY.with());
     }
     if (sections.size() > MAX_SECTIONS) {
-      throw new IllegalArgumentException("Zu viele Abschnitte für einen Export.");
+      throw new BadRequestException(ErrorCode.EXCHANGE_TOO_MANY_SECTIONS.with());
     }
     int paragraphs = 0;
     for (DocumentSection section : sections) {
       if (section == null || section.paragraphs() == null) {
-        throw new IllegalArgumentException("Ungültiger Abschnitt im Export.");
+        throw new BadRequestException(ErrorCode.EXCHANGE_SECTION_INVALID.with());
       }
       paragraphs += section.paragraphs().size();
       if (tooLong(section.heading())
           || section.paragraphs().stream().anyMatch(p -> p == null || tooLong(p))) {
-        throw new IllegalArgumentException("Ein Text des Exports ist zu lang.");
+        throw new BadRequestException(ErrorCode.EXCHANGE_TEXT_TOO_LONG.with());
       }
     }
     if (paragraphs > MAX_PARAGRAPHS) {
-      throw new IllegalArgumentException("Zu viele Absätze für einen Export.");
+      throw new BadRequestException(ErrorCode.EXCHANGE_TOO_MANY_PARAGRAPHS.with());
     }
   }
 

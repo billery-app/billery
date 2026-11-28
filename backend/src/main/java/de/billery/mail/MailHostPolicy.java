@@ -1,5 +1,6 @@
 package de.billery.mail;
 
+import de.billery.api.error.ErrorCode;
 import java.io.IOException;
 import java.net.Inet4Address;
 import java.net.Inet6Address;
@@ -71,35 +72,27 @@ public class MailHostPolicy {
    * @param host the mail server
    * @param port its port
    * @param security how the connection is secured
-   * @throws IllegalArgumentException with a German explanation if the server is not allowed
+   * @throws MailHostNotAllowedException with a coded explanation if the server is not allowed
    */
   public void checkAccount(String host, int port, MailSettings.Security security) {
     if (!restrictedHosts) {
       return;
     }
     if (!ALLOWED_PORTS.contains(port)) {
-      throw new IllegalArgumentException(
-          "Als Port sind hier nur 25, 465, 587 und 2525 möglich (meist 587 mit STARTTLS oder 465"
-              + " mit SSL/TLS).");
+      throw new MailHostNotAllowedException(ErrorCode.MAIL_PORT_NOT_ALLOWED.with());
     }
     if (security == MailSettings.Security.NONE) {
-      throw new IllegalArgumentException(
-          "Bitte eine verschlüsselte Verbindung wählen (STARTTLS oder SSL/TLS).");
+      throw new MailHostNotAllowedException(ErrorCode.MAIL_ENCRYPTION_REQUIRED.with());
     }
     InetAddress[] addresses;
     try {
       addresses = InetAddress.getAllByName(host);
     } catch (UnknownHostException e) {
-      throw new IllegalArgumentException(
-          "Der Mailserver „" + host + "“ ist nicht bekannt. Bitte die Adresse prüfen.", e);
+      throw new MailHostNotAllowedException(ErrorCode.MAIL_HOST_UNKNOWN.with("host", host), e);
     }
     for (InetAddress address : addresses) {
       if (!isPublic(address)) {
-        throw new IllegalArgumentException(
-            "Der Mailserver „"
-                + host
-                + "“ zeigt auf eine interne Adresse. Bitte den öffentlichen Mailserver Ihres"
-                + " Anbieters eintragen.");
+        throw new MailHostNotAllowedException(ErrorCode.MAIL_HOST_INTERNAL.with("host", host));
       }
     }
   }

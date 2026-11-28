@@ -1,6 +1,7 @@
 package de.billery.saas.provisioning;
 
 import de.billery.saas.api.ApiError;
+import de.billery.saas.api.SaasErrorCode;
 import de.billery.saas.identity.Role;
 import java.util.List;
 import java.util.UUID;
@@ -82,7 +83,7 @@ public class MemberService {
           Permissions.requireManage(current);
           Permissions.requireManage(newRole);
           if (current == Role.OWNER && newRole != Role.OWNER && owners() < 2) {
-            throw new ApiError(HttpStatus.CONFLICT, "The last owner cannot be demoted");
+            throw new ApiError(HttpStatus.CONFLICT, SaasErrorCode.LAST_OWNER_DEMOTE.with());
           }
           jdbc.sql(
                   "UPDATE tenant_member SET role = :role WHERE tenant_id = :tenant AND user_id = :user")
@@ -117,7 +118,7 @@ public class MemberService {
             Permissions.requireManage(current);
           }
           if (current == Role.OWNER && owners() < 2) {
-            throw new ApiError(HttpStatus.CONFLICT, "The last owner cannot be removed");
+            throw new ApiError(HttpStatus.CONFLICT, SaasErrorCode.LAST_OWNER_REMOVE.with());
           }
           jdbc.sql("DELETE FROM tenant_member WHERE tenant_id = :tenant AND user_id = :user")
               .param("tenant", Permissions.tenant())
@@ -142,7 +143,8 @@ public class MemberService {
         .query(String.class)
         .optional()
         .map(Role::valueOf)
-        .orElseThrow(() -> new ApiError(HttpStatus.NOT_FOUND, "No such member"));
+        .orElseThrow(
+            () -> new ApiError(HttpStatus.NOT_FOUND, SaasErrorCode.MEMBER_NOT_FOUND.with()));
   }
 
   private int owners() {

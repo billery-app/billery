@@ -2,6 +2,7 @@ import axios from 'axios'
 import { apiBaseUrl } from './apiBase.js'
 import { authHeaders, handleForbidden, renewAfterUnauthorized } from './authService.js'
 import { isSaas } from './session.js'
+import { errorText } from './apiErrors.ts'
 
 /**
  * Shared axios instance for all API services
@@ -18,8 +19,9 @@ apiClient.interceptors.request.use(async config => {
 })
 
 /**
- * Extracts the user-facing `message` the backend sends with error responses
- * (`{"message": "..."}`, see ApiExceptionHandler). For `responseType: 'blob'`
+ * Extracts the user-facing message the backend sends with error responses
+ * (`{"message": "...", "code": "...", "params": {...}}`, see ApiExceptionHandler), in the
+ * interface language when the code is known (`apiErrors.ts`, #15). For `responseType: 'blob'`
  * requests (PDF downloads) the error body arrives as a Blob and is parsed here.
  * @param {*} data - `error.response.data`
  * @returns {Promise<string|undefined>} - The message, if any
@@ -28,12 +30,12 @@ export async function extractErrorMessage(data) {
   if (typeof Blob !== 'undefined' && data instanceof Blob) {
     if (!data.type.includes('json')) return undefined
     try {
-      return JSON.parse(await data.text()).message
+      return errorText(JSON.parse(await data.text()))
     } catch {
       return undefined
     }
   }
-  return data && typeof data === 'object' ? data.message : undefined
+  return errorText(data)
 }
 
 apiClient.interceptors.response.use(
@@ -51,6 +53,11 @@ apiClient.interceptors.response.use(
     const message = await extractErrorMessage(error.response?.data)
     if (message) {
       error.message = message
+      // components that read `response.data.message` directly see the translated text too
+      const data = error.response?.data
+      if (data && typeof data === 'object' && !(typeof Blob !== 'undefined' && data instanceof Blob)) {
+        data.message = message
+      }
     }
     return Promise.reject(error)
   }

@@ -1,10 +1,12 @@
 package de.billery.service;
 
+import de.billery.api.error.ErrorCode;
 import de.billery.data.MailAccount;
 import de.billery.mail.CompanyMailSender;
 import de.billery.mail.CredentialCipher;
 import de.billery.mail.MailAddresses;
 import de.billery.mail.MailException;
+import de.billery.mail.MailHostNotAllowedException;
 import de.billery.mail.MailHostPolicy;
 import de.billery.mail.MailMessage;
 import de.billery.mail.MailSettings;
@@ -277,7 +279,7 @@ public class MailAccountService {
       sender.send(account, message);
     } catch (MailException e) {
       LOG.warn("Test mail of mail account {} failed: {}", id, e.reason());
-      throw new MailDeliveryException(e.reason().explanation(), e);
+      throw new MailDeliveryException(e.reason().message(), e);
     }
     return true;
   }
@@ -294,9 +296,7 @@ public class MailAccountService {
               || !existing.security().equals(checked.security.name())
               || !existing.username().equals(checked.username);
       if (target && existing.hasPassword()) {
-        throw new BadRequestException(
-            "Server, Port, Verschlüsselung oder Benutzername wurden geändert: bitte das"
-                + " Passwort erneut eingeben.");
+        throw new BadRequestException(ErrorCode.MAIL_PASSWORD_REENTER.with());
       }
       return existing.passwordEncrypted();
     }
@@ -305,9 +305,7 @@ public class MailAccountService {
 
   private String encrypt(String password) {
     if (!cipher.available()) {
-      throw new BadRequestException(
-          "Passwörter können hier nicht gespeichert werden: der Betreiber hat keinen Schlüssel"
-              + " eingerichtet (BILLERY_SECRETS_KEY).");
+      throw new BadRequestException(ErrorCode.MAIL_NO_SECRETS_KEY.with());
     }
     return cipher.encrypt(password);
   }
@@ -326,7 +324,7 @@ public class MailAccountService {
 
   private Checked check(AccountInput input) {
     if (input == null) {
-      throw new BadRequestException("Die Angaben zum Mailkonto fehlen.");
+      throw new BadRequestException(ErrorCode.MAIL_ACCOUNT_MISSING.with());
     }
     Checked c = new Checked();
     c.name = trim(input.name());
@@ -336,12 +334,10 @@ public class MailAccountService {
     c.fromAddress = trim(input.fromAddress());
     c.fromName = trim(input.fromName());
     if (c.name.isEmpty() || c.name.length() > 100 || MailAddresses.hasControlCharacters(c.name)) {
-      throw new BadRequestException("Bitte einen Namen für das Konto angeben (bis 100 Zeichen).");
+      throw new BadRequestException(ErrorCode.MAIL_ACCOUNT_NAME.with());
     }
     if (!HOST.matcher(c.host).matches() || c.host.startsWith(".") || c.host.startsWith("-")) {
-      throw new BadRequestException(
-          "Bitte den Mailserver als Namen angeben, z. B. smtp.example.com (ohne http:// und"
-              + " ohne Port).");
+      throw new BadRequestException(ErrorCode.MAIL_HOST_FORMAT.with());
     }
     try {
       c.security =
@@ -349,7 +345,7 @@ public class MailAccountService {
               trim(Objects.requireNonNullElse(input.security(), "STARTTLS"))
                   .toUpperCase(Locale.ROOT));
     } catch (IllegalArgumentException e) {
-      throw new BadRequestException("Die Verschlüsselung muss STARTTLS, SSL oder NONE sein.", e);
+      throw new BadRequestException(ErrorCode.MAIL_SECURITY_VALUE.with(), e);
     }
     int port = input.port() == null ? 0 : input.port();
     if (port == 0) {
@@ -361,31 +357,29 @@ public class MailAccountService {
           };
     }
     if (port < 1 || port > 65_535) {
-      throw new BadRequestException("Der Port muss zwischen 1 und 65535 liegen.");
+      throw new BadRequestException(ErrorCode.MAIL_PORT_RANGE.with());
     }
     c.port = port;
     if (c.username.length() > 255 || MailAddresses.hasControlCharacters(c.username)) {
-      throw new BadRequestException("Der Benutzername ist zu lang oder enthält Steuerzeichen.");
+      throw new BadRequestException(ErrorCode.MAIL_USERNAME_INVALID.with());
     }
     if (c.password != null && c.password.length() > 500) {
-      throw new BadRequestException("Das Passwort ist zu lang.");
+      throw new BadRequestException(ErrorCode.MAIL_PASSWORD_TOO_LONG.with());
     }
     if (c.security == MailSettings.Security.NONE
         && (!c.username.isEmpty() || (c.password != null && !c.password.isEmpty()))) {
-      throw new BadRequestException(
-          "Ohne Verschlüsselung würden Benutzername und Passwort lesbar übertragen: bitte"
-              + " STARTTLS oder SSL/TLS wählen.");
+      throw new BadRequestException(ErrorCode.MAIL_PLAINTEXT_LOGIN.with());
     }
     if (!MailAddresses.isAddress(c.fromAddress)) {
-      throw new BadRequestException("Bitte eine gültige Absenderadresse angeben.");
+      throw new BadRequestException(ErrorCode.MAIL_FROM_INVALID.with());
     }
     if (c.fromName.length() > 255 || MailAddresses.hasControlCharacters(c.fromName)) {
-      throw new BadRequestException("Der Absendername ist zu lang oder enthält Steuerzeichen.");
+      throw new BadRequestException(ErrorCode.MAIL_FROM_NAME_INVALID.with());
     }
     try {
       policy.checkAccount(c.host, c.port, c.security);
-    } catch (IllegalArgumentException e) {
-      throw new BadRequestException(e.getMessage(), e);
+    } catch (MailHostNotAllowedException e) {
+      throw new BadRequestException(e.userMessage(), e);
     }
     return c;
   }

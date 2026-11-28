@@ -11,6 +11,7 @@ import de.billery.api.dto.InvoiceDto;
 import de.billery.api.dto.InvoiceItemDto;
 import de.billery.api.dto.PaymentRequest;
 import de.billery.api.dto.StatusChangeRequest;
+import de.billery.api.error.ErrorCode;
 import de.billery.data.Database;
 import de.billery.data.Invoice;
 import de.billery.data.InvoiceTemplate;
@@ -796,13 +797,14 @@ class GobdExportTest {
   void limitFailuresMapToTheirHttpStatus() {
     ApiExceptionHandler handler = new ApiExceptionHandler();
 
-    ResponseEntity<Map<String, String>> tooLarge =
-        handler.handleExportLimit(new ExportLimitException("zu groß"));
-    ResponseEntity<Map<String, String>> busy =
-        handler.handleExportBusy(new ExportBusyException("belegt"));
+    ResponseEntity<Map<String, Object>> tooLarge =
+        handler.handleExportLimit(new ExportLimitException(ErrorCode.EXPORT_TOO_SLOW.with()));
+    ResponseEntity<Map<String, Object>> busy =
+        handler.handleExportBusy(new ExportBusyException(ErrorCode.EXPORT_TOO_MANY.with()));
 
     assertEquals(HttpStatus.PAYLOAD_TOO_LARGE, tooLarge.getStatusCode());
-    assertEquals("zu groß", tooLarge.getBody().get("message"));
+    assertEquals(ErrorCode.EXPORT_TOO_SLOW.template(), tooLarge.getBody().get("message"));
+    assertEquals("export.tooSlow", tooLarge.getBody().get("code"));
     assertEquals(HttpStatus.TOO_MANY_REQUESTS, busy.getStatusCode());
     assertEquals("60", busy.getHeaders().getFirst("Retry-After"));
   }

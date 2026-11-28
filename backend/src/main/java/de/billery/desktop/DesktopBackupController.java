@@ -1,5 +1,7 @@
 package de.billery.desktop;
 
+import de.billery.api.error.ErrorBody;
+import de.billery.api.error.ErrorCode;
 import de.billery.desktop.DesktopBackupService.BackupFile;
 import de.billery.desktop.DesktopBackupService.BackupStatus;
 import java.io.IOException;
@@ -111,7 +113,7 @@ public class DesktopBackupController {
           request.directory(), request.keep(), request.onExit(), request.password());
       return ResponseEntity.ok(backups.status());
     } catch (IllegalArgumentException e) {
-      return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+      return ResponseEntity.badRequest().body(ErrorBody.from(e));
     }
   }
 
@@ -131,15 +133,11 @@ public class DesktopBackupController {
       BackupFile file = backups.backup(BackupNames.MANUAL);
       return ResponseEntity.status(HttpStatus.CREATED).body(file);
     } catch (DesktopBackupService.BackupTooLargeException e) {
-      return ResponseEntity.unprocessableEntity().body(Map.of("message", e.getMessage()));
+      return ResponseEntity.unprocessableEntity().body(ErrorBody.from(e));
     } catch (IOException | RuntimeException e) {
       LOGGER.log(Level.WARNING, "Manual backup failed", e);
       return ResponseEntity.internalServerError()
-          .body(
-              Map.of(
-                  "message",
-                  "Die Sicherung konnte nicht geschrieben werden. Ist der Sicherungsordner"
-                      + " erreichbar?"));
+          .body(ErrorBody.from(ErrorCode.BACKUP_WRITE_FAILED.with()));
     }
   }
 
@@ -164,23 +162,16 @@ public class DesktopBackupController {
     }
     try {
       backups.stageRestore(request.name(), request.password(), request.confirmLoss());
-      return ResponseEntity.accepted()
-          .body(
-              Map.of(
-                  "message",
-                  "Die Sicherung wird beim nächsten Start von Billery wiederhergestellt. Der"
-                      + " jetzige Stand wird vorher gesichert."));
+      return ResponseEntity.accepted().body(ErrorBody.from(ErrorCode.BACKUP_RESTORE_STAGED.with()));
     } catch (DesktopBackupService.RestoreLossException e) {
-      return ResponseEntity.status(HttpStatus.CONFLICT)
-          .body(
-              Map.of(
-                  "message", e.getMessage(),
-                  "issued", e.loss().issued(),
-                  "payments", e.loss().payments(),
-                  "changes", e.loss().changes(),
-                  "files", e.loss().files()));
+      Map<String, Object> body = ErrorBody.from(e);
+      body.put("issued", e.loss().issued());
+      body.put("payments", e.loss().payments());
+      body.put("changes", e.loss().changes());
+      body.put("files", e.loss().files());
+      return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
     } catch (IllegalArgumentException e) {
-      return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+      return ResponseEntity.badRequest().body(ErrorBody.from(e));
     }
   }
 
