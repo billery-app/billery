@@ -17,7 +17,7 @@ operating system it is for (Windows on Windows, macOS on a Mac, Linux on Linux).
 | Rust | the stable toolchain via [rustup](https://rustup.rs) |
 | Windows | Visual Studio Build Tools with "Desktop development with C++"; WebView2 (part of Windows 10 / 11) |
 | macOS | Xcode command line tools (`xcode-select --install`); the app needs macOS 14 or newer |
-| Linux | the Tauri packages, on Debian / Ubuntu: `libwebkit2gtk-4.1-dev libdbus-1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev pkg-config`; on NixOS run the build inside `nix-shell` (`app-desktop/shell.nix`) |
+| Linux | the Tauri packages, on Debian / Ubuntu: `libwebkit2gtk-4.1-dev libdbus-1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev pkg-config` |
 
 ## Build the installer
 

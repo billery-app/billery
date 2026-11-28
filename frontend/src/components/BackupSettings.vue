@@ -62,7 +62,7 @@
               </small>
             </template>
           </div>
-          <button type="submit" class="btn btn-secondary" :disabled="busy || status.restorePending">{{ $t('backup.saveSettings') }}</button>
+          <button type="submit" class="btn btn-primary" :disabled="busy || status.restorePending">{{ $t('backup.saveSettings') }}</button>
         </form>
 
         <h3 class="backup-heading">{{ $t('backup.list') }}</h3>
