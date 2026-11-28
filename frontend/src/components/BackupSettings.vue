@@ -27,14 +27,17 @@
         <form class="backup-form" @submit.prevent="saveSettings">
           <div class="form-group">
             <label for="backup-directory">{{ $t('backup.directory') }}</label>
-            <input
-              id="backup-directory"
-              v-model="form.directory"
-              class="form-control"
-              name="backupDirectory"
-              autocomplete="off"
-              :placeholder="status.defaultDirectory"
-            />
+            <div class="folder-row">
+              <input
+                id="backup-directory"
+                v-model="form.directory"
+                class="form-control"
+                name="backupDirectory"
+                autocomplete="off"
+                :placeholder="status.defaultDirectory"
+              />
+              <button v-if="desktop" type="button" class="btn btn-secondary" data-testid="backup-choose-folder" @click="chooseFolder">{{ $t('backup.chooseFolder') }}</button>
+            </div>
             <small>
               {{ $t('backup.directoryHint') }}
             </small>
@@ -100,7 +103,10 @@
                     <button type="button" class="btn btn-small btn-danger" :disabled="busy" @click="restore(backup)">{{ $t('backup.restoreAtStart') }}</button>
                     <button type="button" class="btn btn-small btn-secondary" @click="restoring = null">{{ $t('common.cancel') }}</button>
                   </template>
-                  <button v-else type="button" class="btn btn-small btn-outline" @click="startRestore(backup)">{{ $t('backup.restore') }}</button>
+                  <template v-else>
+                    <button v-if="desktop && backup.path" type="button" class="btn btn-small btn-outline" @click="showInFolder(backup.path)">{{ $t('common.showInFolder') }}</button>
+                    <button type="button" class="btn btn-small btn-outline" @click="startRestore(backup)">{{ $t('backup.restore') }}</button>
+                  </template>
                 </td>
               </tr>
             </tbody>
@@ -115,6 +121,7 @@
 <script>
 import backupAPI from '../services/backupService.js'
 import { formatFileSize } from '../utils/fileValidation.js'
+import { isDesktopApp, pickFolder, showInFolder } from '../services/desktopApp.ts'
 
 /** Days after which the last backup is shown as too old. */
 const MAX_AGE_DAYS = 7
@@ -139,7 +146,9 @@ export default {
       restoring: null,
       restorePassword: '',
       // A restore the server refused because documents or uploaded files came after the backup: { backup, message }
-      loss: null
+      loss: null,
+      // the native folder dialog and "show in folder" of the desktop app (services/desktopApp.ts)
+      desktop: isDesktopApp()
     }
   },
   computed: {
@@ -155,6 +164,12 @@ export default {
     this.load()
   },
   methods: {
+    showInFolder,
+    /** Desktop app: the system's folder dialog fills the folder field (saved with the settings). */
+    async chooseFolder() {
+      const folder = await pickFolder(this.form.directory || this.status.directory, this.$t('backup.chooseFolderTitle'))
+      if (folder) this.form.directory = folder
+    },
     async load() {
       try {
         const { data } = await backupAPI.getStatus()
@@ -255,6 +270,8 @@ export default {
 .backup-form { display: flex; flex-direction: column; gap: var(--space-3); }
 .backup-form .form-row { display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: flex-end; }
 .backup-form small { display: block; margin-top: var(--space-1); color: var(--color-text-muted); }
+.folder-row { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.folder-row .form-control { flex: 1 1 18em; min-width: 0; }
 .checkbox-label { display: flex; align-items: center; gap: var(--space-2); }
 .backup-heading { margin: 0; font-size: var(--font-size-md); color: var(--color-text-strong); }
 .backup-hint { margin: 0; color: var(--color-text-muted); font-size: var(--font-size-sm); }

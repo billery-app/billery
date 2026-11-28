@@ -1,3 +1,6 @@
+// No console window next to the app on Windows in release builds (debug builds keep it for logs).
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
 fn main() {
     // Workaround for webkit2gtk Wayland rendering crashes on Linux
     // (Error 71 protocol error / GBM buffer failure / WebLoaderStrategy crash)

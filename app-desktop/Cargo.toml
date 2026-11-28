@@ -3,7 +3,7 @@ name = "billery"
 version = "1.0.0"
 description = "Professional Invoice Management System"
 authors = ["Billery"]
-license = "APGL-3.0-or-later"
+license = "AGPL-3.0-or-later"
 edition = "2021"
 
 [lib]
@@ -15,4 +15,7 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 tauri = { version = "2", features = [] }
+# folder picker and "show in folder" for the app pages (capabilities/app-pages.json)
+tauri-plugin-dialog = "2"
+tauri-plugin-opener = "2"
 reqwest = { version = "0.13", features = ["blocking"] }

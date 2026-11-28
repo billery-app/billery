@@ -229,7 +229,8 @@
     "cancel": "Abbrechen",
     "close": "Schließen",
     "saveFailed": "Fehler beim Speichern: {reason}",
-    "failed": "Das ging leider schief."
+    "failed": "Das ging leider schief.",
+    "showInFolder": "Im Ordner zeigen"
   },
   "owners": {
     "title": "Inhaber-Verwaltung",
@@ -434,7 +435,10 @@
     "download": "Export herunterladen",
     "datesReversed": "Das Startdatum liegt nach dem Enddatum.",
     "incomplete": "Der Export ist unvollständig angekommen (Verbindungsabbruch oder Export zu groß). Bitte erneut versuchen, den Zeitraum verkleinern oder ohne Belegdateien exportieren.",
-    "failed": "Export fehlgeschlagen: {reason}"
+    "failed": "Export fehlgeschlagen: {reason}",
+    "exportToFolder": "In Ordner exportieren …",
+    "chooseFolder": "Ordner für den GoBD-Export wählen",
+    "saved": "Gespeichert: {path}"
   },
   "team": {
     "members": "Mitglieder",
@@ -515,7 +519,9 @@
     "passwordMissing": "Bitte ein Passwort für die Verschlüsselung angeben.",
     "saved": "Die Einstellungen wurden gespeichert.",
     "restoreStaged": "Die Sicherung wird beim nächsten Start wiederhergestellt. Bitte Billery jetzt beenden und neu starten.",
-    "restoreCancelled": "Die Wiederherstellung wurde abgebrochen."
+    "restoreCancelled": "Die Wiederherstellung wurde abgebrochen.",
+    "chooseFolder": "Ordner wählen …",
+    "chooseFolderTitle": "Sicherungsordner wählen"
   },
   "mail": {
     "demo": "In der Demo ist der Mailversand abgeschaltet: Mailkonten können nicht angelegt werden. Die Vorlagen für Ihre Mails können Sie trotzdem ausprobieren.",
@@ -1405,6 +1411,8 @@
     },
     "export": {
       "alreadyRunning": "Es läuft bereits ein Export. Bitte in einigen Minuten erneut versuchen.",
+      "folderInvalid": "In den Ordner „{folder}“ kann nicht exportiert werden. Bitte einen vorhandenen, beschreibbaren Ordner wählen.",
+      "periodInvalid": "Der Zeitraum ist ungültig: das Startdatum liegt nach dem Enddatum.",
       "periodTooLong": "Der Zeitraum ist zu lang (höchstens {max} Tage pro Export).",
       "tooLarge": "Der Export ist zu groß (höchstens {max} MB) und wurde abgebrochen. Bitte den Zeitraum verkleinern oder ohne Belegdateien exportieren.",
       "tooMany": "Es laufen gerade zu viele Exporte. Bitte in einigen Minuten erneut versuchen.",

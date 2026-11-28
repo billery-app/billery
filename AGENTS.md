@@ -69,10 +69,18 @@ npx tauri build          # full installer build (calls beforeBuildCommand = "npm
 npx tauri dev            # dev run; window opens at http://127.0.0.1:8080
 ```
 
-**The Tauri window points at `http://127.0.0.1:8080` (the bundled backend), not
-an embedded SPA build** — `tauri.conf.json` has `frontendDist` set so the
-bundler can resolve at install time, but the runtime webview loads the backend
-URL. The backend binds to `127.0.0.1` only (desktop mode has no auth). The port
+**The Tauri window shows the bundled backend (`http://127.0.0.1:8080`), not
+an embedded SPA build** — it starts on the loading page `splash/index.html`
+(`build.frontendDist`, the only page in the shell) and `src/lib.rs` switches it to the backend
+once `/api/health` answers with this launch's id. The backend pages may call exactly two native
+functions (`capabilities/app-pages.json`: `dialog:allow-open`, `opener:allow-reveal-item-in-dir`,
+via `window.__TAURI__`), used only through `frontend/src/services/desktopApp.ts` (backup folder,
+"Im Ordner zeigen", GoBD export into a folder: `POST /api/desktop/export/gobd`,
+`DesktopExportController`, window token). Release builds have no console window on Windows
+(`windows_subsystem`, Java started with `CREATE_NO_WINDOW`). Installers: `build-desktop.sh
+[bundle types]`; `.github/workflows/desktop-release.yml` builds them for a release tag (called by
+`release.yml`, which attaches them) or by hand, never on pull requests (macOS runner billed
+tenfold). The backend binds to `127.0.0.1` only (desktop mode has no auth). The port
 stays fixed because stored logo URLs contain it; `src/lib.rs` therefore refuses
 to start (error page) when something else already answers on 8080, and only
 trusts a `/api/health` response carrying its per-launch `DESKTOP_INSTANCE_ID`.

@@ -83,6 +83,11 @@ public enum ErrorCode implements MessageCode {
   EXPORT_ALREADY_RUNNING(
       "export.alreadyRunning",
       "Es läuft bereits ein Export. Bitte in einigen Minuten erneut versuchen."),
+  EXPORT_FOLDER_INVALID(
+      "export.folderInvalid",
+      "In den Ordner „{folder}“ kann nicht exportiert werden. Bitte einen vorhandenen, beschreibbaren Ordner wählen."),
+  EXPORT_PERIOD_INVALID(
+      "export.periodInvalid", "Der Zeitraum ist ungültig: das Startdatum liegt nach dem Enddatum."),
   EXPORT_PERIOD_TOO_LONG(
       "export.periodTooLong", "Der Zeitraum ist zu lang (höchstens {max} Tage pro Export)."),
   EXPORT_TOO_LARGE(

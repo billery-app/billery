@@ -1,4 +1,5 @@
 import { apiClient } from './baseService.js'
+import { desktopTokenOptions } from './desktopToken.js'
 
 /**
  * Data exports for third parties.
@@ -15,6 +16,19 @@ export default {
    */
   gobdExport(from, to, documents) {
     return apiClient.get('/export/gobd', { params: { from, to, documents }, responseType: 'blob' })
+  },
+
+  /**
+   * The desktop app's GoBD export straight into a folder (`POST /api/desktop/export/gobd`, with
+   * the window's token): the backend writes the ZIP there, complete or not at all.
+   * @param {string} from - First document date (YYYY-MM-DD)
+   * @param {string} to - Last document date (YYYY-MM-DD)
+   * @param {boolean} documents - Include PDFs and XRechnungs
+   * @param {string} directory - The absolute folder chosen by the user
+   * @returns {Promise<import('axios').AxiosResponse<{path: string}>>} - The written file
+   */
+  gobdExportToFolder(from, to, documents, directory) {
+    return apiClient.post('/desktop/export/gobd', { from, to, documents, directory }, desktopTokenOptions())
   }
 }
 

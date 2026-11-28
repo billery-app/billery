@@ -1,0 +1,138 @@
+name: Desktop installers
+
+# Builds the installers of the desktop app (#22) with scripts/build-desktop.sh: the SPA, the backend
+# JAR (-Pdesktop), a jlink'd Java runtime and the Tauri shell, one runner per system.
+#
+# - Called by release.yml for a release tag (after its checks passed); its job `desktop-publish`
+#   attaches the installers and their checksums to the GitHub release.
+# - Started by hand (Actions → Desktop installers → Run workflow) to try a build: the installers
+#   are kept as workflow artifacts for 7 days, nothing is published.
+#
+# Never on pull requests or pushes: one run costs about 20 minutes per runner, and the macOS
+# runner is billed tenfold, the Windows runner twofold (docs/guides/desktop.md > Release).
+# The installers are not signed (Windows SmartScreen and macOS Gatekeeper warn, see
+# app-desktop/README.md).
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: Version of the app (the release tag; a leading "v" is dropped)
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version written into the installers (e.g. 0.3.0-test)
+        required: true
+        default: 0.0.0-dev
+
+permissions:
+  contents: read
+
+jobs:
+  installer:
+    name: installer (${{ matrix.system }})
+    strategy:
+      # One system failing does not stop the others; release.yml publishes only when all passed.
+      fail-fast: false
+      matrix:
+        include:
+          # 22.04: the AppImage and the packages link against the glibc of the build system, so
+          # the older one keeps them running on older distributions (Debian 12, Ubuntu 22.04).
+          - system: linux
+            runner: ubuntu-22.04
+            bundles: deb rpm appimage
+          # NSIS only: the MSI bundler refuses pre-release versions (1.2.3-rc1).
+          - system: windows
+            runner: windows-latest
+            bundles: nsis
+          # Apple silicon (the runner's architecture); Intel Macs are not built.
+          - system: macos
+            runner: macos-latest
+            bundles: dmg
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 75
+    defaults:
+      run:
+        # Git Bash on Windows: the same build script everywhere.
+        shell: bash
+    env:
+      # Via env, never interpolated into a script.
+      VERSION: ${{ inputs.version }}
+      BUNDLE_TYPES: ${{ matrix.bundles }}
+    steps:
+      # A leading "v" (the release tag) is dropped.
+      - name: Check the version
+        run: |
+          VERSION="${VERSION#v}"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z][0-9A-Za-z.-]*)?$ ]]; then
+            echo "::error::'$VERSION' is not a version (<major>.<minor>.<patch>[-<pre-release>])"
+            exit 1
+          fi
+
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The JDK whose jmods become the bundled runtime: the one Java version of the project.
+      - name: Set up JDK 25
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+
+      - name: Set up Node 24
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+
+      # Rust comes with the hosted runners (rustup); only the stable toolchain is made current.
+      - name: Rust toolchain
+        run: rustup toolchain install stable --profile minimal && rustup default stable
+
+      - name: Linux libraries for Tauri
+        if: matrix.system == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev \
+            libssl-dev patchelf file
+
+      - name: Version into tauri.conf.json
+        working-directory: app-desktop
+        run: |
+          node -e '
+            const fs = require("fs");
+            const conf = JSON.parse(fs.readFileSync("tauri.conf.json", "utf8"));
+            conf.version = process.env.VERSION;
+            fs.writeFileSync("tauri.conf.json", JSON.stringify(conf, null, 2) + "\n");
+          '
+
+      - name: Build the installer
+        # One argument per bundle type.
+        run: |
+          read -ra bundles <<< "$BUNDLE_TYPES"
+          scripts/build-desktop.sh "${bundles[@]}"
+
+      - name: Collect the installers
+        run: |
+          set -euo pipefail
+          mkdir -p dist-desktop
+          bundle=app-desktop/target/release/bundle
+          find "$bundle" -maxdepth 2 -type f \
+            \( -name '*.deb' -o -name '*.rpm' -o -name '*.AppImage' -o -name '*-setup.exe' -o -name '*.dmg' \) \
+            -exec cp {} dist-desktop/ \;
+          ls -la dist-desktop
+          test -n "$(ls -A dist-desktop)" || { echo "::error::no installer was built"; exit 1; }
+
+      - name: Upload the installers
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: desktop-${{ matrix.system }}
+          path: dist-desktop/*
+          if-no-files-found: error
+          retention-days: 7

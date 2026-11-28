@@ -6,9 +6,9 @@ runtime) on `127.0.0.1:8080` and shows it; nothing is reachable from the network
 
 Installing needs nothing besides the installer: it brings its own Java runtime, and the Linux
 packages (`.deb`, `.rpm`) declare the libraries they need, so the package manager installs them;
-the AppImage carries them itself. There is **no ready-made download yet** (the release workflow
-does not build the installers so far): until then, build the installer yourself, see
-[`docs/guides/desktop.md`](../docs/guides/desktop.md), which also covers developing the app.
+the AppImage carries them itself. The installers are attached to the GitHub releases (from the
+first release after #22; `SHA256SUMS-desktop.txt` holds their checksums). To build one yourself,
+see [`docs/guides/desktop.md`](../docs/guides/desktop.md), which also covers developing the app.
 
 ## Install and start
 
@@ -18,7 +18,7 @@ does not build the installers so far): until then, build the installer yourself,
   first time with right click → Open (or `xattr -cr /Applications/Billery.app`).
 - **Linux:** make the AppImage executable (`chmod +x`) and start it, or install the `.deb` / `.rpm`.
 
-The first start takes a few seconds (the backend starts). Enter the company details (Einstellungen
+A loading screen shows while the bundled server starts (a few seconds). Enter the company details (Einstellungen
 → Inhaber) before the first document; the introductory tour starts while there are no documents.
 
 ## Where the data is
@@ -34,4 +34,6 @@ Everything lives in the app's data folder (identifier `de.billery.desktop`):
 Inside: `database*` (H2), `files/` (logos and uploads), `backups/` (unless another backup folder
 is chosen), `app.log` / `backend-err.log`, and the keys of the backup signature and the mail
 passwords. **Uninstalling keeps this folder**; back it up or use Einstellungen → Datensicherung
-before you move to another computer.
+before you move to another computer. The backup folder and the folder of a GoBD export
+(Einstellungen → Daten & Export) are chosen with the system's folder dialog; "Im Ordner zeigen"
+opens the file manager at a backup or an export.

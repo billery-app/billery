@@ -5,8 +5,6 @@ import de.billery.api.error.ErrorCode;
 import de.billery.desktop.DesktopBackupService.BackupFile;
 import de.billery.desktop.DesktopBackupService.BackupStatus;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -41,10 +39,10 @@ public class DesktopBackupController {
   private static final Logger LOGGER = Logger.getLogger(DesktopBackupController.class.getName());
 
   /** The header that carries the window's per-launch secret. */
-  static final String TOKEN_HEADER = "X-Desktop-Token";
+  static final String TOKEN_HEADER = DesktopUiToken.HEADER;
 
   private final DesktopBackupService backups;
-  private final String uiToken;
+  private final DesktopUiToken uiToken;
 
   /**
    * @param backups the backup service
@@ -60,15 +58,12 @@ public class DesktopBackupController {
    */
   DesktopBackupController(DesktopBackupService backups, String uiToken) {
     this.backups = backups;
-    this.uiToken = uiToken == null ? "" : uiToken;
+    this.uiToken = new DesktopUiToken(uiToken);
   }
 
-  /** Whether the request comes from the app's own window (constant-time comparison). */
+  /** Whether the request comes from the app's own window. */
   private boolean fromAppWindow(String token) {
-    return !uiToken.isEmpty()
-        && token != null
-        && MessageDigest.isEqual(
-            uiToken.getBytes(StandardCharsets.UTF_8), token.getBytes(StandardCharsets.UTF_8));
+    return uiToken.matches(token);
   }
 
   private static <T> ResponseEntity<T> forbidden() {

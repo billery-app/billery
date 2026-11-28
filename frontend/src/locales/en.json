@@ -229,7 +229,8 @@
     "cancel": "Cancel",
     "close": "Close",
     "saveFailed": "Saving failed: {reason}",
-    "failed": "That did not work."
+    "failed": "That did not work.",
+    "showInFolder": "Show in folder"
   },
   "owners": {
     "title": "Company details",
@@ -434,7 +435,10 @@
     "download": "Download the export",
     "datesReversed": "The start date is after the end date.",
     "incomplete": "The export arrived incomplete (the connection broke off or the export is too large). Please try again, choose a shorter period or export without the document files.",
-    "failed": "The export failed: {reason}"
+    "failed": "The export failed: {reason}",
+    "exportToFolder": "Export to a folder …",
+    "chooseFolder": "Choose a folder for the GoBD export",
+    "saved": "Saved: {path}"
   },
   "team": {
     "members": "Members",
@@ -515,7 +519,9 @@
     "passwordMissing": "Please enter a password for the encryption.",
     "saved": "The settings were saved.",
     "restoreStaged": "The backup will be restored at the next start. Please quit Billery now and start it again.",
-    "restoreCancelled": "The restore was cancelled."
+    "restoreCancelled": "The restore was cancelled.",
+    "chooseFolder": "Choose folder …",
+    "chooseFolderTitle": "Choose the backup folder"
   },
   "mail": {
     "demo": "Mail is switched off in the demo: mail accounts cannot be created. You can still try the templates of your mails.",
@@ -1405,6 +1411,8 @@
     },
     "export": {
       "alreadyRunning": "An export is already running. Please try again in a few minutes.",
+      "folderInvalid": "Cannot export into the folder “{folder}”. Please choose an existing folder you can write to.",
+      "periodInvalid": "The period is invalid: the start date is after the end date.",
       "periodTooLong": "The period is too long (at most {max} days per export).",
       "tooLarge": "The export is too large (at most {max} MB) and was stopped. Please choose a shorter period or export without document files.",
       "tooMany": "Too many exports are running right now. Please try again in a few minutes.",

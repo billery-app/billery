@@ -165,7 +165,7 @@ npm run typecheck        # type check (JavaScript with JSDoc, checked by TypeScr
 cd app-desktop && npx tauri dev
 ```
 
-The Tauri window opens the bundled backend (`http://127.0.0.1:8080`, bound to localhost only), not an embedded SPA build. The `npm run build` and `npm run dev` scripts in `app-desktop/` delegate to the Vue frontend in `../frontend/`, so `tauri.conf.json`'s `beforeBuildCommand` / `beforeDevCommand` work without leaving the desktop dir.
+The Tauri window starts on a bundled loading page (`app-desktop/splash/`) and switches to the bundled backend (`http://127.0.0.1:8080`, bound to localhost only) once it answers; the SPA is served by the backend, not embedded in the shell. Release tags also build the installers (`.github/workflows/desktop-release.yml`).
 
 ## Documentation
 

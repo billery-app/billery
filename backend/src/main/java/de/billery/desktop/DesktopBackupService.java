@@ -579,9 +579,15 @@ public class DesktopBackupService {
    *     BackupNames#BEFORE_RESTORE}
    * @param encrypted whether it is encrypted
    * @param size the size in bytes
+   * @param path the absolute path of the file (the app window shows it in the file manager)
    */
   public record BackupFile(
-      String name, LocalDateTime createdAt, String reason, boolean encrypted, long size) {
+      String name,
+      LocalDateTime createdAt,
+      String reason,
+      boolean encrypted,
+      long size,
+      String path) {
 
     static BackupFile fromFile(Path file) throws IOException {
       String name = file.getFileName().toString();
@@ -590,7 +596,8 @@ public class DesktopBackupService {
           BackupNames.time(name),
           BackupNames.reason(name),
           name.endsWith(".enc"),
-          Files.size(file));
+          Files.size(file),
+          file.toAbsolutePath().toString());
     }
   }
 

@@ -132,7 +132,12 @@ fi
 echo ""
 echo "--- Step 5: Building Tauri app ---"
 cd "$TAURI_DIR"
-npx tauri build -b "$@"
+# Arguments are bundle types (deb rpm appimage nsis dmg …); none = every type of this system.
+if [ "$#" -gt 0 ]; then
+  npx tauri build --bundles "$@"
+else
+  npx tauri build
+fi
 
 echo ""
 echo "=== Build complete! ==="

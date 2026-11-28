@@ -1,0 +1,17 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "app-pages",
+  "description": "The Billery pages the window shows (the bundled backend on 127.0.0.1:8080): pick a folder (backups, GoBD export) and show a written file in the file manager. Nothing else: no file access, no shell, no other dialogs.",
+  "windows": [
+    "main"
+  ],
+  "remote": {
+    "urls": [
+      "http://127.0.0.1:8080/*"
+    ]
+  },
+  "permissions": [
+    "dialog:allow-open",
+    "opener:allow-reveal-item-in-dir"
+  ]
+}

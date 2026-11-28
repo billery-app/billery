@@ -52,4 +52,30 @@ describe('GobdExportSettings', () => {
     expect(wrapper.find('.export-error').text()).toContain('Startdatum')
     spy.mockRestore()
   })
+
+  it('writes the export into a folder the user picks in the desktop app', async () => {
+    const { default: exportAPI } = await import('../services/exportService.js')
+    const download = vi.spyOn(exportAPI, 'gobdExport')
+    const toFolder = vi.spyOn(exportAPI, 'gobdExportToFolder').mockResolvedValue({ data: { path: 'C:\\Belege\\GoBD-Export_2026-01-01_2026-03-31.zip' } })
+    const revealItemInDir = vi.fn().mockResolvedValue(undefined)
+    window.__TAURI__ = { dialog: { open: vi.fn().mockResolvedValue('C:\\Belege') }, opener: { revealItemInDir } }
+    try {
+      const wrapper = mount(GobdExportSettings)
+      await wrapper.find('[data-testid="export-from"]').setValue('2026-01-01')
+      await wrapper.find('[data-testid="export-to"]').setValue('2026-03-31')
+      expect(wrapper.find('[data-testid="export-button"]').text()).toBe('In Ordner exportieren …')
+      await wrapper.find('[data-testid="export-button"]').trigger('click')
+      await flushPromises()
+
+      expect(toFolder).toHaveBeenCalledWith('2026-01-01', '2026-03-31', true, 'C:\\Belege')
+      expect(download).not.toHaveBeenCalled()
+      expect(wrapper.find('[data-testid="export-saved"]').text()).toContain('GoBD-Export_2026-01-01_2026-03-31.zip')
+      await wrapper.find('[data-testid="export-saved"] button').trigger('click')
+      expect(revealItemInDir).toHaveBeenCalledWith('C:\\Belege\\GoBD-Export_2026-01-01_2026-03-31.zip')
+    } finally {
+      delete window.__TAURI__
+      download.mockRestore()
+      toFolder.mockRestore()
+    }
+  })
 })

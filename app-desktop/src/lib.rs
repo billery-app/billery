@@ -122,7 +122,15 @@ fn start_backend(
         .open(app_data_dir.join("backend-err.log"))
         .map_err(|e| e.to_string())?;
 
-    Command::new(&java_path)
+    let mut command = Command::new(&java_path);
+    // java.exe is a console program: without this flag Windows opens a console window for it.
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        command.creation_flags(CREATE_NO_WINDOW);
+    }
+    command
         .arg("-jar")
         .arg(&jar_path)
         // Run inside the app-data folder so relative paths (.env, logs) never land
@@ -187,6 +195,10 @@ fn show_error_now(app: &tauri::AppHandle, message: &str) {
 
 pub fn run() {
     let app = tauri::Builder::default()
+        // The app pages (http://127.0.0.1:8080) may pick a folder and show a file in the file
+        // manager, nothing else (capabilities/app-pages.json).
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             let handle = app.handle().clone();
             let app_data_dir = app.path().app_data_dir()?;
