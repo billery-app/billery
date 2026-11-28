@@ -157,12 +157,15 @@ class DocumentConversionServiceTest {
     List<DocumentSection> tooMany =
         java.util.Collections.nCopies(
             DocumentConversionService.MAX_SECTIONS + 1, new DocumentSection("X", List.of("y")));
-    assertThrows(IllegalArgumentException.class, () -> SERVICE.exportToDocx(tooMany));
+    // BadRequestException since #15: the refusal carries a code the SPA translates
+    BadRequestException sections =
+        assertThrows(BadRequestException.class, () -> SERVICE.exportToDocx(tooMany));
+    assertEquals("exchange.tooManySections", sections.userMessage().code().code());
     String tooLong = "x".repeat(DocumentConversionService.MAX_TEXT_LENGTH + 1);
     assertThrows(
-        IllegalArgumentException.class,
+        BadRequestException.class,
         () -> SERVICE.exportToOdt(List.of(new DocumentSection("X", List.of(tooLong)))));
-    assertThrows(IllegalArgumentException.class, () -> SERVICE.exportToOdt(List.of()));
+    assertThrows(BadRequestException.class, () -> SERVICE.exportToOdt(List.of()));
   }
 
   @Test

@@ -1,5 +1,7 @@
 package de.billery.mail;
 
+import de.billery.api.error.ErrorCode;
+import de.billery.api.error.UserMessage;
 import jakarta.mail.AuthenticationFailedException;
 import jakarta.mail.MessagingException;
 import jakarta.mail.SendFailedException;
@@ -18,33 +20,38 @@ public class MailException extends Exception {
   /** Why a delivery failed: the metric's label and the user's explanation. */
   public enum Reason {
     /** The server refused the login. */
-    AUTH("Der Mailserver hat die Anmeldung abgelehnt. Bitte Benutzername und Passwort prüfen."),
+    AUTH(ErrorCode.MAIL_AUTH),
     /** The server could not be reached (name, port, firewall). */
-    CONNECT("Der Mailserver ist nicht erreichbar. Bitte Server und Port prüfen."),
+    CONNECT(ErrorCode.MAIL_CONNECT),
     /** The server did not answer in time. */
-    TIMEOUT("Der Mailserver hat nicht rechtzeitig geantwortet."),
+    TIMEOUT(ErrorCode.MAIL_TIMEOUT),
     /** The encrypted connection failed (certificate, wrong security setting for the port). */
-    TLS(
-        "Die verschlüsselte Verbindung zum Mailserver ist fehlgeschlagen. Bitte die"
-            + " Verschlüsselung (STARTTLS oder SSL/TLS) und den Port prüfen."),
+    TLS(ErrorCode.MAIL_TLS),
     /** The server refused sender or recipient. */
-    REJECTED("Der Mailserver hat die Nachricht abgelehnt (Absender oder Empfänger)."),
+    REJECTED(ErrorCode.MAIL_REJECTED),
     /** The address is not allowed for a mail server here (an internal address, a port). */
-    REFUSED_HOST("Dieser Mailserver ist hier nicht erlaubt."),
+    REFUSED_HOST(ErrorCode.MAIL_REFUSED_HOST),
     /** Anything else. */
-    OTHER("Die Nachricht konnte nicht gesendet werden.");
+    OTHER(ErrorCode.MAIL_OTHER);
 
-    private final String text;
+    private final ErrorCode code;
 
-    Reason(String text) {
-      this.text = text;
+    Reason(ErrorCode code) {
+      this.code = code;
     }
 
     /**
      * @return what the user is told (German)
      */
     public String explanation() {
-      return text;
+      return code.template();
+    }
+
+    /**
+     * @return what the user is told, with its code (#15)
+     */
+    public UserMessage message() {
+      return code.with();
     }
 
     /**

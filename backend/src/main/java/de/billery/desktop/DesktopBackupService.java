@@ -1,5 +1,8 @@
 package de.billery.desktop;
 
+import de.billery.api.error.ErrorCode;
+import de.billery.api.error.UserFacing;
+import de.billery.api.error.UserMessage;
 import de.billery.config.AppConfig;
 import de.billery.data.Database;
 import de.billery.repository.UserSettingsRepository;
@@ -126,28 +129,27 @@ public class DesktopBackupService {
   public void updateSettings(String directory, int keep, boolean onExit, String password) {
     requireFileDatabase();
     if (keep < 1 || keep > MAX_KEEP) {
-      throw new IllegalArgumentException(
-          "Die Anzahl der aufbewahrten Sicherungen muss zwischen 1 und " + MAX_KEEP + " liegen.");
+      throw new BackupRefusedException(ErrorCode.BACKUP_KEEP_RANGE.with("max", MAX_KEEP));
     }
     String folder = directory == null ? "" : directory.strip();
     if (!folder.isEmpty()) {
       Path path = Paths.get(folder);
       if (!path.isAbsolute()) {
-        throw new IllegalArgumentException("Bitte einen vollständigen Ordnerpfad angeben.");
+        throw new BackupRefusedException(ErrorCode.BACKUP_FOLDER_RELATIVE.with());
       }
       try {
         Files.createDirectories(path);
       } catch (IOException | SecurityException e) {
-        throw new IllegalArgumentException("Der Ordner kann nicht angelegt werden: " + folder, e);
+        throw new BackupRefusedException(ErrorCode.BACKUP_FOLDER_CREATE.with("folder", folder), e);
       }
       if (!Files.isWritable(path)) {
-        throw new IllegalArgumentException(
-            "In diesen Ordner kann nicht geschrieben werden: " + folder);
+        throw new BackupRefusedException(
+            ErrorCode.BACKUP_FOLDER_NOT_WRITABLE.with("folder", folder));
       }
     }
     if (password != null && !password.isEmpty() && password.length() < MIN_PASSWORD_LENGTH) {
-      throw new IllegalArgumentException(
-          "Das Passwort muss mindestens " + MIN_PASSWORD_LENGTH + " Zeichen haben.");
+      throw new BackupRefusedException(
+          ErrorCode.BACKUP_PASSWORD_SHORT.with("min", MIN_PASSWORD_LENGTH));
     }
     settings.updateSetting(KEY_DIRECTORY, folder);
     settings.updateSetting(KEY_KEEP, Integer.toString(keep));
@@ -280,25 +282,23 @@ public class DesktopBackupService {
       throws IOException {
     requireFileDatabase();
     if (fileName == null || !BackupNames.isBackup(fileName)) {
-      throw new IllegalArgumentException("Unbekannte Sicherung.");
+      throw new BackupRefusedException(ErrorCode.BACKUP_UNKNOWN.with());
     }
     Path source = directory().resolve(fileName);
     if (!Files.isRegularFile(source)) {
-      throw new IllegalArgumentException("Die Sicherung gibt es nicht mehr.");
+      throw new BackupRefusedException(ErrorCode.BACKUP_GONE.with());
     }
     Path staged = locations.pendingRestore();
     Path partial = staged.resolveSibling(staged.getFileName() + ".part");
     try {
       if (BackupArchive.isEncrypted(source)) {
         if (password == null || password.isEmpty()) {
-          throw new IllegalArgumentException(
-              "Diese Sicherung ist verschlüsselt: bitte das Passwort angeben.");
+          throw new BackupRefusedException(ErrorCode.BACKUP_PASSWORD_NEEDED.with());
         }
         try {
           BackupArchive.decrypt(source, partial, password.toCharArray());
         } catch (BackupArchive.WrongPasswordException e) {
-          throw new IllegalArgumentException(
-              "Das Passwort ist falsch, oder die Sicherung ist beschädigt.", e);
+          throw new BackupRefusedException(ErrorCode.BACKUP_PASSWORD_WRONG.with(), e);
         }
       } else {
         Files.copy(source, partial, StandardCopyOption.REPLACE_EXISTING);
@@ -306,7 +306,7 @@ public class DesktopBackupService {
       try {
         BackupArchive.validate(partial);
       } catch (IOException e) {
-        throw new IllegalArgumentException("Die Datei ist keine gültige Billery-Sicherung.", e);
+        throw new BackupRefusedException(ErrorCode.BACKUP_INVALID.with(), e);
       }
       // Staged first: from here on RestorePendingFilter refuses every write, so the count below
       // covers everything that can still change (a request already past the filter may still
@@ -510,10 +510,7 @@ public class DesktopBackupService {
           java.sql.Statement stmt = conn.createStatement()) {
         stmt.executeQuery("SELECT COUNT(*) FROM customer").close();
       } catch (java.sql.SQLException e) {
-        throw new IllegalArgumentException(
-            "Die Datenbank in dieser Sicherung lässt sich nicht öffnen; sie wird nicht"
-                + " wiederhergestellt.",
-            e);
+        throw new BackupRefusedException(ErrorCode.BACKUP_DATABASE_UNREADABLE.with(), e);
       }
     } finally {
       PendingRestore.deleteTree(check);
@@ -542,9 +539,7 @@ public class DesktopBackupService {
       Thread.currentThread().interrupt();
     }
     Files.deleteIfExists(staged);
-    throw new IllegalArgumentException(
-        "Gerade wird noch gespeichert. Bitte einen Moment warten und die Wiederherstellung erneut"
-            + " wählen.");
+    throw new BackupRefusedException(ErrorCode.BACKUP_WRITES_RUNNING.with());
   }
 
   /** The keys of encrypted backups, if encryption is switched on. */
@@ -629,37 +624,57 @@ public class DesktopBackupService {
   }
 
   /** The data is larger than a backup may be (the limits of {@link BackupArchive}). */
-  public static final class BackupTooLargeException extends IOException {
+  public static final class BackupTooLargeException extends IOException implements UserFacing {
     private static final long serialVersionUID = 1L;
 
+    private final transient UserMessage coded;
+
     BackupTooLargeException() {
-      super(
-          "Die Daten sind zu groß für eine Sicherung (höchstens "
-              + BackupArchive.MAX_ENTRIES
-              + " Dateien und 4 GB). Bitte nicht mehr benötigte Logos und Anhänge entfernen.");
+      this(ErrorCode.BACKUP_TOO_LARGE.with("max", BackupArchive.MAX_ENTRIES));
+    }
+
+    private BackupTooLargeException(UserMessage message) {
+      super(message.text());
+      this.coded = message;
+    }
+
+    @Override
+    public UserMessage userMessage() {
+      return coded;
     }
   }
 
   /** A restore would take documents out of the program and the user has not confirmed it. */
-  public static final class RestoreLossException extends RuntimeException {
+  public static final class RestoreLossException extends RuntimeException implements UserFacing {
     private static final long serialVersionUID = 1L;
 
     private final transient RestoreLoss counts;
 
+    private final transient UserMessage coded;
+
     RestoreLossException(RestoreLoss loss) {
-      super(
-          "Seit dieser Sicherung wurden "
-              + loss.issued()
-              + " Belege ausgestellt oder storniert, "
-              + loss.payments()
-              + " Zahlungen erfasst, "
-              + loss.changes()
-              + " Änderungen an Dokumenten gemacht und "
-              + loss.files()
-              + " hochgeladene Dateien (Logos, Anhänge) neu angelegt oder geändert. Sie fehlen nach der Wiederherstellung im"
-              + " Programm; erhalten bleiben sie in der Sicherheitskopie, die vorher angelegt und"
-              + " nicht automatisch gelöscht wird und wie alle Rechnungen aufzubewahren ist (§ 147 AO).");
+      this(
+          loss,
+          ErrorCode.BACKUP_RESTORE_LOSS.with(
+              "issued",
+              loss.issued(),
+              "payments",
+              loss.payments(),
+              "changes",
+              loss.changes(),
+              "files",
+              loss.files()));
+    }
+
+    private RestoreLossException(RestoreLoss loss, UserMessage message) {
+      super(message.text());
       this.counts = loss;
+      this.coded = message;
+    }
+
+    @Override
+    public UserMessage userMessage() {
+      return coded;
     }
 
     /**

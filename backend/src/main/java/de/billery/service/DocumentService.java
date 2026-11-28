@@ -2,6 +2,7 @@ package de.billery.service;
 
 import de.billery.api.dto.InvoiceDto;
 import de.billery.api.dto.InvoiceItemDto;
+import de.billery.api.error.ErrorCode;
 import de.billery.data.Invoice;
 import de.billery.data.InvoiceItem;
 import de.billery.data.Owner;
@@ -41,11 +42,6 @@ import org.springframework.transaction.support.TransactionTemplate;
 public class DocumentService {
 
   private static final int STATUS_DRAFT = DocumentStatus.DRAFT;
-
-  /** User-facing reason why an issued invoice cannot be edited. */
-  static final String LOCKED_MESSAGE =
-      "Ausgestellte Rechnungen können nicht mehr geändert werden (GoBD)."
-          + " Bitte stornieren und eine korrigierte Rechnung erstellen.";
 
   private final InvoiceRepository invoiceRepository;
   private final DocumentHistoryRepository historyRepository;
@@ -143,12 +139,11 @@ public class DocumentService {
     int documentStatusId = dto.documentStatusId() != null ? dto.documentStatusId() : 1;
     int documentTypeId = dto.documentTypeId() != null ? dto.documentTypeId() : 1;
     if (documentTypeId == DocumentType.CREDIT_NOTE) {
-      throw new DocumentStateException(
-          "Stornorechnungen entstehen nur durch das Stornieren einer Rechnung.");
+      throw new DocumentStateException(ErrorCode.CREDIT_NOTE_ONLY_BY_CANCEL.with());
     }
     boolean invoiceType = DocumentType.isInvoice(documentTypeId);
     if (invoiceType && documentNumber.endsWith("/")) {
-      throw new DocumentStateException(LOCKED_MESSAGE);
+      throw new DocumentStateException(ErrorCode.INVOICE_ISSUED_LOCKED.with());
     }
 
     int version = 1;
@@ -251,7 +246,7 @@ public class DocumentService {
     DocumentTypeStrategy strategy = registry.getStrategy(existing.getDocumentTypeId());
     boolean bookkeepingRecord = DocumentType.isBookkeepingRecord(existing.getDocumentTypeId());
     if (bookkeepingRecord && existing.getDocumentStatusId() != STATUS_DRAFT) {
-      throw new DocumentStateException(LOCKED_MESSAGE);
+      throw new DocumentStateException(ErrorCode.INVOICE_ISSUED_LOCKED.with());
     }
 
     int newStatus =
@@ -370,7 +365,7 @@ public class DocumentService {
       return null;
     }
     if (source.getDocumentTypeId() == DocumentType.CREDIT_NOTE) {
-      throw new DocumentStateException("Stornorechnungen können nicht dupliziert werden.");
+      throw new DocumentStateException(ErrorCode.CREDIT_NOTE_NOT_CLONABLE.with());
     }
 
     String invoiceDate = body.getOrDefault("invoiceDate", LocalDate.now().toString());
@@ -544,11 +539,8 @@ public class DocumentService {
     BigDecimal rate = orDefault(itemDto.taxRate(), defaultRate);
     if (treatment.chargesVat() && !isNote && !VatCalculator.isAllowedRate(rate)) {
       throw new DocumentStateException(
-          "Ungültiger Steuersatz "
-              + rate.stripTrailingZeros().toPlainString()
-              + " % für \""
-              + item.getItemName()
-              + "\" (erlaubt: 19 %, 7 %).");
+          ErrorCode.ITEM_TAX_RATE_INVALID.with(
+              "rate", rate.stripTrailingZeros().toPlainString(), "item", item.getItemName()));
     }
     item.setTaxRatePercent(isNote ? defaultRate : rate);
     return item;

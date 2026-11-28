@@ -1,5 +1,6 @@
 package de.billery.service;
 
+import de.billery.api.error.ErrorCode;
 import de.billery.data.Invoice;
 import de.billery.data.InvoiceItem;
 import de.billery.data.PartySnapshot;
@@ -79,14 +80,14 @@ public class EInvoiceService {
   public String xrechnung(int id) {
     Invoice invoice = requireEInvoiceDocument(id);
     if (invoice.getDocumentStatusId() == DocumentStatus.DRAFT) {
-      throw new DocumentStateException("Eine E-Rechnung gibt es erst für ausgestellte Rechnungen.");
+      throw new DocumentStateException(ErrorCode.EINVOICE_NOT_ISSUED.with());
     }
     List<InvoiceItem> items = invoiceRepository.findItemsByInvoiceId(id);
     PartySnapshot parties = partiesOf(invoice);
     List<String> missing = generator.missingFields(invoice, items, parties);
     if (!missing.isEmpty()) {
       throw new DocumentStateException(
-          "Für die E-Rechnung (XRechnung) fehlen: " + String.join(", ", missing) + ".");
+          ErrorCode.EINVOICE_MISSING.with("missing", String.join(", ", missing)));
     }
     return generator.generate(invoice, items, parties, cancelledBy(invoice));
   }
@@ -126,8 +127,7 @@ public class EInvoiceService {
       throw new DocumentNotFoundException(id);
     }
     if (!DocumentType.isBookkeepingRecord(invoice.getDocumentTypeId())) {
-      throw new DocumentStateException(
-          "E-Rechnungen gibt es nur für Rechnungen und Stornorechnungen.");
+      throw new DocumentStateException(ErrorCode.EINVOICE_ONLY_INVOICES.with());
     }
     return invoice;
   }

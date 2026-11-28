@@ -1,5 +1,8 @@
 package de.billery.api.controller;
 
+import de.billery.api.error.ErrorBody;
+import de.billery.api.error.ErrorCode;
+import de.billery.service.BadRequestException;
 import de.billery.service.DocumentConversionService;
 import de.billery.service.DocumentConversionService.DocumentSection;
 import de.billery.service.DocumentConversionService.ExchangeDocument;
@@ -7,7 +10,6 @@ import de.billery.service.EmptyDocumentException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.springframework.http.ContentDisposition;
@@ -64,15 +66,11 @@ public class DocumentController {
       ExchangeDocument document = conversionService.importDocument(file);
       return ResponseEntity.ok(document);
     } catch (EmptyDocumentException e) {
-      return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+      return ResponseEntity.badRequest().body(ErrorBody.from(e));
     } catch (IllegalArgumentException e) {
       LOGGER.log(Level.WARNING, "Document import refused", e);
       return ResponseEntity.badRequest()
-          .body(
-              Map.of(
-                  "message",
-                  "Das Dokument konnte nicht gelesen werden. Unterstützt werden DOCX- und"
-                      + " ODT-Dateien bis 2 MB."));
+          .body(ErrorBody.from(ErrorCode.EXCHANGE_IMPORT_UNREADABLE.with()));
     }
   }
 
@@ -85,18 +83,19 @@ public class DocumentController {
   @PostMapping("/export")
   public ResponseEntity<?> exportDocument(@RequestBody ExportRequest request) {
     if (request == null) {
-      return ResponseEntity.badRequest().body(Map.of("message", "Keine Exportdaten."));
+      return ResponseEntity.badRequest()
+          .body(ErrorBody.from(ErrorCode.EXCHANGE_EXPORT_MISSING.with()));
     }
     String format =
         request.format() == null ? "" : request.format().toLowerCase(Locale.ROOT).strip();
     if (!"docx".equals(format) && !"odt".equals(format)) {
       return ResponseEntity.badRequest()
-          .body(Map.of("message", "Unbekanntes Format; möglich sind docx und odt."));
+          .body(ErrorBody.from(ErrorCode.EXCHANGE_FORMAT_UNKNOWN.with()));
     }
     try {
       DocumentConversionService.checkExportLimits(request.sections());
-    } catch (IllegalArgumentException e) {
-      return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+    } catch (BadRequestException e) {
+      return ResponseEntity.badRequest().body(ErrorBody.from(e));
     }
     byte[] bytes =
         "docx".equals(format)

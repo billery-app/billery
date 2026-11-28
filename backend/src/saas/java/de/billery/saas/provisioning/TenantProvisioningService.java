@@ -1,8 +1,10 @@
 package de.billery.saas.provisioning;
 
+import de.billery.api.error.UserMessage;
 import de.billery.data.InvoiceTemplate;
 import de.billery.repository.InvoiceTemplateRepository;
 import de.billery.saas.api.ApiError;
+import de.billery.saas.api.SaasErrorCode;
 import de.billery.saas.identity.Role;
 import de.billery.saas.tenant.TenantContext;
 import java.util.List;
@@ -112,7 +114,7 @@ public class TenantProvisioningService {
   public int createTenant(String name, String sourceIp) {
     String clean = name == null ? "" : name.trim();
     if (clean.isEmpty() || clean.length() > 255) {
-      throw new ApiError(HttpStatus.BAD_REQUEST, "The name must have 1 to 255 characters");
+      throw new ApiError(HttpStatus.BAD_REQUEST, SaasErrorCode.TENANT_NAME_LENGTH.with());
     }
     UUID user = Permissions.user();
     List<InvoiceTemplate> defaults = seedTemplates();
@@ -164,11 +166,7 @@ public class TenantProvisioningService {
               .single();
       if (owned >= limits.maxCompaniesPerUser()) {
         throw new ApiError(
-            HttpStatus.CONFLICT,
-            "Sie besitzen bereits "
-                + owned
-                + " Firmen, mehr sind nicht möglich. Schließen Sie eine Firma oder wenden Sie sich"
-                + " an den Betreiber.");
+            HttpStatus.CONFLICT, SaasErrorCode.TOO_MANY_COMPANIES.with("count", owned));
       }
     }
     quota
@@ -184,19 +182,15 @@ public class TenantProvisioningService {
             });
   }
 
-  private static String signUpRefusal(String scope) {
+  private static UserMessage signUpRefusal(String scope) {
     return switch (scope) {
-      case "user" ->
-          "Sie haben heute schon mehrere Firmen angelegt. Bitte versuchen Sie es morgen wieder.";
-      case "ip" ->
-          "Von diesem Anschluss wurden heute schon zu viele Firmen angelegt. Bitte versuchen Sie es"
-              + " später wieder.";
+      case "user" -> SaasErrorCode.SIGNUP_LIMIT_USER.with();
+      case "ip" -> SaasErrorCode.SIGNUP_LIMIT_IP.with();
       default -> {
         LOG.error(
             "The system limit of sign-ups is reached: no new companies for up to 24 hours. Check"
                 + " for abuse, or raise BILLERY_SIGNUPS_PER_DAY.");
-        yield "Heute können keine neuen Firmen mehr angelegt werden. Bitte versuchen Sie es morgen"
-            + " wieder.";
+        yield SaasErrorCode.SIGNUP_LIMIT_SYSTEM.with();
       }
     };
   }
@@ -218,7 +212,7 @@ public class TenantProvisioningService {
                   .param("tenant", Permissions.tenant())
                   .update();
           if (updated == 0) {
-            throw new ApiError(HttpStatus.CONFLICT, "The tenant is not active");
+            throw new ApiError(HttpStatus.CONFLICT, SaasErrorCode.TENANT_NOT_ACTIVE.with());
           }
           audit.record(TenantAuditLog.TENANT_CLOSED, null);
         });

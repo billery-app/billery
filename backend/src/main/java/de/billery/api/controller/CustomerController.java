@@ -2,6 +2,8 @@ package de.billery.api.controller;
 
 import de.billery.api.dto.CustomerDto;
 import de.billery.api.dto.CustomerPageDto;
+import de.billery.api.error.ErrorBody;
+import de.billery.api.error.ErrorCode;
 import de.billery.data.Customer;
 import de.billery.repository.CustomerRepository;
 import de.billery.repository.InvoiceRepository;
@@ -123,17 +125,13 @@ public class CustomerController {
    * @return 200, 404 if unknown, 409 with a message if the customer has documents
    */
   @DeleteMapping("/{id}")
-  public ResponseEntity<Map<String, String>> deleteCustomer(@PathVariable Integer id) {
+  public ResponseEntity<Map<String, Object>> deleteCustomer(@PathVariable Integer id) {
     if (customerRepository.findById(id) == null) {
       return ResponseEntity.notFound().build();
     }
     if (!invoiceRepository.findByCustomerId(id).isEmpty()) {
       return ResponseEntity.status(HttpStatus.CONFLICT)
-          .body(
-              Map.of(
-                  "message",
-                  "Der Kunde hat Dokumente und kann nicht gelöscht werden"
-                      + " (Aufbewahrungspflicht)."));
+          .body(ErrorBody.from(ErrorCode.CUSTOMER_HAS_DOCUMENTS.with()));
     }
     customerRepository.delete(id);
     return ResponseEntity.ok().build();

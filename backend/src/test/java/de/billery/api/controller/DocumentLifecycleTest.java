@@ -400,7 +400,7 @@ class DocumentLifecycleTest {
     create(INVOICE, item(1, 10));
     CustomerController customers = TestWiring.customerController();
 
-    ResponseEntity<Map<String, String>> response = customers.deleteCustomer(customerId);
+    ResponseEntity<Map<String, Object>> response = customers.deleteCustomer(customerId);
 
     assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
     assertEquals(1, listed(true, true).size(), "documents must survive");

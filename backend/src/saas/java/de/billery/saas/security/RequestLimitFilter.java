@@ -1,15 +1,16 @@
 package de.billery.saas.security;
 
+import de.billery.api.error.ErrorBody;
+import de.billery.api.error.UserMessage;
+import de.billery.saas.api.SaasErrorCode;
 import de.billery.saas.tenant.TenantContext;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.regex.Pattern;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
@@ -56,7 +57,7 @@ public class RequestLimitFilter extends OncePerRequestFilter {
     }
     long wait = limits.tryRequest(key);
     if (wait > 0) {
-      reject(response, wait, "Zu viele Anfragen in kurzer Zeit. Bitte einen Moment warten.");
+      reject(response, wait, SaasErrorCode.TOO_MANY_REQUESTS.with());
       return;
     }
     if (!HEAVY.matcher(request.getRequestURI()).matches()) {
@@ -64,10 +65,7 @@ public class RequestLimitFilter extends OncePerRequestFilter {
       return;
     }
     if (!limits.tryHeavy(key)) {
-      reject(
-          response,
-          5,
-          "Es werden gerade schon Dokumente erzeugt. Bitte warten, bis sie fertig sind.");
+      reject(response, 5, SaasErrorCode.HEAVY_REQUESTS_RUNNING.with());
       return;
     }
     try {
@@ -86,12 +84,9 @@ public class RequestLimitFilter extends OncePerRequestFilter {
     return user == null ? null : "user:" + user;
   }
 
-  private static void reject(HttpServletResponse response, long seconds, String message)
+  private static void reject(HttpServletResponse response, long seconds, UserMessage message)
       throws IOException {
-    response.setStatus(429);
     response.setHeader(HttpHeaders.RETRY_AFTER, Long.toString(seconds));
-    response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-    response.setCharacterEncoding(StandardCharsets.UTF_8.name());
-    response.getWriter().write("{\"message\":\"" + message + "\"}");
+    ErrorBody.write(response, 429, message);
   }
 }

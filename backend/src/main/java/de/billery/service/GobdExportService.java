@@ -1,5 +1,6 @@
 package de.billery.service;
 
+import de.billery.api.error.ErrorCode;
 import de.billery.data.Customer;
 import de.billery.data.DocumentHistoryEntry;
 import de.billery.data.Invoice;
@@ -71,9 +72,6 @@ public class GobdExportService {
   private static final DateTimeFormatter GERMAN_DATE = DateTimeFormatter.ofPattern("dd.MM.yyyy");
   private static final String SEP = ";";
   private static final String EOL = "\r\n";
-
-  private static final String ALREADY_EXPORTING =
-      "Es läuft bereits ein Export. Bitte in einigen Minuten erneut versuchen.";
 
   /** Documents per batch query while the tables are written. */
   private static final int CHUNK = 500;
@@ -191,8 +189,7 @@ public class GobdExportService {
    */
   public PreparedExport prepare(LocalDate from, LocalDate to, boolean includeDocuments) {
     if (from.plusDays(maxPeriodDays).isBefore(to)) {
-      throw new ExportLimitException(
-          "Der Zeitraum ist zu lang (höchstens " + maxPeriodDays + " Tage pro Export).");
+      throw new ExportLimitException(ErrorCode.EXPORT_PERIOD_TOO_LONG.with("max", maxPeriodDays));
     }
     int tenant = takeSlot();
     long deadline = System.nanoTime() + maxDuration.toNanos();
@@ -205,7 +202,7 @@ public class GobdExportService {
     }
     try {
       if (!invoiceRepository.tryLockForExport(tenant)) {
-        throw new ExportBusyException(ALREADY_EXPORTING);
+        throw new ExportBusyException(ErrorCode.EXPORT_ALREADY_RUNNING.with());
       }
       List<Invoice> documents = documentsIn(from, to);
       checkDocumentCount(documents.size(), includeDocuments);
@@ -243,19 +240,16 @@ public class GobdExportService {
 
   /** The refusal when the export took longer than allowed. */
   static ExportLimitException tooLong() {
-    return new ExportLimitException(
-        "Der Export hat zu lange gedauert und wurde abgebrochen. Bitte den Zeitraum"
-            + " verkleinern oder ohne Belegdateien exportieren.");
+    return new ExportLimitException(ErrorCode.EXPORT_TOO_SLOW.with());
   }
 
   private synchronized int takeSlot() {
     int tenant = currentTenant.tenantId();
     if (exportingTenants.contains(tenant)) {
-      throw new ExportBusyException(ALREADY_EXPORTING);
+      throw new ExportBusyException(ErrorCode.EXPORT_ALREADY_RUNNING.with());
     }
     if (exportingTenants.size() >= maxConcurrentExports) {
-      throw new ExportBusyException(
-          "Es laufen gerade zu viele Exporte. Bitte in einigen Minuten erneut versuchen.");
+      throw new ExportBusyException(ErrorCode.EXPORT_TOO_MANY.with());
     }
     exportingTenants.add(tenant);
     return tenant;
@@ -371,19 +365,11 @@ public class GobdExportService {
   private void checkDocumentCount(int count, boolean includeDocuments) {
     if (count > maxDocuments) {
       throw new ExportLimitException(
-          "Zu viele Belege für einen Export ("
-              + count
-              + ", höchstens "
-              + maxDocuments
-              + "). Bitte den Zeitraum verkleinern.");
+          ErrorCode.EXPORT_TOO_MANY_DOCUMENTS.with("count", count, "max", maxDocuments));
     }
     if (includeDocuments && count > maxDocumentsWithFiles) {
       throw new ExportLimitException(
-          "Zu viele Belege für einen Export mit PDF und XRechnung ("
-              + count
-              + ", höchstens "
-              + maxDocumentsWithFiles
-              + "). Bitte den Zeitraum verkleinern oder ohne Belegdateien exportieren.");
+          ErrorCode.EXPORT_TOO_MANY_WITH_FILES.with("count", count, "max", maxDocumentsWithFiles));
     }
   }
 
@@ -774,10 +760,7 @@ public class GobdExportService {
       if (sent > limit) {
         dropping = true;
         throw new ExportLimitException(
-            "Der Export ist zu groß (höchstens "
-                + limit / (1024 * 1024)
-                + " MB) und wurde abgebrochen. Bitte den Zeitraum verkleinern oder ohne"
-                + " Belegdateien exportieren.");
+            ErrorCode.EXPORT_TOO_LARGE.with("max", limit / (1024 * 1024)));
       }
     }
 

@@ -1,5 +1,7 @@
 package de.billery.saas.security;
 
+import de.billery.api.error.ErrorBody;
+import de.billery.saas.api.SaasErrorCode;
 import de.billery.saas.identity.IdentityException;
 import de.billery.saas.identity.IdentityRepository;
 import de.billery.saas.identity.IdentityService;
@@ -13,11 +15,9 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -42,9 +42,6 @@ public class TenantContextFilter extends OncePerRequestFilter {
 
   /** The header naming the tenant a request acts in. */
   public static final String TENANT_HEADER = "X-Tenant-Id";
-
-  private static final com.fasterxml.jackson.databind.ObjectMapper JSON =
-      new com.fasterxml.jackson.databind.ObjectMapper();
 
   private static final String ME_PATH = "/api/me";
 
@@ -84,7 +81,7 @@ public class TenantContextFilter extends OncePerRequestFilter {
     try {
       user = identities.resolve(token);
     } catch (IdentityException e) {
-      reject(response, HttpServletResponse.SC_FORBIDDEN, e.clientMessage());
+      ErrorBody.write(response, HttpServletResponse.SC_FORBIDDEN, e.userMessage());
       return;
     }
     String userId = user.toString();
@@ -100,19 +97,18 @@ public class TenantContextFilter extends OncePerRequestFilter {
     try {
       tenant = requestedTenant(request, user, userId);
     } catch (IllegalArgumentException e) {
-      reject(response, HttpServletResponse.SC_BAD_REQUEST, TENANT_HEADER + " must be a tenant id");
+      ErrorBody.write(
+          response, HttpServletResponse.SC_BAD_REQUEST, SaasErrorCode.TENANT_HEADER_INVALID.with());
       return;
     }
     if (tenant.isEmpty()) {
-      reject(
-          response,
-          HttpServletResponse.SC_BAD_REQUEST,
-          "Name the tenant in the " + TENANT_HEADER + " header");
+      ErrorBody.write(
+          response, HttpServletResponse.SC_BAD_REQUEST, SaasErrorCode.TENANT_HEADER_MISSING.with());
       return;
     }
     Optional<TenantAccess> access = accessTo(user, userId, tenant.get());
     if (access.isEmpty()) {
-      reject(response, HttpServletResponse.SC_FORBIDDEN, "You are not a member of this tenant");
+      ErrorBody.write(response, HttpServletResponse.SC_FORBIDDEN, SaasErrorCode.NOT_MEMBER.with());
       return;
     }
     Role role = access.get().role();
@@ -127,14 +123,13 @@ public class TenantContextFilter extends OncePerRequestFilter {
       return;
     }
     if (!role.allows(request.getMethod())) {
-      reject(response, HttpServletResponse.SC_FORBIDDEN, "Your role may only read in this tenant");
+      ErrorBody.write(
+          response, HttpServletResponse.SC_FORBIDDEN, SaasErrorCode.ROLE_READ_ONLY.with());
       return;
     }
     if (!access.get().writable() && !Role.READER.allows(request.getMethod())) {
-      reject(
-          response,
-          HttpServletResponse.SC_FORBIDDEN,
-          "This tenant is closed or suspended and read-only");
+      ErrorBody.write(
+          response, HttpServletResponse.SC_FORBIDDEN, SaasErrorCode.TENANT_READ_ONLY.with());
       return;
     }
     TenantContext.set(tenant.get(), userId, email, role);
@@ -200,14 +195,5 @@ public class TenantContextFilter extends OncePerRequestFilter {
     } finally {
       TenantContext.clear();
     }
-  }
-
-  private static void reject(HttpServletResponse response, int status, String message)
-      throws IOException {
-    response.setStatus(status);
-    response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-    response.setCharacterEncoding(StandardCharsets.UTF_8.name());
-    // written by Jackson, so any character of the message stays inside the JSON string
-    JSON.writeValue(response.getWriter(), java.util.Map.of("message", message));
   }
 }

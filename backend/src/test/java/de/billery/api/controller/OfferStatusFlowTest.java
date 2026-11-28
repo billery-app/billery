@@ -10,6 +10,7 @@ import de.billery.api.dto.CustomerDto;
 import de.billery.api.dto.InvoiceDto;
 import de.billery.api.dto.InvoiceItemDto;
 import de.billery.api.dto.StatusChangeRequest;
+import de.billery.api.error.ErrorCode;
 import de.billery.data.DocumentHistoryEntry;
 import de.billery.data.TestDatabaseConfig;
 import de.billery.document.DocumentStatus;
@@ -160,8 +161,10 @@ class OfferStatusFlowTest {
 
   @Test
   void aRefusedChangeIsAnsweredWithAJsonMessageAndHttp400() {
-    ResponseEntity<Map<String, String>> response =
-        new ApiExceptionHandler().handleInvalidStatusChange(new InvalidStatusChangeException("x"));
+    ResponseEntity<Map<String, Object>> response =
+        new ApiExceptionHandler()
+            .handleInvalidStatusChange(
+                new InvalidStatusChangeException(ErrorCode.STATUS_NAME_OTHER.with("id", "x")));
 
     assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
     assertEquals("x", response.getBody().get("message"));

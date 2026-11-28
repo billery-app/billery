@@ -1,6 +1,7 @@
 package de.billery.saas.provisioning;
 
 import de.billery.saas.api.ApiError;
+import de.billery.saas.api.SaasErrorCode;
 import de.billery.saas.identity.Role;
 import de.billery.saas.tenant.TenantContext;
 import java.time.Instant;
@@ -74,7 +75,7 @@ public class InvitationService {
     Permissions.requireManage(role);
     String address = email == null ? "" : email.trim().toLowerCase(java.util.Locale.ROOT);
     if (address.length() > 320 || !address.matches("[^@\\s]+@[^@\\s]+\\.[^@\\s]+")) {
-      throw new ApiError(HttpStatus.BAD_REQUEST, "Enter a valid e-mail address");
+      throw new ApiError(HttpStatus.BAD_REQUEST, SaasErrorCode.INVITE_ADDRESS_INVALID.with());
     }
     int tenant = Permissions.tenant();
     boolean member =
@@ -87,7 +88,7 @@ public class InvitationService {
                 .single()
             > 0;
     if (member) {
-      throw new ApiError(HttpStatus.CONFLICT, "This person is already a member");
+      throw new ApiError(HttpStatus.CONFLICT, SaasErrorCode.INVITE_ALREADY_MEMBER.with());
     }
     return transactions.execute(
         status -> {
@@ -104,7 +105,7 @@ public class InvitationService {
                     .query((rs, row) -> map(rs))
                     .single();
           } catch (DuplicateKeyException e) {
-            throw new ApiError(HttpStatus.CONFLICT, "This address has already been invited", e);
+            throw new ApiError(HttpStatus.CONFLICT, SaasErrorCode.INVITE_ALREADY_INVITED.with(), e);
           }
           audit.record(TenantAuditLog.MEMBER_INVITED, address + " (" + role.name() + ")");
           return invitation;
@@ -146,7 +147,10 @@ public class InvitationService {
                   .param("tenant", tenant)
                   .query((rs, row) -> new String[] {rs.getString("role"), rs.getString("email")})
                   .optional()
-                  .orElseThrow(() -> new ApiError(HttpStatus.NOT_FOUND, "No such invitation"));
+                  .orElseThrow(
+                      () ->
+                          new ApiError(
+                              HttpStatus.NOT_FOUND, SaasErrorCode.INVITATION_NOT_FOUND.with()));
           Permissions.requireManage(Role.valueOf(open[0]));
           jdbc.sql("DELETE FROM tenant_invitation WHERE id = :id AND tenant_id = :tenant")
               .param("id", id)
@@ -209,9 +213,12 @@ public class InvitationService {
                           new OpenInvitation(
                               rs.getInt("tenant_id"), rs.getString("role"), rs.getString("status")))
                   .optional()
-                  .orElseThrow(() -> new ApiError(HttpStatus.NOT_FOUND, "No such invitation"));
+                  .orElseThrow(
+                      () ->
+                          new ApiError(
+                              HttpStatus.NOT_FOUND, SaasErrorCode.INVITATION_NOT_FOUND.with()));
           if (!"ACTIVE".equals(invitation.status())) {
-            throw new ApiError(HttpStatus.CONFLICT, "The tenant is closed or suspended");
+            throw new ApiError(HttpStatus.CONFLICT, SaasErrorCode.TENANT_CLOSED.with());
           }
           int tenant = invitation.tenantId();
           // The invitation is the proof of the right to join this tenant: act as it for the
