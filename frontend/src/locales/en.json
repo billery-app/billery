@@ -1547,7 +1547,7 @@
     "upload": {
       "contentMismatch": "The file content does not match its extension or is not an image",
       "empty": "The file is empty",
-      "failed": "Upload failed: {reason}",
+      "failed": "Upload failed. Please try again.",
       "nameInvalid": "Invalid file name",
       "tooLarge": "File too large (max. 2 MB)",
       "type": "Only PNG, JPG, JPEG and GIF are allowed"

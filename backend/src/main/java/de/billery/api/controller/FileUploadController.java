@@ -68,8 +68,9 @@ public class FileUploadController {
       return ResponseEntity.ok(Map.of("url", fileUrl));
     } catch (IOException e) {
       LOGGER.log(Level.SEVERE, "File upload failed", e);
+      // the cause stays in the log: a storage error can name server paths or the bucket
       return ResponseEntity.internalServerError()
-          .body(ErrorBody.from(ErrorCode.UPLOAD_FAILED.with("reason", e.getMessage())));
+          .body(ErrorBody.from(ErrorCode.UPLOAD_FAILED.with()));
     }
   }
 

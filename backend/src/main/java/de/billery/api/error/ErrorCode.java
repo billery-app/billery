@@ -249,7 +249,7 @@ public enum ErrorCode implements MessageCode {
   UPLOAD_CONTENT_MISMATCH(
       "upload.contentMismatch", "Dateiinhalt passt nicht zur Dateiendung oder ist kein Bild"),
   UPLOAD_EMPTY("upload.empty", "Datei ist leer"),
-  UPLOAD_FAILED("upload.failed", "Upload fehlgeschlagen: {reason}"),
+  UPLOAD_FAILED("upload.failed", "Upload fehlgeschlagen. Bitte erneut versuchen."),
   UPLOAD_NAME_INVALID("upload.nameInvalid", "Ungültiger Dateiname"),
   UPLOAD_TOO_LARGE("upload.tooLarge", "Datei zu groß (max. 2 MB)"),
   UPLOAD_TYPE("upload.type", "Nur PNG, JPG, JPEG und GIF sind erlaubt");
