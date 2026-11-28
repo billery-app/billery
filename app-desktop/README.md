@@ -4,42 +4,11 @@ The desktop app: Billery as a program on your own computer, without a server. A 
 (`src/lib.rs`) starts the bundled backend (Spring Boot with an H2 database file and its own Java
 runtime) on `127.0.0.1:8080` and shows it; nothing is reachable from the network.
 
-There is **no ready-made download yet**: the installer is built from this repository on the
-operating system it is for (Windows on Windows, macOS on a Mac, Linux on Linux).
-
-## What you need
-
-| | |
-|---|---|
-| JDK | **25** (Temurin, at least 25.0.5.1); `JAVA_HOME` pointing at it. The build makes a small Java runtime from it with `jlink`. |
-| Node | **24** with npm |
-| Maven | 3.9 or newer |
-| Rust | the stable toolchain via [rustup](https://rustup.rs) |
-| Windows | Visual Studio Build Tools with "Desktop development with C++"; WebView2 (part of Windows 10 / 11) |
-| macOS | Xcode command line tools (`xcode-select --install`); the app needs macOS 14 or newer |
-| Linux | the Tauri packages, on Debian / Ubuntu: `libwebkit2gtk-4.1-dev libdbus-1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev pkg-config` |
-
-## Build the installer
-
-From the repository root:
-
-```bash
-./scripts/build-desktop.sh            # Linux, macOS
-```
-
-```powershell
-.\scripts\build-desktop.ps1           # Windows (see "Known problems")
-```
-
-The script builds the SPA, puts it into the backend JAR (`-Pdesktop`), makes the Java runtime
-(`jlink`), copies both to `resources/` and runs `npx tauri build`. The installers end up in
-`app-desktop/target/release/bundle/`:
-
-| System | File |
-|---|---|
-| Windows | `nsis/Billery_<version>_x64-setup.exe` (installs for the current user), `msi/…` |
-| macOS | `dmg/Billery_<version>_<arch>.dmg`, `macos/Billery.app` |
-| Linux | `appimage/…AppImage`, `deb/…deb`, `rpm/…rpm` |
+Installing needs nothing besides the installer: it brings its own Java runtime, and the Linux
+packages (`.deb`, `.rpm`) declare the libraries they need, so the package manager installs them;
+the AppImage carries them itself. There is **no ready-made download yet** (the release workflow
+does not build the installers so far): until then, build the installer yourself
+([Build from source](#build-from-source)).
 
 ## Install and start
 
@@ -66,6 +35,44 @@ Inside: `database*` (H2), `files/` (logos and uploads), `backups/` (unless anoth
 is chosen), `app.log` / `backend-err.log`, and the keys of the backup signature and the mail
 passwords. **Uninstalling keeps this folder**; back it up or use Einstellungen → Datensicherung
 before you move to another computer.
+
+## Build from source
+
+### What you need
+
+Only for building: these are compilers and development headers, not needed to run the app.
+
+| | |
+|---|---|
+| JDK | **25** (Temurin, at least 25.0.5.1); `JAVA_HOME` pointing at it. The build makes a small Java runtime from it with `jlink`. |
+| Node | **24** with npm |
+| Maven | 3.9 or newer |
+| Rust | the stable toolchain via [rustup](https://rustup.rs) |
+| Windows | Visual Studio Build Tools with "Desktop development with C++"; WebView2 (part of Windows 10 / 11) |
+| macOS | Xcode command line tools (`xcode-select --install`); the app needs macOS 14 or newer |
+| Linux | the Tauri packages, on Debian / Ubuntu: `libwebkit2gtk-4.1-dev libdbus-1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev pkg-config` |
+
+### Build the installer
+
+From the repository root:
+
+```bash
+./scripts/build-desktop.sh            # Linux, macOS
+```
+
+```powershell
+.\scripts\build-desktop.ps1           # Windows (see "Known problems")
+```
+
+The script builds the SPA, puts it into the backend JAR (`-Pdesktop`), makes the Java runtime
+(`jlink`), copies both to `resources/` and runs `npx tauri build`. The installers end up in
+`app-desktop/target/release/bundle/`:
+
+| System | File |
+|---|---|
+| Windows | `nsis/Billery_<version>_x64-setup.exe` (installs for the current user), `msi/…` |
+| macOS | `dmg/Billery_<version>_<arch>.dmg`, `macos/Billery.app` |
+| Linux | `appimage/…AppImage`, `deb/…deb`, `rpm/…rpm` |
 
 ## Develop
 
